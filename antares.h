@@ -38,6 +38,67 @@ namespace Antares {
 	using namespace System::Data;
 	using namespace System::Drawing;
 	using namespace System::IO;
+	using namespace System::Configuration;
+
+	 void CreateAppSettings(void)
+{
+     // Get the application configuration file.
+	System::Configuration::Configuration^ config =
+		ConfigurationManager::OpenExeConfiguration(
+		ConfigurationUserLevel::None);
+	System::Configuration::KeyValueConfigurationCollection^ settings;
+	settings=config->AppSettings->Settings;
+
+	if (nullptr==settings["Path"])
+	{
+		Console::WriteLine("Adding Path to configuration\n");
+	settings->Add("Path","c:\\windows\\");
+	config->Save(ConfigurationSaveMode::Modified);
+
+	}
+	else Console::WriteLine("Path already in configuration: " + settings["Path"]->Value + "\n");
+	 };
+
+ // string sectionName = "appSettings";
+
+  // Add an entry to appSettings.
+ // int appStgCnt =     ConfigurationManager.AppSettings.Count;
+//  string newKey = "NewKey" + appStgCnt.ToString();
+
+//  string newValue = DateTime.Now.ToLongDateString() +    " " + DateTime.Now.ToLongTimeString();
+
+ // config.AppSettings.Settings.Add(newKey, newValue);
+
+  // Save the configuration file.
+ // config.Save(ConfigurationSaveMode.Modified);
+
+  // Force a reload of the changed section. This 
+  // makes the new values available for reading.
+ // ConfigurationManager.RefreshSection(sectionName);
+
+  // Get the AppSettings section.
+ // AppSettingsSection appSettingSection = (AppSettingsSection)config.GetSection(sectionName);
+
+  // Display raw xml.
+  //Console.WriteLine();
+  //Console.WriteLine("Using GetSection(string).");
+  //Console.WriteLine("AppSettings section XML:");
+  //Console.WriteLine(
+   // appSettingSection.SectionInformation.GetRawXml());
+
+
+
+
+	public ref class AppSettings {
+	public:
+		
+		static array<String^>^ keys;
+		static array<String^>^ values;
+		static int num, size;
+		
+
+	};
+
 
 
 	public ref class FileItem : public System::Windows::Forms::ListViewItem{

@@ -178,6 +178,10 @@ int main(array<System::String ^> ^args)
 
 	printf("Test\n");
 	fprintf(stderr,"Test stderr \n");
+
+
+	CreateAppSettings();
+
 #endif
 
     
