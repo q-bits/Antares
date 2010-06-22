@@ -180,7 +180,7 @@ int main(array<System::String ^> ^args)
 	fprintf(stderr,"Test stderr \n");
 
 
-	CreateAppSettings();
+	
 
 #endif
 

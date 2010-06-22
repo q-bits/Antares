@@ -42,6 +42,7 @@ namespace Antares {
 
 	 void CreateAppSettings(void)
 {
+	return;
      // Get the application configuration file.
 	System::Configuration::Configuration^ config =
 		ConfigurationManager::OpenExeConfiguration(
@@ -59,45 +60,8 @@ namespace Antares {
 	else Console::WriteLine("Path already in configuration: " + settings["Path"]->Value + "\n");
 	 };
 
- // string sectionName = "appSettings";
-
-  // Add an entry to appSettings.
- // int appStgCnt =     ConfigurationManager.AppSettings.Count;
-//  string newKey = "NewKey" + appStgCnt.ToString();
-
-//  string newValue = DateTime.Now.ToLongDateString() +    " " + DateTime.Now.ToLongTimeString();
-
- // config.AppSettings.Settings.Add(newKey, newValue);
-
-  // Save the configuration file.
- // config.Save(ConfigurationSaveMode.Modified);
-
-  // Force a reload of the changed section. This 
-  // makes the new values available for reading.
- // ConfigurationManager.RefreshSection(sectionName);
-
-  // Get the AppSettings section.
- // AppSettingsSection appSettingSection = (AppSettingsSection)config.GetSection(sectionName);
-
-  // Display raw xml.
-  //Console.WriteLine();
-  //Console.WriteLine("Using GetSection(string).");
-  //Console.WriteLine("AppSettings section XML:");
-  //Console.WriteLine(
-   // appSettingSection.SectionInformation.GetRawXml());
 
 
-
-
-	public ref class AppSettings {
-	public:
-		
-		static array<String^>^ keys;
-		static array<String^>^ values;
-		static int num, size;
-		
-
-	};
 
 
 

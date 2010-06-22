@@ -4,6 +4,7 @@ extern "C"
 {
 #include <stdio.h>
 #include <time.h>
+
 }
 
 using namespace System;
@@ -39,6 +40,7 @@ namespace Antares {
 			//TODO: Add the constructor code here
 			//
 			this->cancelled=false;
+			this->is_closed=false;
 			this->label3->Text = "";
 			this->label4->Text = "";
 
@@ -96,6 +98,7 @@ namespace Antares {
 
 		void close_request_threadsafe(void)
 		{
+			this->is_closed=true;
 			if (this->InvokeRequired)
 			{
 				CloseRequestCallback^ d = gcnew CloseRequestCallback(this, &CopyDialog::close_request_threadsafe);
@@ -169,10 +172,15 @@ namespace Antares {
 				}
 			}
 			// }
-			this->label1->Text =  ((int)(100.00 * (double) this->current_offset / (double) this->current_filesize)).ToString() + "%";
+			int perc1 = ((int)(100.00 * (double) this->current_offset / (double) this->current_filesize));
+			int perc2 = ((int)(100.00 * (double) this->total_offset / (double) this->total_filesize));
+			perc1 = perc1<0 ? 0 : perc1;
+            perc2 = perc2<0 ? 0 : perc1;
+			perc1 = perc1>100 ? 100 : perc1;
+            perc2 = perc2>100 ? 100 : perc1;
 
-			this->label2->Text =  ((int)(100.00 * (double) this->total_offset / (double) this->total_filesize)).ToString() + "%";
-
+            this->label1->Text =  perc1.ToString() + "%";
+			this->label2->Text =  perc2.ToString() + "%";
 			this->last_current_delta = current_delta;
 
 		}
@@ -189,6 +197,7 @@ namespace Antares {
 		}
 	public:
 		bool cancelled;
+		bool is_closed;
 		long long int current_filesize;
 		long long int total_filesize;
 		long long int current_offset;
