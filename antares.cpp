@@ -157,10 +157,6 @@ int main(array<System::String ^> ^args)
 	
 	
 
-	// Create the main window and run it
-	Form1^ form = gcnew Form1();
-    //form->copydialog = gcnew CopyDialog();
-
 
 
 #ifdef _DEBUG
@@ -183,6 +179,11 @@ int main(array<System::String ^> ^args)
 	
 
 #endif
+
+	// Create the main window and run it
+	Form1^ form = gcnew Form1();
+	//form->copydialog = gcnew CopyDialog();
+
 
     
 	Application::Run(form);
