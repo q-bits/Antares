@@ -180,6 +180,20 @@ int main(array<System::String ^> ^args)
 
 #endif
 
+	bool ^x;
+	bool ^y=gcnew System::Boolean;
+	x=y;
+	*x=false;
+	Console::WriteLine(x->ToString() + " " + y->ToString());
+	*x=true;
+
+	Console::WriteLine(x->ToString() + " " + y->ToString());
+	*y=false;
+	Console::WriteLine(x->ToString() + " " + y->ToString());
+	*y=true;
+	Console::WriteLine(x->ToString() + " " + y->ToString());
+    
+
 	// Create the main window and run it
 	Form1^ form = gcnew Form1();
 	//form->copydialog = gcnew CopyDialog();

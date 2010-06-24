@@ -69,6 +69,7 @@ namespace Antares {
 			int reason;
 			this->listView1SortColumn = -1;
 			this->listView2SortColumn=-1;
+			this->turbo_mode = gcnew System::Boolean;
 
 			this->finished_constructing = 0;
 			InitializeComponent();
@@ -252,6 +253,7 @@ namespace Antares {
 					fprintf(stderr, "Turbo mode: %s\n",
 					turbo_on ? "ON" : "OFF"));
 				this->absorb_late_packets(2,100);
+				*this->turbo_mode = (turbo_on!=0);
 				return 0;
 				break;
 
@@ -615,6 +617,8 @@ namespace Antares {
 
 			System::Threading::Mutex^ TopfieldMutex;
 			bool important_thread_waiting;
+
+			bool^ turbo_mode;
 
 			//System::Windows::Forms::ImageList^ basicIconsSmall;
 
@@ -1052,7 +1056,7 @@ private:
 			this->Controls->Add(this->statusStrip1);
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.2";
+			this->Text = L"Antares  0.3";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::Form1_Layout);
 			this->statusStrip1->ResumeLayout(false);
@@ -1230,6 +1234,10 @@ private:
 					 totalsize += item->size;
 				 }
 
+				 if (this->checkBox1->Checked)
+					 this->set_turbo_mode( 1); //TODO: error handling for turbo mode selection
+				 else
+					 this->set_turbo_mode( 0);
 
 				 CopyDialog^ copydialog = gcnew CopyDialog();
 				 copydialog->cancelled=false;
@@ -1240,6 +1248,7 @@ private:
 				 copydialog->current_offset=0; 
 				 copydialog->window_title="Copying File(s) ... [PVR --> PC]";
 				 copydialog->current_file="Waiting for PVR...";
+				 copydialog->turbo_mode = this->turbo_mode;
 				 copydialog->update_dialog_threadsafe();
 
 				 //
@@ -1258,10 +1267,7 @@ private:
 				 tf_packet reply;
 				 int r;
 
-				 if (this->checkBox1->Checked)
-					 this->set_turbo_mode( 1); //TODO: error handling for turbo mode selection
-				 else
-					 this->set_turbo_mode( 0);
+	
 
 				 while ( myEnum->MoveNext() )
 				 {
@@ -1440,6 +1446,10 @@ private:
 							 fprintf(stderr, "ERROR: Unhandled packet (cmd 0x%x)\n",
 								 get_u32(&reply.cmd));
 						 }
+
+
+
+
 					 }
 
 					 //_utime64(dstPath,(struct __utimbuf64 *) &mod_utime_buf);     
@@ -1456,8 +1466,10 @@ out:
 					 /// End of section adapted from commands.c [wuppy]a
 
 
-
-
+					  if (copydialog->turbo_request != *this->turbo_mode)
+					 {
+						 this->set_turbo_mode( copydialog->turbo_request ? 1:0);
+					 }
 
 
 
@@ -1523,7 +1535,9 @@ end_copy_to_pc:
 				 copydialog->current_offset=0; 
 				 copydialog->window_title="Copying File(s) ... [PC --> PVR]";
 				 copydialog->current_file="Waiting for PVR...";
+				  copydialog->turbo_mode = this->turbo_mode;
 				 copydialog->update_dialog_threadsafe();
+				
 
 				 //
 				 //copydialog->label3->Text = "Waiting for PVR...";
@@ -1759,6 +1773,11 @@ out:
 
 					 if (copydialog->cancelled==true) break;
 					 //end section derived from commands.c
+
+					 if (copydialog->turbo_request != *this->turbo_mode)
+					 {
+						 this->set_turbo_mode( copydialog->turbo_request ? 1:0);
+					 }
 
 				 }
 
@@ -2027,6 +2046,7 @@ private: System::Void listView_KeyDown(System::Object^  sender, System::Windows:
 			 //Console::WriteLine(e->KeyValue);
 
 		 }
+
 };
 };
 

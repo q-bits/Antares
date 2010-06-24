@@ -143,6 +143,17 @@ namespace Antares {
 			double current_rate = (double) (this->current_offset) / current_delta;
 			double total_rate = (double) (this->total_offset) / total_delta;
 
+
+			if (this->total_offset==0) this->checkBox1->Checked = *this->turbo_mode;
+			if (*this->turbo_mode != this->turbo_request)
+			{
+				this->checkBox1->Text = "Turbo mode [from next file]";
+			}
+			else
+			{
+				this->checkBox1->Text = "Turbo mode";
+			}
+
 			//this->label3->Text = this->teststring;
 			this->label4->Text =  (this->current_offset / 1024).ToString("#,#,#")+"KB / "+(this->current_filesize/1024).ToString("#,#,#")+"KB";
 
@@ -175,9 +186,9 @@ namespace Antares {
 			int perc1 = ((int)(100.00 * (double) this->current_offset / (double) this->current_filesize));
 			int perc2 = ((int)(100.00 * (double) this->total_offset / (double) this->total_filesize));
 			perc1 = perc1<0 ? 0 : perc1;
-            perc2 = perc2<0 ? 0 : perc1;
+            perc2 = perc2<0 ? 0 : perc2;
 			perc1 = perc1>100 ? 100 : perc1;
-            perc2 = perc2>100 ? 100 : perc1;
+            perc2 = perc2>100 ? 100 : perc2;
 
             this->label1->Text =  perc1.ToString() + "%";
 			this->label2->Text =  perc2.ToString() + "%";
@@ -198,6 +209,9 @@ namespace Antares {
 	public:
 		bool cancelled;
 		bool is_closed;
+		bool turbo_request;
+		bool^ turbo_mode;
+	
 		long long int current_filesize;
 		long long int total_filesize;
 		long long int current_offset;
@@ -207,6 +221,7 @@ namespace Antares {
 		String^ current_file;
 		double last_current_delta;
 
+  
 
 
 	private: System::Windows::Forms::ProgressBar^  progressBar1;
@@ -223,6 +238,7 @@ namespace Antares {
 	private: System::Windows::Forms::Label^  label6;
 	private: System::Windows::Forms::Label^  label7;
 private: System::Windows::Forms::Label^  label8;
+private: System::Windows::Forms::CheckBox^  checkBox1;
 
 	protected: 
 
@@ -251,19 +267,23 @@ private: System::Windows::Forms::Label^  label8;
 			this->label6 = (gcnew System::Windows::Forms::Label());
 			this->label7 = (gcnew System::Windows::Forms::Label());
 			this->label8 = (gcnew System::Windows::Forms::Label());
+			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
 			this->SuspendLayout();
 			// 
 			// progressBar1
 			// 
 			this->progressBar1->Location = System::Drawing::Point(12, 87);
+			this->progressBar1->MarqueeAnimationSpeed = 0;
 			this->progressBar1->Maximum = 1000;
 			this->progressBar1->Name = L"progressBar1";
 			this->progressBar1->Size = System::Drawing::Size(656, 30);
+			this->progressBar1->Step = 0;
 			this->progressBar1->TabIndex = 0;
 			// 
 			// progressBar2
 			// 
 			this->progressBar2->Location = System::Drawing::Point(12, 164);
+			this->progressBar2->MarqueeAnimationSpeed = 0;
 			this->progressBar2->Maximum = 1000;
 			this->progressBar2->Name = L"progressBar2";
 			this->progressBar2->Size = System::Drawing::Size(656, 30);
@@ -377,12 +397,24 @@ private: System::Windows::Forms::Label^  label8;
 			this->label8->TabIndex = 10;
 			this->label8->Text = L"label8";
 			// 
+			// checkBox1
+			// 
+			this->checkBox1->AutoSize = true;
+			this->checkBox1->Location = System::Drawing::Point(9, 261);
+			this->checkBox1->Name = L"checkBox1";
+			this->checkBox1->Size = System::Drawing::Size(83, 17);
+			this->checkBox1->TabIndex = 11;
+			this->checkBox1->Text = L"Turbo mode";
+			this->checkBox1->UseVisualStyleBackColor = true;
+			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &CopyDialog::checkBox1_CheckedChanged);
+			// 
 			// CopyDialog
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->ClientSize = System::Drawing::Size(680, 282);
 			this->ControlBox = false;
+			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->label8);
 			this->Controls->Add(this->label7);
 			this->Controls->Add(this->label6);
@@ -413,5 +445,9 @@ private: System::Windows::Forms::Label^  label8;
 				 this->cancelled = true;
 			 }
 
+private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 this->turbo_request  = this->checkBox1->Checked;
+			
+		 }
 };
 }
