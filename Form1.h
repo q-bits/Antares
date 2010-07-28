@@ -59,6 +59,26 @@ namespace Antares {
 	/// </summary>
 	public ref class Form1 : public System::Windows::Forms::Form
 	{
+
+	protected:
+		  virtual void WndProc( Message% m ) override
+      {
+
+         // Listen for operating system messages.
+         switch ( m.Msg )
+          {
+            case WM_ACTIVATEAPP:
+
+               break;
+			   case WM_DEVICECHANGE:
+ printf("WM_DEVICECHANGE received. m.WParam =%d   m.LParam=%d \n",m.WParam,m.LParam);
+         }
+		 
+         Form::WndProc( m );
+      }
+
+
+
 	public:
 		Form1(void)
 		{
@@ -181,6 +201,8 @@ namespace Antares {
 			this->loadComputerDir();
 
 		}
+
+
 
 
 		void changeSetting(String^ key, String^ val)
@@ -424,7 +446,11 @@ namespace Antares {
 			this->loadTopfieldDir();
 		}
 
-		int loadTopfieldDir(void)               // Uses the TopfieldMutex. Need to release before return.
+	
+		// Load and display files in the current topfield directory.
+		// If a file is named start_rename, then start the name editing process after the directory is loaded.
+		// (useful when we have just created a new folder).
+		int loadTopfieldDir(String^ start_rename)               // Uses the TopfieldMutex. Need to release before return.
 		{
 			tf_packet reply;
 
@@ -505,7 +531,7 @@ namespace Antares {
 			//printf(str2);
 			send_cmd_hdd_dir(this->fd,str2);
 			Marshal::FreeHGlobal((System::IntPtr)(void*)str2);
-
+            TopfieldItem^ rename_item;bool do_rename=false;
 			j=0;
 			while(0 < get_tf_packet(this->fd, &reply))
 			{
@@ -533,8 +559,12 @@ namespace Antares {
 						if (String::Compare(item->filename,"..")!=0 ) 
 						{
 							this->listView1->Items->Add(item);
+							if (String::Compare(start_rename,item->filename)==0)
+							{
+								rename_item=item; do_rename=true;
+							}
 						}
-
+                         
 
 					}
 
@@ -548,7 +578,7 @@ namespace Antares {
 					this->TopfieldMutex->ReleaseMutex();
 
 					this->changeSetting("TopfieldDir",this->topfieldCurrentDirectory);
-					
+					if (do_rename) rename_item->BeginEdit();
 					return 0;
 					break;
 
@@ -572,6 +602,14 @@ namespace Antares {
 			this->TopfieldMutex->ReleaseMutex();
 			return -EPROTO;
 		}
+
+		int loadTopfieldDir(void)
+		{
+            String^ start_rename = "";
+			return this->loadTopfieldDir(start_rename);
+		}
+
+
 	protected:
 		/// <summary>
 		/// Clean up any resources being used.
@@ -859,6 +897,7 @@ private:
 			this->toolStripButton8->Name = L"toolStripButton8";
 			this->toolStripButton8->Size = System::Drawing::Size(23, 22);
 			this->toolStripButton8->Text = L"New Folder";
+			this->toolStripButton8->Click += gcnew System::EventHandler(this, &Form1::toolStripButton8_Click);
 			// 
 			// listView1
 			// 
@@ -2035,18 +2074,76 @@ private: System::Void listView_KeyDown(System::Object^  sender, System::Windows:
 				 {
 					 if (listview == this->listView1)
 					 {
-                        toolStripButton7_Click(nullptr,nullptr);
+						 toolStripButton7_Click(nullptr,nullptr);
 					 }
 				 }
 			 }
 
-			// Console::WriteLine(keystr);
+			 // Console::WriteLine(keystr);
 			 //Console::WriteLine(e->KeyData);
 
 			 //Console::WriteLine(e->KeyValue);
 
 		 }
 
+private: System::Void toolStripButton8_Click(System::Object^  sender, System::EventArgs^  e) {
+
+
+			 if (this->fd==NULL)
+			 {
+				 this->toolStripStatusLabel1->Text="Topfield not connected.";
+				 return; 
+			 }
+
+			 ListView^ listview = this->listView1;
+
+			 ListView::ListViewItemCollection^ items = listview->Items;
+			 TopfieldItem^ item;
+
+			 String^ foldername;
+			 String^ dir;
+			 int r;
+			 bool success = false;
+			 for( int i=0; i<1000; i++)
+			 {
+
+				 foldername = "NewFolder" + i.ToString("D2");
+
+
+
+
+
+				 System::Collections::IEnumerator^ myEnum = items->GetEnumerator();
+
+				 bool clash=false;
+				 while ( myEnum->MoveNext() )
+				 {
+					 item = safe_cast<TopfieldItem^>(myEnum->Current);
+
+				
+					 if (String::Compare(item->filename,foldername)==0)
+					 {
+						 clash=true;break;
+					 }
+				 }
+				 if(clash==true) continue;
+
+
+
+				 dir = this->topfieldCurrentDirectory + "\\"+ foldername; 
+
+				 char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
+
+
+				 r = do_hdd_mkdir(this->fd,path);
+				 Marshal::FreeHGlobal((System::IntPtr)(void*)path);
+				 if (r!=0) this->toolStripStatusLabel1->Text="Error creating new folder.";
+				 success=true;
+				 break;
+			 }
+			 if (success)
+			 this->loadTopfieldDir(foldername);
+		 }
 };
 };
 
