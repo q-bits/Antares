@@ -107,7 +107,7 @@ namespace Antares {
 
 			this->dircount=0;
 			this->fd  = connect_device2(&reason);
-			if (this->fd==NULL) this->label2->Text="Device not connected.";
+			if (this->fd==NULL) this->label2->Text="PVR: Device not connected";
 
 			this->topfieldNameHeader = this->listView1->Columns->Add("Name",140,HorizontalAlignment::Left);
 			this->topfieldSizeHeader = this->listView1->Columns->Add("Size",70,HorizontalAlignment::Right);
@@ -378,7 +378,7 @@ namespace Antares {
 				if (str->Length > 0)
 				{
 					DriveInfo^ drive = gcnew DriveInfo(str);
-					str = "[Local Disk "+str+"] " + HumanReadableSize(drive->AvailableFreeSpace) + " Free / " + HumanReadableSize(drive->TotalSize)+ " Total";
+					str = " Local Disk "+str+"  --  " + HumanReadableSize(drive->AvailableFreeSpace) + " Free / " + HumanReadableSize(drive->TotalSize)+ " Total";
 					label1->Text = str;
 
 				}
@@ -518,7 +518,7 @@ namespace Antares {
 				fprintf(stderr, "ERROR: Unhandled packet in load_topfield_dir/hdd_size\n");
 			}
 
-			this->label2->Text = "[Topfield device] "+HumanReadableSize(1024* ((__u64) freek))+" free / " + HumanReadableSize(1024*( (__u64) totalk)) + " total";
+			this->label2->Text = " Topfield device  --  "+HumanReadableSize(1024* ((__u64) freek))+" free / " + HumanReadableSize(1024*( (__u64) totalk)) + " total";
 
 
 
@@ -685,7 +685,7 @@ namespace Antares {
 	private: System::Windows::Forms::Panel^  panel1;
 	private: System::Windows::Forms::Panel^  panel3;
 	private: System::Windows::Forms::CheckBox^  checkBox1;
-	private: System::Windows::Forms::TextBox^  textBox2;
+
 	private: System::Windows::Forms::Label^  label2;
 	private: System::Windows::Forms::ToolStrip^  toolStrip2;
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton5;
@@ -699,7 +699,7 @@ private:
 	private: System::Windows::Forms::Button^  button2;
 	private: System::Windows::Forms::Button^  button1;
 	private: System::Windows::Forms::Panel^  panel4;
-	private: System::Windows::Forms::TextBox^  textBox1;
+
 	private: System::Windows::Forms::Label^  label1;
 	private: System::Windows::Forms::ToolStrip^  toolStrip1;
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton1;
@@ -712,6 +712,19 @@ private:
 	private: System::Windows::Forms::Timer^  timer1;
 	private: System::Windows::Forms::ToolStripStatusLabel^  toolStripStatusLabel1;
 	private: System::Windows::Forms::ImageList^  basicIconsSmall;
+
+
+
+
+private: System::Windows::Forms::ToolStripButton^  toolStripButton9;
+
+private: System::Windows::Forms::ToolStripButton^  toolStripButton10;
+private: System::Windows::Forms::Panel^  panel5;
+private: System::Windows::Forms::TextBox^  textBox2;
+private: System::Windows::Forms::Panel^  panel6;
+private: System::Windows::Forms::TextBox^  textBox1;
+private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator1;
+private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 
 
 
@@ -743,19 +756,19 @@ private:
 			this->panel1 = (gcnew System::Windows::Forms::Panel());
 			this->panel3 = (gcnew System::Windows::Forms::Panel());
 			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
-			this->textBox2 = (gcnew System::Windows::Forms::TextBox());
 			this->label2 = (gcnew System::Windows::Forms::Label());
 			this->toolStrip2 = (gcnew System::Windows::Forms::ToolStrip());
 			this->toolStripButton5 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton6 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton7 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton8 = (gcnew System::Windows::Forms::ToolStripButton());
+			this->toolStripButton10 = (gcnew System::Windows::Forms::ToolStripButton());
+			this->toolStripButton9 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->listView1 = (gcnew System::Windows::Forms::ListView());
 			this->panel2 = (gcnew System::Windows::Forms::Panel());
 			this->button2 = (gcnew System::Windows::Forms::Button());
 			this->button1 = (gcnew System::Windows::Forms::Button());
 			this->panel4 = (gcnew System::Windows::Forms::Panel());
-			this->textBox1 = (gcnew System::Windows::Forms::TextBox());
 			this->label1 = (gcnew System::Windows::Forms::Label());
 			this->toolStrip1 = (gcnew System::Windows::Forms::ToolStrip());
 			this->toolStripButton1 = (gcnew System::Windows::Forms::ToolStripButton());
@@ -765,6 +778,12 @@ private:
 			this->listView2 = (gcnew System::Windows::Forms::ListView());
 			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->basicIconsSmall = (gcnew System::Windows::Forms::ImageList(this->components));
+			this->panel5 = (gcnew System::Windows::Forms::Panel());
+			this->textBox2 = (gcnew System::Windows::Forms::TextBox());
+			this->panel6 = (gcnew System::Windows::Forms::Panel());
+			this->textBox1 = (gcnew System::Windows::Forms::TextBox());
+			this->toolStripSeparator1 = (gcnew System::Windows::Forms::ToolStripSeparator());
+			this->toolStripSeparator2 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->statusStrip1->SuspendLayout();
 			this->panel1->SuspendLayout();
 			this->panel3->SuspendLayout();
@@ -772,14 +791,18 @@ private:
 			this->panel2->SuspendLayout();
 			this->panel4->SuspendLayout();
 			this->toolStrip1->SuspendLayout();
+			this->panel5->SuspendLayout();
+			this->panel6->SuspendLayout();
 			this->SuspendLayout();
 			// 
 			// statusStrip1
 			// 
+			this->statusStrip1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->statusStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(1) {this->toolStripStatusLabel1});
 			this->statusStrip1->Location = System::Drawing::Point(0, 638);
 			this->statusStrip1->Name = L"statusStrip1";
-			this->statusStrip1->Size = System::Drawing::Size(868, 22);
+			this->statusStrip1->Size = System::Drawing::Size(880, 22);
 			this->statusStrip1->TabIndex = 9;
 			this->statusStrip1->Text = L"Test";
 			// 
@@ -797,107 +820,152 @@ private:
 			this->panel1->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->panel1->Location = System::Drawing::Point(0, 0);
 			this->panel1->Name = L"panel1";
-			this->panel1->Size = System::Drawing::Size(868, 638);
+			this->panel1->Size = System::Drawing::Size(880, 638);
 			this->panel1->TabIndex = 10;
 			// 
 			// panel3
 			// 
+			this->panel3->Controls->Add(this->panel5);
 			this->panel3->Controls->Add(this->checkBox1);
-			this->panel3->Controls->Add(this->textBox2);
 			this->panel3->Controls->Add(this->label2);
 			this->panel3->Controls->Add(this->toolStrip2);
 			this->panel3->Controls->Add(this->listView1);
 			this->panel3->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->panel3->Location = System::Drawing::Point(0, 0);
+			this->panel3->Margin = System::Windows::Forms::Padding(0, 3, 0, 3);
 			this->panel3->Name = L"panel3";
-			this->panel3->Size = System::Drawing::Size(496, 638);
+			this->panel3->Size = System::Drawing::Size(503, 638);
 			this->panel3->TabIndex = 8;
 			// 
 			// checkBox1
 			// 
+			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->Location = System::Drawing::Point(12, 81);
+			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->checkBox1->Location = System::Drawing::Point(418, 18);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 7;
 			this->checkBox1->Text = L"Turbo mode";
-			this->checkBox1->UseVisualStyleBackColor = true;
-			// 
-			// textBox2
-			// 
-			this->textBox2->Dock = System::Windows::Forms::DockStyle::Top;
-			this->textBox2->Location = System::Drawing::Point(0, 51);
-			this->textBox2->Name = L"textBox2";
-			this->textBox2->Size = System::Drawing::Size(496, 20);
-			this->textBox2->TabIndex = 6;
+			this->checkBox1->UseVisualStyleBackColor = false;
 			// 
 			// label2
 			// 
-			this->label2->BorderStyle = System::Windows::Forms::BorderStyle::Fixed3D;
+			this->label2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(230)), static_cast<System::Int32>(static_cast<System::Byte>(230)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(230)));
 			this->label2->Dock = System::Windows::Forms::DockStyle::Top;
-			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label2->Location = System::Drawing::Point(0, 25);
+			this->label2->Location = System::Drawing::Point(0, 38);
 			this->label2->Margin = System::Windows::Forms::Padding(5);
 			this->label2->Name = L"label2";
-			this->label2->Size = System::Drawing::Size(496, 26);
+			this->label2->Padding = System::Windows::Forms::Padding(5, 0, 0, 0);
+			this->label2->Size = System::Drawing::Size(503, 24);
 			this->label2->TabIndex = 5;
 			this->label2->Text = L"label2";
 			this->label2->TextAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			// 
 			// toolStrip2
 			// 
-			this->toolStrip2->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(4) {this->toolStripButton5, 
-				this->toolStripButton6, this->toolStripButton7, this->toolStripButton8});
+			this->toolStrip2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->toolStrip2->GripMargin = System::Windows::Forms::Padding(1);
+			this->toolStrip2->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(8) {this->toolStripButton5, 
+				this->toolStripButton6, this->toolStripButton7, this->toolStripButton8, this->toolStripSeparator1, this->toolStripButton9, this->toolStripButton10, 
+				this->toolStripSeparator2});
+			this->toolStrip2->LayoutStyle = System::Windows::Forms::ToolStripLayoutStyle::HorizontalStackWithOverflow;
 			this->toolStrip2->Location = System::Drawing::Point(0, 0);
 			this->toolStrip2->Name = L"toolStrip2";
-			this->toolStrip2->Size = System::Drawing::Size(496, 25);
+			this->toolStrip2->Padding = System::Windows::Forms::Padding(0, 0, 4, 0);
+			this->toolStrip2->Size = System::Drawing::Size(503, 38);
 			this->toolStrip2->TabIndex = 4;
 			this->toolStrip2->Text = L"toolStrip2";
 			// 
 			// toolStripButton5
 			// 
-			this->toolStripButton5->DisplayStyle = System::Windows::Forms::ToolStripItemDisplayStyle::Image;
+			this->toolStripButton5->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->toolStripButton5->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton5.Image")));
 			this->toolStripButton5->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton5->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton5->Margin = System::Windows::Forms::Padding(8, 1, 4, 2);
 			this->toolStripButton5->Name = L"toolStripButton5";
-			this->toolStripButton5->Size = System::Drawing::Size(23, 22);
-			this->toolStripButton5->Text = L"High Folder";
+			this->toolStripButton5->Size = System::Drawing::Size(26, 35);
+			this->toolStripButton5->Text = L"Up";
+			this->toolStripButton5->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
+			this->toolStripButton5->ToolTipText = L"Up Folder";
 			this->toolStripButton5->Click += gcnew System::EventHandler(this, &Form1::toolStripButton5_Click);
 			// 
 			// toolStripButton6
 			// 
-			this->toolStripButton6->DisplayStyle = System::Windows::Forms::ToolStripItemDisplayStyle::Image;
+			this->toolStripButton6->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->toolStripButton6->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton6.Image")));
 			this->toolStripButton6->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton6->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton6->Margin = System::Windows::Forms::Padding(2, 2, 4, 3);
 			this->toolStripButton6->Name = L"toolStripButton6";
-			this->toolStripButton6->Size = System::Drawing::Size(23, 22);
+			this->toolStripButton6->Size = System::Drawing::Size(50, 33);
 			this->toolStripButton6->Text = L"Refresh";
+			this->toolStripButton6->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
 			this->toolStripButton6->Click += gcnew System::EventHandler(this, &Form1::toolStripButton6_Click);
 			// 
 			// toolStripButton7
 			// 
-			this->toolStripButton7->DisplayStyle = System::Windows::Forms::ToolStripItemDisplayStyle::Image;
+			this->toolStripButton7->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->toolStripButton7->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton7.Image")));
 			this->toolStripButton7->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton7->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton7->Margin = System::Windows::Forms::Padding(2, 1, 4, 2);
 			this->toolStripButton7->Name = L"toolStripButton7";
-			this->toolStripButton7->Size = System::Drawing::Size(23, 22);
+			this->toolStripButton7->Size = System::Drawing::Size(44, 35);
 			this->toolStripButton7->Text = L"Delete";
+			this->toolStripButton7->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
 			this->toolStripButton7->Click += gcnew System::EventHandler(this, &Form1::toolStripButton7_Click);
 			// 
 			// toolStripButton8
 			// 
-			this->toolStripButton8->DisplayStyle = System::Windows::Forms::ToolStripItemDisplayStyle::Image;
+			this->toolStripButton8->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->toolStripButton8->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton8.Image")));
 			this->toolStripButton8->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton8->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton8->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
 			this->toolStripButton8->Name = L"toolStripButton8";
-			this->toolStripButton8->Size = System::Drawing::Size(23, 22);
-			this->toolStripButton8->Text = L"New Folder";
+			this->toolStripButton8->Size = System::Drawing::Size(34, 35);
+			this->toolStripButton8->Text = L"New";
+			this->toolStripButton8->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
+			this->toolStripButton8->ToolTipText = L"New Folder";
 			this->toolStripButton8->Click += gcnew System::EventHandler(this, &Form1::toolStripButton8_Click);
+			// 
+			// toolStripButton10
+			// 
+			this->toolStripButton10->CheckOnClick = true;
+			this->toolStripButton10->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			this->toolStripButton10->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton10.Image")));
+			this->toolStripButton10->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton10->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
+			this->toolStripButton10->Name = L"toolStripButton10";
+			this->toolStripButton10->Size = System::Drawing::Size(38, 35);
+			this->toolStripButton10->Text = L"Paste";
+			this->toolStripButton10->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
+			this->toolStripButton10->ToolTipText = L"Paste";
+			// 
+			// toolStripButton9
+			// 
+			this->toolStripButton9->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			this->toolStripButton9->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton9.Image")));
+			this->toolStripButton9->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton9->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
+			this->toolStripButton9->Name = L"toolStripButton9";
+			this->toolStripButton9->Size = System::Drawing::Size(29, 35);
+			this->toolStripButton9->Text = L"Cut";
+			this->toolStripButton9->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
+			this->toolStripButton9->ToolTipText = L"Cut";
 			// 
 			// listView1
 			// 
@@ -908,9 +976,10 @@ private:
 			this->listView1->GridLines = true;
 			this->listView1->HideSelection = false;
 			this->listView1->LabelEdit = true;
-			this->listView1->Location = System::Drawing::Point(12, 104);
+			this->listView1->Location = System::Drawing::Point(9, 93);
+			this->listView1->Margin = System::Windows::Forms::Padding(0);
 			this->listView1->Name = L"listView1";
-			this->listView1->Size = System::Drawing::Size(478, 520);
+			this->listView1->Size = System::Drawing::Size(491, 545);
 			this->listView1->TabIndex = 0;
 			this->listView1->UseCompatibleStateImageBehavior = false;
 			this->listView1->View = System::Windows::Forms::View::Details;
@@ -922,43 +991,48 @@ private:
 			// 
 			// panel2
 			// 
-			this->panel2->BackColor = System::Drawing::SystemColors::Control;
+			this->panel2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel2->Controls->Add(this->button2);
 			this->panel2->Controls->Add(this->button1);
 			this->panel2->Dock = System::Windows::Forms::DockStyle::Right;
-			this->panel2->Location = System::Drawing::Point(496, 0);
+			this->panel2->Location = System::Drawing::Point(503, 0);
 			this->panel2->Name = L"panel2";
-			this->panel2->Size = System::Drawing::Size(54, 638);
+			this->panel2->Size = System::Drawing::Size(39, 638);
 			this->panel2->TabIndex = 7;
 			// 
 			// button2
 			// 
-			this->button2->Anchor = System::Windows::Forms::AnchorStyles::Left;
+			this->button2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->button2->AutoSizeMode = System::Windows::Forms::AutoSizeMode::GrowAndShrink;
+			this->button2->FlatStyle = System::Windows::Forms::FlatStyle::Flat;
 			this->button2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 24, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->button2->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(192)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(0)));
+			this->button2->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->button2->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"button2.Image")));
-			this->button2->Location = System::Drawing::Point(9, 348);
+			this->button2->Location = System::Drawing::Point(0, 346);
 			this->button2->Name = L"button2";
-			this->button2->Size = System::Drawing::Size(39, 41);
+			this->button2->Size = System::Drawing::Size(39, 26);
 			this->button2->TabIndex = 2;
 			this->button2->UseVisualStyleBackColor = true;
 			this->button2->Click += gcnew System::EventHandler(this, &Form1::button2_Click);
 			// 
 			// button1
 			// 
-			this->button1->Anchor = System::Windows::Forms::AnchorStyles::Left;
+			this->button1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->button1->AutoSizeMode = System::Windows::Forms::AutoSizeMode::GrowAndShrink;
+			this->button1->FlatStyle = System::Windows::Forms::FlatStyle::Flat;
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 24, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->button1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(192)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(0)));
+			this->button1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->button1->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"button1.Image")));
-			this->button1->Location = System::Drawing::Point(9, 301);
+			this->button1->Location = System::Drawing::Point(0, 278);
 			this->button1->Name = L"button1";
-			this->button1->Size = System::Drawing::Size(39, 41);
+			this->button1->Size = System::Drawing::Size(39, 27);
 			this->button1->TabIndex = 1;
 			this->button1->UseVisualStyleBackColor = true;
 			this->button1->Click += gcnew System::EventHandler(this, &Form1::button1_Click);
@@ -967,89 +1041,100 @@ private:
 			// 
 			this->panel4->AutoSize = true;
 			this->panel4->BackColor = System::Drawing::SystemColors::Control;
-			this->panel4->Controls->Add(this->textBox1);
+			this->panel4->Controls->Add(this->panel6);
 			this->panel4->Controls->Add(this->label1);
 			this->panel4->Controls->Add(this->toolStrip1);
 			this->panel4->Controls->Add(this->listView2);
 			this->panel4->Dock = System::Windows::Forms::DockStyle::Right;
-			this->panel4->Location = System::Drawing::Point(550, 0);
+			this->panel4->Location = System::Drawing::Point(542, 0);
 			this->panel4->Name = L"panel4";
-			this->panel4->Size = System::Drawing::Size(318, 638);
+			this->panel4->Size = System::Drawing::Size(338, 638);
 			this->panel4->TabIndex = 6;
-			// 
-			// textBox1
-			// 
-			this->textBox1->Dock = System::Windows::Forms::DockStyle::Top;
-			this->textBox1->Location = System::Drawing::Point(0, 51);
-			this->textBox1->Name = L"textBox1";
-			this->textBox1->Size = System::Drawing::Size(318, 20);
-			this->textBox1->TabIndex = 5;
 			// 
 			// label1
 			// 
-			this->label1->BorderStyle = System::Windows::Forms::BorderStyle::Fixed3D;
+			this->label1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(230)), static_cast<System::Int32>(static_cast<System::Byte>(230)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(230)));
 			this->label1->Dock = System::Windows::Forms::DockStyle::Top;
-			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label1->Location = System::Drawing::Point(0, 25);
+			this->label1->Location = System::Drawing::Point(0, 38);
 			this->label1->Margin = System::Windows::Forms::Padding(5);
 			this->label1->Name = L"label1";
-			this->label1->Size = System::Drawing::Size(318, 26);
+			this->label1->Padding = System::Windows::Forms::Padding(5, 0, 0, 0);
+			this->label1->Size = System::Drawing::Size(338, 24);
 			this->label1->TabIndex = 4;
 			this->label1->Text = L"label1";
 			this->label1->TextAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			// 
 			// toolStrip1
 			// 
+			this->toolStrip1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->toolStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(4) {this->toolStripButton1, 
 				this->toolStripButton2, this->toolStripButton3, this->toolStripButton4});
 			this->toolStrip1->Location = System::Drawing::Point(0, 0);
 			this->toolStrip1->Name = L"toolStrip1";
-			this->toolStrip1->Size = System::Drawing::Size(318, 25);
+			this->toolStrip1->Padding = System::Windows::Forms::Padding(0, 0, 4, 0);
+			this->toolStrip1->Size = System::Drawing::Size(338, 38);
 			this->toolStrip1->TabIndex = 3;
 			this->toolStrip1->Text = L"toolStrip1";
 			// 
 			// toolStripButton1
 			// 
-			this->toolStripButton1->DisplayStyle = System::Windows::Forms::ToolStripItemDisplayStyle::Image;
+			this->toolStripButton1->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->toolStripButton1->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton1.Image")));
 			this->toolStripButton1->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton1->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton1->Margin = System::Windows::Forms::Padding(8, 1, 4, 2);
 			this->toolStripButton1->Name = L"toolStripButton1";
-			this->toolStripButton1->Size = System::Drawing::Size(23, 22);
-			this->toolStripButton1->Text = L"High Folder";
+			this->toolStripButton1->Size = System::Drawing::Size(26, 35);
+			this->toolStripButton1->Text = L"Up";
+			this->toolStripButton1->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
+			this->toolStripButton1->ToolTipText = L"Up Folder";
 			this->toolStripButton1->Click += gcnew System::EventHandler(this, &Form1::toolStripButton1_Click_1);
 			// 
 			// toolStripButton2
 			// 
-			this->toolStripButton2->DisplayStyle = System::Windows::Forms::ToolStripItemDisplayStyle::Image;
+			this->toolStripButton2->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->toolStripButton2->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton2.Image")));
 			this->toolStripButton2->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton2->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton2->Margin = System::Windows::Forms::Padding(2, 2, 4, 3);
 			this->toolStripButton2->Name = L"toolStripButton2";
-			this->toolStripButton2->Size = System::Drawing::Size(23, 22);
+			this->toolStripButton2->Size = System::Drawing::Size(50, 33);
 			this->toolStripButton2->Text = L"Refresh";
+			this->toolStripButton2->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
 			this->toolStripButton2->Click += gcnew System::EventHandler(this, &Form1::toolStripButton2_Click);
 			// 
 			// toolStripButton3
 			// 
-			this->toolStripButton3->DisplayStyle = System::Windows::Forms::ToolStripItemDisplayStyle::Image;
+			this->toolStripButton3->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->toolStripButton3->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image")));
 			this->toolStripButton3->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton3->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton3->Margin = System::Windows::Forms::Padding(2, 2, 4, 3);
 			this->toolStripButton3->Name = L"toolStripButton3";
-			this->toolStripButton3->Size = System::Drawing::Size(23, 22);
+			this->toolStripButton3->Size = System::Drawing::Size(44, 33);
 			this->toolStripButton3->Text = L"Delete";
+			this->toolStripButton3->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
 			// 
 			// toolStripButton4
 			// 
-			this->toolStripButton4->DisplayStyle = System::Windows::Forms::ToolStripItemDisplayStyle::Image;
+			this->toolStripButton4->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->toolStripButton4->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton4.Image")));
 			this->toolStripButton4->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton4->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton4->Margin = System::Windows::Forms::Padding(2, 2, 4, 3);
 			this->toolStripButton4->Name = L"toolStripButton4";
-			this->toolStripButton4->Size = System::Drawing::Size(23, 22);
-			this->toolStripButton4->Text = L"New Folder";
+			this->toolStripButton4->Size = System::Drawing::Size(34, 33);
+			this->toolStripButton4->Text = L"New";
+			this->toolStripButton4->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
+			this->toolStripButton4->ToolTipText = L"New Folder";
 			// 
 			// listView2
 			// 
@@ -1059,9 +1144,9 @@ private:
 			this->listView2->FullRowSelect = true;
 			this->listView2->GridLines = true;
 			this->listView2->HideSelection = false;
-			this->listView2->Location = System::Drawing::Point(6, 102);
+			this->listView2->Location = System::Drawing::Point(3, 93);
 			this->listView2->Name = L"listView2";
-			this->listView2->Size = System::Drawing::Size(300, 522);
+			this->listView2->Size = System::Drawing::Size(323, 545);
 			this->listView2->TabIndex = 2;
 			this->listView2->UseCompatibleStateImageBehavior = false;
 			this->listView2->View = System::Windows::Forms::View::Details;
@@ -1085,19 +1170,84 @@ private:
 			this->basicIconsSmall->Images->SetKeyName(1, L"document.bmp");
 			this->basicIconsSmall->Images->SetKeyName(2, L"rec_file.bmp");
 			// 
+			// panel5
+			// 
+			this->panel5->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->panel5->Controls->Add(this->textBox2);
+			this->panel5->Dock = System::Windows::Forms::DockStyle::Top;
+			this->panel5->Location = System::Drawing::Point(0, 62);
+			this->panel5->Name = L"panel5";
+			this->panel5->Size = System::Drawing::Size(503, 32);
+			this->panel5->TabIndex = 8;
+			// 
+			// textBox2
+			// 
+			this->textBox2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->textBox2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->textBox2->Font = (gcnew System::Drawing::Font(L"Lucida Console", 10));
+			this->textBox2->ForeColor = System::Drawing::Color::Navy;
+			this->textBox2->Location = System::Drawing::Point(9, 7);
+			this->textBox2->Margin = System::Windows::Forms::Padding(90);
+			this->textBox2->Multiline = true;
+			this->textBox2->Name = L"textBox2";
+			this->textBox2->Size = System::Drawing::Size(491, 19);
+			this->textBox2->TabIndex = 7;
+			this->textBox2->Text = L"\\ProgramFiles";
+			// 
+			// panel6
+			// 
+			this->panel6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->panel6->Controls->Add(this->textBox1);
+			this->panel6->Dock = System::Windows::Forms::DockStyle::Top;
+			this->panel6->Location = System::Drawing::Point(0, 62);
+			this->panel6->Name = L"panel6";
+			this->panel6->Size = System::Drawing::Size(338, 32);
+			this->panel6->TabIndex = 6;
+			// 
+			// textBox1
+			// 
+			this->textBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->textBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->textBox1->Font = (gcnew System::Drawing::Font(L"Lucida Console", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			this->textBox1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(128)));
+			this->textBox1->Location = System::Drawing::Point(3, 7);
+			this->textBox1->Name = L"textBox1";
+			this->textBox1->Size = System::Drawing::Size(323, 20);
+			this->textBox1->TabIndex = 6;
+			this->textBox1->Text = L"c:\\Topfield\\mp3";
+			// 
+			// toolStripSeparator1
+			// 
+			this->toolStripSeparator1->Name = L"toolStripSeparator1";
+			this->toolStripSeparator1->Size = System::Drawing::Size(6, 38);
+			// 
+			// toolStripSeparator2
+			// 
+			this->toolStripSeparator2->Name = L"toolStripSeparator2";
+			this->toolStripSeparator2->Size = System::Drawing::Size(6, 38);
+			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->AutoSize = true;
-			this->ClientSize = System::Drawing::Size(868, 660);
+			this->ClientSize = System::Drawing::Size(880, 660);
 			this->Controls->Add(this->panel1);
 			this->Controls->Add(this->statusStrip1);
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.3";
+			this->Text = L"Antares  0.4";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::Form1_Layout);
+			this->Resize += gcnew System::EventHandler(this, &Form1::Form1_Resize);
 			this->statusStrip1->ResumeLayout(false);
 			this->statusStrip1->PerformLayout();
 			this->panel1->ResumeLayout(false);
@@ -1111,6 +1261,10 @@ private:
 			this->panel4->PerformLayout();
 			this->toolStrip1->ResumeLayout(false);
 			this->toolStrip1->PerformLayout();
+			this->panel5->ResumeLayout(false);
+			this->panel5->PerformLayout();
+			this->panel6->ResumeLayout(false);
+			this->panel6->PerformLayout();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -1171,11 +1325,21 @@ private:
 			 }
 
 	private: System::Void Form1_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
-				 int avg = (this->panel3->Width + this->panel4->Width)/2;
+				// int avg = (this->panel3->Width + this->panel4->Width)/2;
+				  int avg = (this->Width - this->panel2->Width)/2;
 				 //this->listView1->Width=avg;
 				 this->panel4->Width=avg;
-				 //printf("Layout\n");
+				 printf("Layout\n");
 			 }
+
+			 private: System::Void Form1_Resize(System::Object^  sender, System::EventArgs^  e) {
+						  //int avg = (this->panel3->Width + this->panel4->Width)/2;
+                         int avg = (this->Width - this->panel2->Width)/2;
+						  //this->listView1->Width=avg;
+						  this->panel4->Width=avg;
+						  printf("Resize!\n");
+					  }
+
 	private: System::Void listView1_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
 				 //double tot = this->listView1->Width;
 				 double tot = listView1->ClientSize.Width;
@@ -2144,6 +2308,7 @@ private: System::Void toolStripButton8_Click(System::Object^  sender, System::Ev
 			 if (success)
 			 this->loadTopfieldDir(foldername);
 		 }
+
 };
 };
 
