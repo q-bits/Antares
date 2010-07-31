@@ -61,7 +61,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies=".\libusb-winusb\libusb\os\objfre_win7_x86\i386\libusb-1.0.lib setupapi.lib ole32.lib advapi32.lib shell32.lib oleaut32.lib uuid.lib odbc32.lib shlwapi.lib $(NOINHERIT)"
+				AdditionalDependencies=".\libusb-winusb\libusb\os\objfre_win7_x86\i386\libusb-1.0.lib setupapi.lib ole32.lib advapi32.lib shell32.lib oleaut32.lib uuid.lib odbc32.lib shlwapi.lib user32.lib $(NOINHERIT)"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				AssemblyDebug="1"
@@ -502,7 +502,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\delete.png"
+				>
+			</File>
+			<File
 				RelativePath=".\document.bmp"
+				>
+			</File>
+			<File
+				RelativePath=".\edit-cut.png"
+				>
+			</File>
+			<File
+				RelativePath=".\edit-paste.png"
 				>
 			</File>
 			<File

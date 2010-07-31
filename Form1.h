@@ -12,11 +12,17 @@ extern "C" {
 #include "usb_io.h"
 #include "connect.h"
 #include "commands.h"
-
+#include "windows.h"
+#include "commctrl.h"
 #include <time.h>
 
 
 }
+
+#using <mscorlib.dll>
+
+
+
 extern FILE old_stdout;
 extern FILE old_stderr;
 extern FILE* hf;
@@ -38,6 +44,8 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 namespace Antares {
 
+
+
 	using namespace System;
 	using namespace System::ComponentModel;
 	using namespace System::Collections;
@@ -48,6 +56,12 @@ namespace Antares {
 	using namespace System::IO;
 	using namespace System::Threading;
 	using namespace System::Runtime::InteropServices; // for class Marshal
+
+
+	[DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet::Auto)]
+	  LRESULT SendMessage(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+
+
 	/// <summary>
 	/// Summary for Form1
 	///
@@ -72,6 +86,7 @@ namespace Antares {
                break;
 			   case WM_DEVICECHANGE:
  printf("WM_DEVICECHANGE received. m.WParam =%d   m.LParam=%d \n",m.WParam,m.LParam);
+             this->CheckConnection();
          }
 		 
          Form::WndProc( m );
@@ -106,8 +121,8 @@ namespace Antares {
 
 
 			this->dircount=0;
-			this->fd  = connect_device2(&reason);
-			if (this->fd==NULL) this->label2->Text="PVR: Device not connected";
+			this->fd  = NULL;//connect_device2(&reason);
+			//if (this->fd==NULL) this->label2->Text="PVR: Device not connected";
 
 			this->topfieldNameHeader = this->listView1->Columns->Add("Name",140,HorizontalAlignment::Left);
 			this->topfieldSizeHeader = this->listView1->Columns->Add("Size",70,HorizontalAlignment::Right);
@@ -130,11 +145,14 @@ namespace Antares {
 
 
 			// Load configuration. 
-			Console::WriteLine("I wonder what's wrong?");
+			
 			try{
 				int sort_PC=0;  int sort_PVR=0;
 				this->config =  ConfigurationManager::OpenExeConfiguration( ConfigurationUserLevel::None);
 				this->settings=config->AppSettings->Settings;
+				if (nullptr!=settings["TurboMode"])
+					if (String::Compare("on",settings["TurboMode"]->Value)==0) this->checkBox1->Checked = true; else this->checkBox1->Checked = false;
+
 				if (nullptr!=settings["TopfieldDir"])
 					this->setTopfieldDir(settings["TopfieldDir"]->Value);
 				if (nullptr!=settings["ComputerDir"])
@@ -195,10 +213,24 @@ namespace Antares {
 
 			}
 
+
+			this->TopfieldClipboard = gcnew array<String^> {};
+			this->TopfieldClipboardDirectory = "";
+
 			this->finished_constructing = 1;
 
 			this->loadTopfieldDir();
 			this->loadComputerDir();
+
+		
+			// Enable double-buffering on the ListViews
+			LRESULT styles = Antares::SendMessage((HWND) this->listView2->Handle.ToPointer(), (int) LVM_GETEXTENDEDLISTVIEWSTYLE, 0,0);
+            styles |= LVS_EX_DOUBLEBUFFER ;
+			Antares::SendMessage((HWND)this->listView2->Handle.ToPointer(), LVM_SETEXTENDEDLISTVIEWSTYLE, 0, (int) styles);
+            Antares::SendMessage((HWND)this->listView1->Handle.ToPointer(), LVM_SETEXTENDEDLISTVIEWSTYLE, 0, (int) styles);
+
+
+		 this->CheckConnection();
 
 		}
 
@@ -241,6 +273,107 @@ namespace Antares {
 			}
 		}
 
+
+
+		void CheckConnection(void)
+		{
+			libusb_device_handle* dh;
+			int success;
+			struct libusb_bus * bus;
+			struct libusb_device *dev, *device;
+			int i;
+			int r;
+			int cnt;
+			libusb_device **devs;
+			struct libusb_device_descriptor desc;
+	
+			cnt = libusb_get_device_list(NULL, &devs);
+			dh = NULL;
+			device = NULL;
+			success = 0;
+			for (i=0; i<cnt; i++)
+			{
+				dev=devs[i];
+				r = libusb_get_device_descriptor(dev, &desc);
+
+				if (desc.idVendor==0x11db && desc.idProduct == 0x1000)
+				{
+					device=dev;
+				}
+				else {continue;};
+
+				if (this->fd != NULL) break;
+
+				r=libusb_open(device,&dh);
+				if (r) {
+					fprintf(stderr,"New open call failed");
+				
+					continue;
+				}
+
+				// Select configuration 0x01
+				if (libusb_set_configuration(dh, 0x01))
+				{
+					fprintf(stderr, "connect: Select configuration failed\n");
+					
+					continue;
+				}
+
+				// Claim interface 0x00
+				if (libusb_claim_interface(dh, 0x00))
+				{
+					fprintf(stderr, "connect: Claim interface failed\n");
+					
+					continue;
+				}
+				success=1; break;
+
+			}
+
+			if (this->fd != NULL && device==NULL)    // Topfield has apparently been disconnected. 
+			{
+				libusb_close(this->fd);
+				this->fd=NULL;
+				libusb_free_device_list(devs, 1);
+                printf("Topfield is now disconnected.\n");
+				this->label2->Text = "PVR: Device not connected";
+				this->listView1->Items->Clear();
+				return;
+			}
+
+
+			if (this->fd !=NULL && device!=NULL)  // Topfield is apparently still connected
+			{
+			    libusb_free_device_list(devs, 1);
+				printf("Topfield is still connected.\n");
+				return;
+			}
+
+
+			if (this->fd == NULL && device==NULL)  // Topfield is apparently still disconnected
+			{
+				libusb_free_device_list(devs, 1);
+				printf("Topfield is still disconnected.\n");
+				this->label2->Text = "PVR: Device not connected";
+				return;
+			}
+
+
+			if (!success && dh)
+			{
+				libusb_close(dh);
+				this->fd=NULL;
+                libusb_free_device_list(devs, 1);
+				printf("Topfield is connected, but could not be opened.\n");
+				return;
+			}
+
+			this->fd=dh;
+			printf("Topfield is now connected.\n");
+             libusb_free_device_list(devs, 1);
+			this->loadTopfieldDir();
+			return;
+		}
 
 		int set_turbo_mode(int turbo_on)
 		{
@@ -324,14 +457,15 @@ namespace Antares {
 
 			int j;
 			ComputerItem^ item;
-
-			this->listView2->Items->Clear();
+			array<ComputerItem^>^ items = {};
+			
 
 
 			String^ dir = this->computerCurrentDirectory;
 
 			if (dir->Equals(""))  // List drives
 			{
+					this->listView2->Items->Clear();
 				DWORD drives = GetLogicalDrives();
 				for (j=0; j<26; j++)
 				{
@@ -365,13 +499,19 @@ namespace Antares {
 					return;
 
 				}
+				Array::Resize(items,list->Length);
 				for (j=0; j<list->Length; j++)
 				{
 
 					item = gcnew ComputerItem(list[j]);
 					item->directory = dir;
-					this->listView2->Items->Add(item);
+					//this->listView2->Items->Add(item);
+					items[j]=item;
 				}
+				this->listView2->BeginUpdate();
+				this->listView2->Items->Clear();
+				this->listView2->Items->AddRange(items);
+				this->listView2->EndUpdate();
                 this->changeSetting("ComputerDir",dir);
 				// Add a drive summary to label1:
 				String^ str = Path::GetPathRoot(dir);
@@ -390,6 +530,7 @@ namespace Antares {
 			}
 
 		};
+
 
 		void computerUpDir(void)
 		{
@@ -464,12 +605,13 @@ namespace Antares {
 
 
 			TopfieldItem^ item;
+            array<TopfieldItem^>^ items = {};
 
 			this->important_thread_waiting=true;
 			this->TopfieldMutex->WaitOne();
 			this->important_thread_waiting=false;
 
-			this->listView1->Items->Clear();
+			
 			if (this->fd==NULL)
 			{
 				toolStripStatusLabel1->Text="Topfield not connected.";
@@ -533,6 +675,7 @@ namespace Antares {
 			Marshal::FreeHGlobal((System::IntPtr)(void*)str2);
             TopfieldItem^ rename_item;bool do_rename=false;
 			j=0;
+			int numitems=0;
 			while(0 < get_tf_packet(this->fd, &reply))
 			{
 
@@ -547,7 +690,7 @@ namespace Antares {
 					count =
 						(get_u16(&reply.length) - PACKET_HEAD_SIZE) / sizeof(struct typefile);
 					entries = (struct typefile *) reply.data;
-
+					Array::Resize(items, items->Length + count);
 
 
 					for(i = 0; (i < count); i++)
@@ -558,11 +701,31 @@ namespace Antares {
 						item->directory = this->topfieldCurrentDirectory;
 						if (String::Compare(item->filename,"..")!=0 ) 
 						{
-							this->listView1->Items->Add(item);
+							//this->listView1->Items->Add(item);
+							
+                            items[numitems] = item;
+							numitems++;
 							if (String::Compare(start_rename,item->filename)==0)
 							{
 								rename_item=item; do_rename=true;
 							}
+
+							if (String::Compare(this->topfieldCurrentDirectory, this->TopfieldClipboardDirectory)==0)
+							{
+								int numc = this->TopfieldClipboard->Length;
+								if (numc>0)
+								{
+									bool iscut=false;
+									for (int ii=0; ii<numc; ii++)
+										if (String::Compare(item->filename, this->TopfieldClipboard[ii])==0)
+										{iscut=true; break;};
+									if (iscut) item->BackColor = this->cut_background_colour;
+								}
+							
+							}
+
+
+
 						}
                          
 
@@ -578,6 +741,11 @@ namespace Antares {
 					this->TopfieldMutex->ReleaseMutex();
 
 					this->changeSetting("TopfieldDir",this->topfieldCurrentDirectory);
+					Array::Resize(items,numitems);
+                    this->listView1->BeginUpdate();
+					this->listView1->Items->Clear();
+                    this->listView1->Items->AddRange(items);
+					this->listView1->EndUpdate();
 					if (do_rename) rename_item->BeginEdit();
 					return 0;
 					break;
@@ -668,9 +836,11 @@ namespace Antares {
 			System::Configuration::KeyValueConfigurationCollection^ settings;
 
 
+			array<String^>^ TopfieldClipboard;  
+			String^ TopfieldClipboardDirectory;
 
-
-
+			static Color cut_background_colour = Color::FromArgb(255,250,105);
+			static Color normal_background_colour = Color::FromArgb(255,255,255);
 
 
 
@@ -755,6 +925,8 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->toolStripStatusLabel1 = (gcnew System::Windows::Forms::ToolStripStatusLabel());
 			this->panel1 = (gcnew System::Windows::Forms::Panel());
 			this->panel3 = (gcnew System::Windows::Forms::Panel());
+			this->panel5 = (gcnew System::Windows::Forms::Panel());
+			this->textBox2 = (gcnew System::Windows::Forms::TextBox());
 			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
 			this->label2 = (gcnew System::Windows::Forms::Label());
 			this->toolStrip2 = (gcnew System::Windows::Forms::ToolStrip());
@@ -762,13 +934,17 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->toolStripButton6 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton7 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton8 = (gcnew System::Windows::Forms::ToolStripButton());
-			this->toolStripButton10 = (gcnew System::Windows::Forms::ToolStripButton());
+			this->toolStripSeparator1 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->toolStripButton9 = (gcnew System::Windows::Forms::ToolStripButton());
+			this->toolStripButton10 = (gcnew System::Windows::Forms::ToolStripButton());
+			this->toolStripSeparator2 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->listView1 = (gcnew System::Windows::Forms::ListView());
 			this->panel2 = (gcnew System::Windows::Forms::Panel());
 			this->button2 = (gcnew System::Windows::Forms::Button());
 			this->button1 = (gcnew System::Windows::Forms::Button());
 			this->panel4 = (gcnew System::Windows::Forms::Panel());
+			this->panel6 = (gcnew System::Windows::Forms::Panel());
+			this->textBox1 = (gcnew System::Windows::Forms::TextBox());
 			this->label1 = (gcnew System::Windows::Forms::Label());
 			this->toolStrip1 = (gcnew System::Windows::Forms::ToolStrip());
 			this->toolStripButton1 = (gcnew System::Windows::Forms::ToolStripButton());
@@ -778,21 +954,15 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->listView2 = (gcnew System::Windows::Forms::ListView());
 			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->basicIconsSmall = (gcnew System::Windows::Forms::ImageList(this->components));
-			this->panel5 = (gcnew System::Windows::Forms::Panel());
-			this->textBox2 = (gcnew System::Windows::Forms::TextBox());
-			this->panel6 = (gcnew System::Windows::Forms::Panel());
-			this->textBox1 = (gcnew System::Windows::Forms::TextBox());
-			this->toolStripSeparator1 = (gcnew System::Windows::Forms::ToolStripSeparator());
-			this->toolStripSeparator2 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->statusStrip1->SuspendLayout();
 			this->panel1->SuspendLayout();
 			this->panel3->SuspendLayout();
+			this->panel5->SuspendLayout();
 			this->toolStrip2->SuspendLayout();
 			this->panel2->SuspendLayout();
 			this->panel4->SuspendLayout();
-			this->toolStrip1->SuspendLayout();
-			this->panel5->SuspendLayout();
 			this->panel6->SuspendLayout();
+			this->toolStrip1->SuspendLayout();
 			this->SuspendLayout();
 			// 
 			// statusStrip1
@@ -837,18 +1007,46 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->panel3->Size = System::Drawing::Size(503, 638);
 			this->panel3->TabIndex = 8;
 			// 
+			// panel5
+			// 
+			this->panel5->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->panel5->Controls->Add(this->textBox2);
+			this->panel5->Dock = System::Windows::Forms::DockStyle::Top;
+			this->panel5->Location = System::Drawing::Point(0, 62);
+			this->panel5->Name = L"panel5";
+			this->panel5->Size = System::Drawing::Size(503, 32);
+			this->panel5->TabIndex = 8;
+			// 
+			// textBox2
+			// 
+			this->textBox2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->textBox2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->textBox2->Font = (gcnew System::Drawing::Font(L"Lucida Console", 10));
+			this->textBox2->ForeColor = System::Drawing::Color::Navy;
+			this->textBox2->Location = System::Drawing::Point(9, 7);
+			this->textBox2->Margin = System::Windows::Forms::Padding(90);
+			this->textBox2->Multiline = true;
+			this->textBox2->Name = L"textBox2";
+			this->textBox2->Size = System::Drawing::Size(491, 19);
+			this->textBox2->TabIndex = 7;
+			this->textBox2->Text = L"\\ProgramFiles";
+			// 
 			// checkBox1
 			// 
 			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->checkBox1->AutoSize = true;
 			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->checkBox1->Location = System::Drawing::Point(418, 18);
+			this->checkBox1->Location = System::Drawing::Point(418, 11);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 7;
 			this->checkBox1->Text = L"Turbo mode";
 			this->checkBox1->UseVisualStyleBackColor = false;
+			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &Form1::checkBox1_CheckedChanged);
 			// 
 			// label2
 			// 
@@ -940,19 +1138,10 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->toolStripButton8->ToolTipText = L"New Folder";
 			this->toolStripButton8->Click += gcnew System::EventHandler(this, &Form1::toolStripButton8_Click);
 			// 
-			// toolStripButton10
+			// toolStripSeparator1
 			// 
-			this->toolStripButton10->CheckOnClick = true;
-			this->toolStripButton10->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
-			this->toolStripButton10->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton10.Image")));
-			this->toolStripButton10->ImageTransparentColor = System::Drawing::Color::Magenta;
-			this->toolStripButton10->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
-			this->toolStripButton10->Name = L"toolStripButton10";
-			this->toolStripButton10->Size = System::Drawing::Size(38, 35);
-			this->toolStripButton10->Text = L"Paste";
-			this->toolStripButton10->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
-			this->toolStripButton10->ToolTipText = L"Paste";
+			this->toolStripSeparator1->Name = L"toolStripSeparator1";
+			this->toolStripSeparator1->Size = System::Drawing::Size(6, 38);
 			// 
 			// toolStripButton9
 			// 
@@ -966,6 +1155,27 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->toolStripButton9->Text = L"Cut";
 			this->toolStripButton9->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
 			this->toolStripButton9->ToolTipText = L"Cut";
+			this->toolStripButton9->Click += gcnew System::EventHandler(this, &Form1::toolStripButton9_Click);
+			// 
+			// toolStripButton10
+			// 
+			this->toolStripButton10->CheckOnClick = true;
+			this->toolStripButton10->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			this->toolStripButton10->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton10.Image")));
+			this->toolStripButton10->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton10->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
+			this->toolStripButton10->Name = L"toolStripButton10";
+			this->toolStripButton10->Size = System::Drawing::Size(38, 35);
+			this->toolStripButton10->Text = L"Paste";
+			this->toolStripButton10->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
+			this->toolStripButton10->ToolTipText = L"Paste";
+			this->toolStripButton10->Click += gcnew System::EventHandler(this, &Form1::toolStripButton10_Click);
+			// 
+			// toolStripSeparator2
+			// 
+			this->toolStripSeparator2->Name = L"toolStripSeparator2";
+			this->toolStripSeparator2->Size = System::Drawing::Size(6, 38);
 			// 
 			// listView1
 			// 
@@ -1050,6 +1260,33 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->panel4->Name = L"panel4";
 			this->panel4->Size = System::Drawing::Size(338, 638);
 			this->panel4->TabIndex = 6;
+			// 
+			// panel6
+			// 
+			this->panel6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->panel6->Controls->Add(this->textBox1);
+			this->panel6->Dock = System::Windows::Forms::DockStyle::Top;
+			this->panel6->Location = System::Drawing::Point(0, 62);
+			this->panel6->Name = L"panel6";
+			this->panel6->Size = System::Drawing::Size(338, 32);
+			this->panel6->TabIndex = 6;
+			// 
+			// textBox1
+			// 
+			this->textBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->textBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->textBox1->Font = (gcnew System::Drawing::Font(L"Lucida Console", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			this->textBox1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(128)));
+			this->textBox1->Location = System::Drawing::Point(3, 7);
+			this->textBox1->Name = L"textBox1";
+			this->textBox1->Size = System::Drawing::Size(323, 20);
+			this->textBox1->TabIndex = 6;
+			this->textBox1->Text = L"c:\\Topfield\\mp3";
 			// 
 			// label1
 			// 
@@ -1152,8 +1389,10 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->listView2->View = System::Windows::Forms::View::Details;
 			this->listView2->ItemActivate += gcnew System::EventHandler(this, &Form1::listView2_ItemActivate);
 			this->listView2->AfterLabelEdit += gcnew System::Windows::Forms::LabelEditEventHandler(this, &Form1::listView_AfterLabelEdit);
+			this->listView2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView2_SelectedIndexChanged_1);
 			this->listView2->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView2_Layout);
 			this->listView2->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
+			this->listView2->ItemSelectionChanged += gcnew System::Windows::Forms::ListViewItemSelectionChangedEventHandler(this, &Form1::listView2_ItemSelectionChanged);
 			this->listView2->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
 			// 
 			// timer1
@@ -1169,70 +1408,6 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->basicIconsSmall->Images->SetKeyName(0, L"folder.bmp");
 			this->basicIconsSmall->Images->SetKeyName(1, L"document.bmp");
 			this->basicIconsSmall->Images->SetKeyName(2, L"rec_file.bmp");
-			// 
-			// panel5
-			// 
-			this->panel5->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->panel5->Controls->Add(this->textBox2);
-			this->panel5->Dock = System::Windows::Forms::DockStyle::Top;
-			this->panel5->Location = System::Drawing::Point(0, 62);
-			this->panel5->Name = L"panel5";
-			this->panel5->Size = System::Drawing::Size(503, 32);
-			this->panel5->TabIndex = 8;
-			// 
-			// textBox2
-			// 
-			this->textBox2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
-				| System::Windows::Forms::AnchorStyles::Right));
-			this->textBox2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->textBox2->Font = (gcnew System::Drawing::Font(L"Lucida Console", 10));
-			this->textBox2->ForeColor = System::Drawing::Color::Navy;
-			this->textBox2->Location = System::Drawing::Point(9, 7);
-			this->textBox2->Margin = System::Windows::Forms::Padding(90);
-			this->textBox2->Multiline = true;
-			this->textBox2->Name = L"textBox2";
-			this->textBox2->Size = System::Drawing::Size(491, 19);
-			this->textBox2->TabIndex = 7;
-			this->textBox2->Text = L"\\ProgramFiles";
-			// 
-			// panel6
-			// 
-			this->panel6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->panel6->Controls->Add(this->textBox1);
-			this->panel6->Dock = System::Windows::Forms::DockStyle::Top;
-			this->panel6->Location = System::Drawing::Point(0, 62);
-			this->panel6->Name = L"panel6";
-			this->panel6->Size = System::Drawing::Size(338, 32);
-			this->panel6->TabIndex = 6;
-			// 
-			// textBox1
-			// 
-			this->textBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
-				| System::Windows::Forms::AnchorStyles::Right));
-			this->textBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->textBox1->Font = (gcnew System::Drawing::Font(L"Lucida Console", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
-			this->textBox1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(128)));
-			this->textBox1->Location = System::Drawing::Point(3, 7);
-			this->textBox1->Name = L"textBox1";
-			this->textBox1->Size = System::Drawing::Size(323, 20);
-			this->textBox1->TabIndex = 6;
-			this->textBox1->Text = L"c:\\Topfield\\mp3";
-			// 
-			// toolStripSeparator1
-			// 
-			this->toolStripSeparator1->Name = L"toolStripSeparator1";
-			this->toolStripSeparator1->Size = System::Drawing::Size(6, 38);
-			// 
-			// toolStripSeparator2
-			// 
-			this->toolStripSeparator2->Name = L"toolStripSeparator2";
-			this->toolStripSeparator2->Size = System::Drawing::Size(6, 38);
 			// 
 			// Form1
 			// 
@@ -1254,17 +1429,17 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			this->panel1->PerformLayout();
 			this->panel3->ResumeLayout(false);
 			this->panel3->PerformLayout();
+			this->panel5->ResumeLayout(false);
+			this->panel5->PerformLayout();
 			this->toolStrip2->ResumeLayout(false);
 			this->toolStrip2->PerformLayout();
 			this->panel2->ResumeLayout(false);
 			this->panel4->ResumeLayout(false);
 			this->panel4->PerformLayout();
-			this->toolStrip1->ResumeLayout(false);
-			this->toolStrip1->PerformLayout();
-			this->panel5->ResumeLayout(false);
-			this->panel5->PerformLayout();
 			this->panel6->ResumeLayout(false);
 			this->panel6->PerformLayout();
+			this->toolStrip1->ResumeLayout(false);
+			this->toolStrip1->PerformLayout();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -1288,37 +1463,42 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 			 }
 	private: System::Void toolStripStatusLabel1_Click(System::Object^  sender, System::EventArgs^  e) {
 			 }
-	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
-				 libusb_device *device;
-				 int conf,r,bus,address;
-				 if (this->fd==NULL)
-				 {
-					 toolStripStatusLabel1->Text="NULL fd";
-				 }
-				 else
-				 {
-					 device=libusb_get_device(this->fd);
-					 if (device==NULL)
-					 {
-						 toolStripStatusLabel1->Text="NULL device";
-					 }
-					 else
-					 {
-						 r = libusb_get_configuration(this->fd, &conf);
-						 if (r!=0)
-						 {
-							 toolStripStatusLabel1->Text="Error "+r.ToString();
-						 }
-						 else
-						 {
-							 this->dircount++;
-							 bus = libusb_get_bus_number(device);
-							 address = libusb_get_device_address(device);
-							 toolStripStatusLabel1->Text="OK "+this->dircount.ToString()+ "  " + "Bus "+bus.ToString() + " address " + address.ToString();
-						 }
 
-					 }
-				 }
+
+	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
+
+
+                this->CheckConnection();
+
+				// int conf,r,bus,address;
+				// if (this->fd==NULL)
+				// {
+				//	 toolStripStatusLabel1->Text="NULL fd";
+				// }
+				// else
+				// {
+				//	 device=libusb_get_device(this->fd);
+				//	 if (device==NULL)
+				//	 {
+				//		 toolStripStatusLabel1->Text="NULL device";
+				//	 }
+				//	 else
+				//	 {
+				//		 r = libusb_get_configuration(this->fd, &conf);
+				//		 if (r!=0)
+				//		 {
+				//			 toolStripStatusLabel1->Text="Error "+r.ToString();
+				//		 }
+				//		 else
+				//		 {
+				//			 this->dircount++;
+				//			 bus = libusb_get_bus_number(device);
+				//			 address = libusb_get_device_address(device);
+				//			 toolStripStatusLabel1->Text="OK "+this->dircount.ToString()+ "  " + "Bus "+bus.ToString() + " address " + address.ToString();
+				//		 }
+                //
+				//	 }
+				// }
 
 			 }
 	private: System::Void statusStrip1_ItemClicked(System::Object^  sender, System::Windows::Forms::ToolStripItemClickedEventArgs^  e) {
@@ -1352,6 +1532,7 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 					 topfieldTypeHeader->Width = (int) (widths0[2]/tot0 * tot)-1;
 					 topfieldDateHeader->Width = (int) (widths0[3]/tot0 * tot)-1;
 				 }
+				 printf("ListView1 layout\n");
 			 }
 
 	private: System::Void listView2_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
@@ -1369,7 +1550,7 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 					 computerTypeHeader->Width = (int) (widths0[2]/tot0 * tot)-1;
 					 computerDateHeader->Width = (int) (widths0[3]/tot0 * tot)-1;
 				 }
-
+                 printf("ListView2 layout\n");
 			 }
 
 	private: System::Void listView2_ItemActivate(System::Object^  sender, System::EventArgs^  e) {
@@ -2251,8 +2432,8 @@ private: System::Void listView_KeyDown(System::Object^  sender, System::Windows:
 		 }
 
 private: System::Void toolStripButton8_Click(System::Object^  sender, System::EventArgs^  e) {
-
-
+             
+             // Clicked "New Folder", Topfield.
 			 if (this->fd==NULL)
 			 {
 				 this->toolStripStatusLabel1->Text="Topfield not connected.";
@@ -2309,6 +2490,125 @@ private: System::Void toolStripButton8_Click(System::Object^  sender, System::Ev
 			 this->loadTopfieldDir(foldername);
 		 }
 
+private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 if (this->checkBox1->Checked)
+			      this->changeSetting("TurboMode","on");
+			 else
+				 this->changeSetting("TurboMode","off");
+		 }
+private: System::Void listView2_ItemSelectionChanged(System::Object^  sender, System::Windows::Forms::ListViewItemSelectionChangedEventArgs^  e) {
+			 printf("ListView2 Item Selection Changed.\n");
+		 }
+private: System::Void listView2_SelectedIndexChanged_1(System::Object^  sender, System::EventArgs^  e) {
+			 printf("ListView2 Selected Index Changed\n");
+		 }
+private: System::Void toolStripButton9_Click(System::Object^  sender, System::EventArgs^  e) {
+            // "Cut" button pressed on the topfield side.
+            // Change colour of cut items, and record the filenames on the clipboard.   
+			  ListView^ listview = this->listView1;
+				 ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
+				 int num = selected->Count;
+				 if (num==0) return;
+				 Array::Resize(this->TopfieldClipboard,num);
+				 
+				 TopfieldItem^ item;
+
+				 ListView::ListViewItemCollection^ items = listview->Items;
+				 for (int i=0; i<items->Count; i++) 
+				 {
+					 items[i]->BackColor = this->normal_background_colour;
+				 }
+
+				 //System::String^ full_filename;
+				 for (int i=0; i<num; i++)
+				 {
+					 item = safe_cast<TopfieldItem^>(selected[i]);
+					 //full_filename = item->directory + "\\" + item->filename;
+					 this->TopfieldClipboard[i]=item->filename;
+					 //Console::WriteLine(full_filename);
+					 item->BackColor = cut_background_colour;
+					 //item->Selected = false; 
+				 }
+				 System::Collections::IEnumerator^ myEnum = selected->GetEnumerator();
+				 while ( myEnum->MoveNext() )
+				 {
+					 item = safe_cast<TopfieldItem^>(myEnum->Current);
+					 item->Selected=false;
+				 }
+
+				 this->TopfieldClipboardDirectory = item->directory;
+
+		 }
+private: System::Void toolStripButton10_Click(System::Object^  sender, System::EventArgs^  e) {
+			 //Someone pressed the "Paste" button (Topfield)
+			 int numc = this->TopfieldClipboard->Length;
+			 if (numc==0) return;
+			 // Need to check and avoid the following:   1) pasting to same location as source  2) pasting inside a directory being moved
+			 
+               
+			 //actually I should probably just uncut if this happens.
+			 if (String::Compare(this->topfieldCurrentDirectory, this->TopfieldClipboardDirectory)==0) 
+			 {
+				 
+				 Array::Resize(this->TopfieldClipboard,0);
+                 ListView::ListViewItemCollection^ items = this->listView1->Items;
+				 for (int i=0; i<items->Count; i++) 
+				 {
+					 items[i]->BackColor = this->normal_background_colour;
+				 }
+				 return;
+			 }
+
+
+			 bool bad_location = false;
+			 String^ full_src_filename;
+			 for (int i=0; i<numc; i++)
+			 {
+				 full_src_filename = this->TopfieldClipboardDirectory + "\\" + this->TopfieldClipboard[i]; 
+				 if (this->topfieldCurrentDirectory->StartsWith(full_src_filename))
+				 {bad_location=true; break;};
+			 }
+			 if (bad_location)
+			 {
+				 MessageBox::Show(
+					 "Cannot paste to this location, since it is inside a folder being moved.", 
+					 "", MessageBoxButtons::OK);
+				 return;
+			 }
+
+			 array<bool>^ failed = gcnew array<bool>(numc);
+			 String^ full_dest_filename;
+			 int numfailed=0;
+             for (int i=0; i<numc; i++)
+			 {
+
+                  full_src_filename = this->TopfieldClipboardDirectory + "\\" + this->TopfieldClipboard[i]; 
+				  full_dest_filename = this->topfieldCurrentDirectory + "\\" + this->TopfieldClipboard[i]; 
+
+				  char* src_path = (char*)(void*)Marshal::StringToHGlobalAnsi(full_src_filename);
+				  char* dest_path = (char*)(void*)Marshal::StringToHGlobalAnsi(full_dest_filename);
+				  int r = do_hdd_rename(this->fd, src_path,dest_path);
+
+
+				  if (r!=0) 
+
+				  { failed[i]=true;numfailed++;}
+				
+				  else failed[i]=false;
+
+
+				  Marshal::FreeHGlobal((System::IntPtr)(void*)src_path);
+				  Marshal::FreeHGlobal((System::IntPtr)(void*)dest_path);
+
+			 }
+
+			 array<String^>^ newclip = gcnew array<String^>(numfailed);
+			 int ind=0; for (int i=0; i<numc; i++) {if (failed[i]) {newclip[ind]=this->TopfieldClipboard[i];ind++;}};
+             this->TopfieldClipboard = newclip;
+
+             this->loadTopfieldDir();
+			
+		 }
 };
 };
 
