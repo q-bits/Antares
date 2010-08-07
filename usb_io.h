@@ -115,6 +115,7 @@ int send_cmd_turbo(libusb_device_handle* fd, int turbo_on);
 int send_cmd_hdd_size(libusb_device_handle* fd);
 int send_cmd_hdd_dir(libusb_device_handle* fd, char *path);
 int send_cmd_hdd_file_send(libusb_device_handle* fd, __u8 dir, char *path);
+int send_cmd_hdd_file_send_with_offset(libusb_device_handle* fd, __u8 dir, char *path, __u64 offset);
 int send_cmd_hdd_del(libusb_device_handle* fd, char *path);
 int send_cmd_hdd_rename(libusb_device_handle* fd, char *src, char *dst);
 int send_cmd_hdd_create_dir(libusb_device_handle* fd, char *path);

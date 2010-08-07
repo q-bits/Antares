@@ -325,6 +325,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\OverwriteConfirmation.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
@@ -464,6 +468,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\OverwriteConfirmation.h"
+				FileType="3"
+				>
+				<File
+					RelativePath=".\OverwriteConfirmation.resx"
+					>
+				</File>
+			</File>
+			<File
 				RelativePath=".\resource.h"
 				>
 			</File>
@@ -519,6 +532,10 @@
 			</File>
 			<File
 				RelativePath=".\folder.bmp"
+				>
+			</File>
+			<File
+				RelativePath=".\info.png"
 				>
 			</File>
 			<File

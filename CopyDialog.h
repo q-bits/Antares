@@ -51,8 +51,9 @@ namespace Antares {
 			this->window_title="";
 			this->current_file="";
 			this->last_current_delta=0;
-			this->current_offset=0; 
-			this->total_offset=0;
+			//this->current_offset=0; 
+			//this->total_offset=0;
+			this->has_initialised=false;
 
 		}
 		void showDialog_(void)
@@ -140,11 +141,22 @@ namespace Antares {
 			this->label3->Text = current_file;
 			double current_delta = (double) (time(NULL) - this->current_start_time);
 			double total_delta = (double) (time(NULL) - this->total_start_time);
-			double current_rate = (double) (this->current_offset) / current_delta;
-			double total_rate = (double) (this->total_offset) / total_delta;
+			double current_rate, total_rate;
+			int i = this->current_index;
 
+			long long size = this->filesizes[i];
+			long long offset = this->current_offsets[i]; 
 
-			if (this->total_offset==0) this->checkBox1->Checked = *this->turbo_mode;
+			if (current_delta>0)
+				current_rate = (double) (this->current_bytes_received) / current_delta;
+			else current_rate=0;
+
+			if (total_delta>0)
+				total_rate = (double) (this->total_bytes_received) / total_delta;
+			else
+				total_rate=0;
+            
+			if (this->has_initialised==false) {this->checkBox1->Checked = *this->turbo_mode;this->has_initialised=true;};
 			if (*this->turbo_mode != this->turbo_request)
 			{
 				this->checkBox1->Text = "Turbo mode [from next file]";
@@ -154,37 +166,50 @@ namespace Antares {
 				this->checkBox1->Text = "Turbo mode";
 			}
 
+
 			//this->label3->Text = this->teststring;
-			this->label4->Text =  (this->current_offset / 1024).ToString("#,#,#")+"KB / "+(this->current_filesize/1024).ToString("#,#,#")+"KB";
+			this->label4->Text =  (offset / 1024).ToString("#,#,#")+"KB / "+(size/1024).ToString("#,#,#")+"KB";
 
-			this->label5->Text =  (this->total_offset / 1024).ToString("#,#,#")+"KB / "+(this->total_filesize/1024).ToString("#,#,#")+"KB";
-
-			if (this->current_filesize>0)
+			long long total_offset=0;  long long total_size=0;
+			for (int j=0; j < this->numfiles; j++)
 			{
-				this->progressBar1->Value = (double) this->progressBar1->Maximum * (double) this->current_offset / (double) this->current_filesize;
+				total_offset += this->current_offsets[j];
+				total_size += this->filesizes[j];
+			}
 
+
+			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
+
+			if (size>0)
+			{
+				int val1 = (double) this->progressBar1->Maximum * (double) offset / (double) size;
+				if (val1<= this->progressBar1->Maximum && val1>=this->progressBar1->Minimum)
+					this->progressBar1->Value= val1; 
+                else printf("Warning: progressBar1 out of bounds!\n");
 				if ( current_delta > this->last_current_delta && current_delta>3.0)
 				{
 					this->label8->Text = (current_rate/1024.0/1024.0).ToString("F2")+" MB/sec";
-					this->label6->Text = time_remaining_string(current_rate,(double) (this->current_filesize - this->current_offset ) );
+					this->label6->Text = time_remaining_string(current_rate,(double) (size - offset ) );
 
 				}
 			}
 
 
-			if (this->total_filesize>0)
+			if (total_size>0)
 			{
-				this->progressBar2->Value = (double) this->progressBar2->Maximum * (double) this->total_offset / (double) this->total_filesize;
-
+				int val2 = (double) this->progressBar2->Maximum * (double) total_offset / (double) total_size;
+				if (val2<= this->progressBar2->Maximum && val2>=this->progressBar2->Minimum)
+				    this->progressBar2->Value = val2;
+				else printf("Warning: progressBar2 out of bounds!\n");
 				if ( total_delta > 3.0 && current_delta > this->last_current_delta)
 				{
-					this->label7->Text = time_remaining_string(total_rate, (double) (this->total_filesize - this->total_offset ) );
+					this->label7->Text = time_remaining_string(total_rate, (double) ( total_size - total_offset ) );
 
 				}
 			}
 			// }
-			int perc1 = ((int)(100.00 * (double) this->current_offset / (double) this->current_filesize));
-			int perc2 = ((int)(100.00 * (double) this->total_offset / (double) this->total_filesize));
+			int perc1 = ((int)(100.00 * (double) offset / (double) size));
+			int perc2 = ((int)(100.00 * (double) total_offset / (double) total_size));
 			perc1 = perc1<0 ? 0 : perc1;
             perc2 = perc2<0 ? 0 : perc2;
 			perc1 = perc1>100 ? 100 : perc1;
@@ -212,14 +237,22 @@ namespace Antares {
 		bool turbo_request;
 		bool^ turbo_mode;
 	
-		long long int current_filesize;
-		long long int total_filesize;
-		long long int current_offset;
-		long long int total_offset;
+		//long long int current_filesize;
+		//long long int total_filesize;
+		//long long int current_offset;
+		//long long int total_offset;
+		long long current_bytes_received;
+		long long total_bytes_received;
+		array<long long int>^ filesizes;
+		array<long long int>^ current_offsets;
+		int current_index;
+        int numfiles;
+
 		time_t current_start_time, total_start_time;
 		String^ window_title;
 		String^ current_file;
 		double last_current_delta;
+		bool has_initialised;
 
   
 

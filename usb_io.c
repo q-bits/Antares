@@ -215,6 +215,37 @@ int send_cmd_hdd_file_send(libusb_device_handle* fd, __u8 dir, char *path)
     return send_tf_packet(fd, &req);
 }
 
+
+int send_cmd_hdd_file_send_with_offset(libusb_device_handle* fd, __u8 dir, char *path, __u64 offset)
+{
+    struct tf_packet req;
+    __u16 packetSize, pad;
+    int pathLen = strlen(path) + 1;
+
+    if((PACKET_HEAD_SIZE + 1 + 2 + pathLen) >= MAXIMUM_PACKET_SIZE)
+    {
+        fprintf(stderr, "ERROR: Path is too long.\n");
+        return -1;
+    }
+
+    packetSize = PACKET_HEAD_SIZE + 1 + 2 + pathLen   +8;
+	pad = 0;// ((packetSize + 1) & ~1 ) - packetSize;
+	printf("Packet padding: %d\n",pad);
+
+    packetSize +=pad;
+    put_u16(&req.length, packetSize);
+    put_u32(&req.cmd, CMD_HDD_FILE_SEND);
+    req.data[0] = dir;
+    put_u16(&req.data[1], (__u16) pathLen);
+    strcpy((char *) &req.data[3], path);
+	put_u64( &req.data[3+pathLen+pad],offset);
+    return send_tf_packet(fd, &req);
+}
+
+
+
+
+
 int send_cmd_hdd_del(libusb_device_handle* fd, char *path)
 {
     struct tf_packet req;
