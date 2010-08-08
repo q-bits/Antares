@@ -302,6 +302,18 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\HDD_DecodeRECHeader.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath=".\mjd.c"
 				>
 				<FileConfiguration
@@ -326,6 +338,10 @@
 			</File>
 			<File
 				RelativePath=".\OverwriteConfirmation.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\ProgInfo.cpp"
 				>
 			</File>
 			<File
@@ -450,6 +466,10 @@
 				</File>
 			</File>
 			<File
+				RelativePath=".\FBLib_rec.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Form1.h"
 				FileType="3"
 				>
@@ -473,6 +493,15 @@
 				>
 				<File
 					RelativePath=".\OverwriteConfirmation.resx"
+					>
+				</File>
+			</File>
+			<File
+				RelativePath=".\ProgInfo.h"
+				FileType="3"
+				>
+				<File
+					RelativePath=".\ProgInfo.resx"
 					>
 				</File>
 			</File>
@@ -535,7 +564,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\info.png"
+				RelativePath=".\info.ico"
 				>
 			</File>
 			<File
