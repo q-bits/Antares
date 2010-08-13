@@ -62,6 +62,8 @@ namespace Antares {
 
 	[DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet::Auto)]
 	LRESULT SendMessage(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+ 
+   
 
 	enum
 	{
@@ -79,9 +81,23 @@ namespace Antares {
 	///          the designers will not be able to interact properly with localized
 	///          resources associated with this form.
 	/// </summary>
+
+
+
 	public ref class Form1 : public System::Windows::Forms::Form
 	{
 
+	public: static void SuspendDrawing( Control^ parent ) 
+    { 
+		Antares::SendMessage((HWND) parent->Handle.ToPointer(), WM_SETREDRAW, false, 0); 
+    } 
+ 
+	public: static void ResumeDrawing( Control^ parent ) 
+    { 
+		Antares::SendMessage((HWND) parent->Handle.ToPointer(), WM_SETREDRAW, true, 0); 
+        //parent->Refresh(); 
+    } 
+ 
 	protected:
 		virtual void WndProc( Message% m ) override
 		{
@@ -115,6 +131,8 @@ namespace Antares {
 			this->turbo_mode = gcnew System::Boolean;
 
 			this->finished_constructing = 0;
+			this->last_layout_x=-1;
+			this->last_layout_y=-1;
 			InitializeComponent();
 
 			//TopfieldMutex = gcnew System::Threading::Mutex(false);
@@ -124,8 +142,8 @@ namespace Antares {
 			this->setTopfieldDir("\\DataFiles\\");
 			this->setComputerDir("C:\\");
 
-			this->SetStyle(ControlStyles::AllPaintingInWmPaint | ControlStyles::UserPaint | ControlStyles::DoubleBuffer,true);
-
+			//this->SetStyle(ControlStyles::AllPaintingInWmPaint | ControlStyles::UserPaint | ControlStyles::DoubleBuffer,true);
+          
 
 
 			this->dircount=0;
@@ -229,6 +247,7 @@ namespace Antares {
 
 			this->loadTopfieldDir();
 			this->loadComputerDir();
+			//this->ResizeRedraw = true;
 
 
 			// Enable double-buffering on the ListViews
@@ -239,6 +258,9 @@ namespace Antares {
 
 
 			this->CheckConnection();
+			this->last_layout_x = -1;this->last_layout_y=-1;
+			this->Arrange();
+
 
 		}
 
@@ -851,7 +873,7 @@ namespace Antares {
 			static Color normal_background_colour = Color::FromArgb(255,255,255);
 
 
-
+            int last_layout_x, last_layout_y;
 
 
 
@@ -898,7 +920,9 @@ namespace Antares {
 
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton10;
 	private: System::Windows::Forms::Panel^  panel5;
-	private: System::Windows::Forms::TextBox^  textBox2;
+public: System::Windows::Forms::TextBox^  textBox2;
+private: 
+
 	private: System::Windows::Forms::Panel^  panel6;
 	private: System::Windows::Forms::TextBox^  textBox1;
 	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator1;
@@ -1014,7 +1038,7 @@ namespace Antares {
 			this->panel3->Controls->Add(this->label2);
 			this->panel3->Controls->Add(this->toolStrip2);
 			this->panel3->Controls->Add(this->listView1);
-			this->panel3->Dock = System::Windows::Forms::DockStyle::Fill;
+			this->panel3->Dock = System::Windows::Forms::DockStyle::Left;
 			this->panel3->Location = System::Drawing::Point(0, 0);
 			this->panel3->Margin = System::Windows::Forms::Padding(0, 3, 0, 3);
 			this->panel3->Name = L"panel3";
@@ -1274,7 +1298,6 @@ namespace Antares {
 			// 
 			// panel4
 			// 
-			this->panel4->AutoSize = true;
 			this->panel4->BackColor = System::Drawing::SystemColors::Control;
 			this->panel4->Controls->Add(this->panel6);
 			this->panel4->Controls->Add(this->label1);
@@ -1461,16 +1484,19 @@ namespace Antares {
 			this->ClientSize = System::Drawing::Size(880, 660);
 			this->Controls->Add(this->panel1);
 			this->Controls->Add(this->statusStrip1);
+			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
 			this->Text = L"Antares  0.5";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
+			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
+			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
 			this->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::Form1_Layout);
 			this->Resize += gcnew System::EventHandler(this, &Form1::Form1_Resize);
+			this->ResizeEnd += gcnew System::EventHandler(this, &Form1::Form1_ResizeEnd);
 			this->statusStrip1->ResumeLayout(false);
 			this->statusStrip1->PerformLayout();
 			this->panel1->ResumeLayout(false);
-			this->panel1->PerformLayout();
 			this->panel3->ResumeLayout(false);
 			this->panel3->PerformLayout();
 			this->panel5->ResumeLayout(false);
@@ -1548,35 +1574,130 @@ namespace Antares {
 	private: System::Void statusStrip1_ItemClicked(System::Object^  sender, System::Windows::Forms::ToolStripItemClickedEventArgs^  e) {
 			 }
 
+			 
+
+			 protected: virtual void OnLayout(System::Windows::Forms::LayoutEventArgs^ levent) override
+						{
+							Console::WriteLine("Layout--");
+
+							array<Control^>^ arr = {this,panel1,panel2,panel3, panel4,panel5,listView2};
+
+//				for (int j=0; j<arr->Length; j++) arr[j]->SuspendLayout();
+							
+				for (int j=0; j<arr->Length; j++) this->SuspendDrawing(arr[j]);
+
+							this->Arrange1();
+							printf("%d %d\n",panel4->Width, panel3->Width);
+				            //for (int j=0; j<arr->Length; j++) arr[j]->ResumeLayout(true);
+							this->Arrange2();
+							printf("%d %d\n",panel4->Width, panel3->Width);
+                            //panel4->Width=panel3->Width;
+							Form::OnLayout(levent);
+							for (int j=0; j<arr->Length; j++) this->ResumeDrawing(arr[j]);
+							this->Refresh();
+                            //panel4->Refresh();
+						}
+
+						private: System::Void Arrange2(void)
+								 {
+									  if (this->finished_constructing ==1)
+						  {
+							  static const double widths0[] = {140, 60, 50, 120};
+							  static const double mwidths[] = {0,  60, 50, 120};
+							  double tot0 = widths0[0]+widths0[1]+widths0[2]+widths0[3];
+							  double tot0_ = widths0[1]+widths0[2]+widths0[3];
+							  double tot0m = mwidths[1]+mwidths[2]+mwidths[3];
+							  double tot1 = listView1->ClientSize.Width;
+                              double tot2 = listView2->ClientSize.Width;
+
+							  double tot1_ = listView1->Width;
+							  tot1 = tot1_<tot1 ? tot1_ : tot1;
+
+							  if (tot0_ / tot0 * tot1  > tot0m)
+							  {
+								  
+								  this->topfieldSizeHeader->Width = mwidths[1];
+								  this->topfieldTypeHeader->Width = mwidths[2];
+								  this->topfieldDateHeader->Width = mwidths[3];
+								  this->topfieldNameHeader->Width = tot1 - tot0m-5;
+							  }
+							  else
+							  {
+								  this->topfieldNameHeader->Width =  (widths0[0]/tot0 * tot1);
+								  this->topfieldSizeHeader->Width =  (widths0[1]/tot0 * tot1)-1;
+								  this->topfieldTypeHeader->Width =  (widths0[2]/tot0 * tot1)-1;
+								  this->topfieldDateHeader->Width =  (widths0[3]/tot0 * tot1)-1;
+							  }
+							  	  if (tot0_ / tot0 * tot2  > tot0m)
+							  {
+								  
+								  this->computerSizeHeader->Width = mwidths[1];
+								  this->computerTypeHeader->Width = mwidths[2];
+								  this->computerDateHeader->Width = mwidths[3];
+								  this->computerNameHeader->Width = tot2 - tot0m-5;
+							  }
+							  else
+							  {
+								  this->computerNameHeader->Width =  (widths0[0]/tot0 * tot2);
+								  this->computerSizeHeader->Width =  (widths0[1]/tot0 * tot2)-1;
+								  this->computerTypeHeader->Width =  (widths0[2]/tot0 * tot2)-1;
+								  this->computerDateHeader->Width =  (widths0[3]/tot0 * tot2)-1;
+							  }
+
+						  }
+
+								 }
+
+			 private: System::Void Arrange1(void)
+					  {
+
+						  int fw = this->ClientRectangle.Width;
+						  int fh = this->ClientRectangle.Height;
+						  if (fw==this->last_layout_x && fh==this->last_layout_y) return;
+						  this->last_layout_x = fw;
+						  this->last_layout_y = fh;
+						  if (fw==0) return;
+						  int avg = (fw - this->panel2->Width)/2;
+
+						  this->panel4->Width=avg;
+						  this->panel3->Width=avg;
+						  //this->ResumeLayout(true);
+                          //this->PerformLayout();
+						  //this->SuspendLayout();
+						  
+
+						 
+					  }
+					  private: System::Void Arrange(void)
+							   {
+								   Arrange1();
+								   Arrange2();
+							   }
+
 	private: System::Void Form1_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
-				 // int avg = (this->panel3->Width + this->panel4->Width)/2;
-				 int avg = (this->Width - this->panel2->Width)/2;
-				 //this->listView1->Width=avg;
-				 this->panel4->Width=avg;
-				 printf("Layout\n");
+				// Console::WriteLine("Layout");
+				//this->Arrange();
 			 }
 
 	private: System::Void Form1_Resize(System::Object^  sender, System::EventArgs^  e) {
-				 //int avg = (this->panel3->Width + this->panel4->Width)/2;
-				 int avg = (this->Width - this->panel2->Width)/2;
-				 //this->listView1->Width=avg;
-				 this->panel4->Width=avg;
-				 printf("Resize!\n");
+				
+				 //this->Arrange();
+			
 			 }
 
 	private: System::Void listView1_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
 				 //double tot = this->listView1->Width;
-				 double tot = listView1->ClientSize.Width;
-				 static const double widths0[] = {140, 60, 50, 120};
-				 double tot0 = widths0[0]+widths0[1]+widths0[2]+widths0[3];
-				 if (this->finished_constructing==1)
-				 {
-					 topfieldNameHeader->Width = (int) (widths0[0]/tot0 * tot);
-					 topfieldSizeHeader->Width = (int) (widths0[1]/tot0 * tot)-1;
-					 topfieldTypeHeader->Width = (int) (widths0[2]/tot0 * tot)-1;
-					 topfieldDateHeader->Width = (int) (widths0[3]/tot0 * tot)-1;
-				 }
-				 printf("ListView1 layout\n");
+				 //double tot = listView1->ClientSize.Width;
+				 //static const double widths0[] = {140, 60, 50, 120};
+				 //double tot0 = widths0[0]+widths0[1]+widths0[2]+widths0[3];
+				 //if (this->finished_constructing==1)
+				 //{
+				//	 topfieldNameHeader->Width = (int) (widths0[0]/tot0 * tot);
+				//	 topfieldSizeHeader->Width = (int) (widths0[1]/tot0 * tot)-1;
+				//	 topfieldTypeHeader->Width = (int) (widths0[2]/tot0 * tot)-1;
+				//	 topfieldDateHeader->Width = (int) (widths0[3]/tot0 * tot)-1;
+				// }
+				// printf("ListView1 layout\n");
 			 }
 
 	private: System::Void listView2_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
@@ -1584,17 +1705,17 @@ namespace Antares {
 
 
 				 //double tot = this->listView2->Width;
-				 double tot = listView2->ClientSize.Width;
-				 static const double widths0[] = {140, 60, 50, 120};
-				 double tot0 = widths0[0]+widths0[1]+widths0[2]+widths0[3];
-				 if (this->finished_constructing==1)
-				 {
-					 computerNameHeader->Width = (int) (widths0[0]/tot0 * tot);
-					 computerSizeHeader->Width = (int) (widths0[1]/tot0 * tot)-1;
-					 computerTypeHeader->Width = (int) (widths0[2]/tot0 * tot)-1;
-					 computerDateHeader->Width = (int) (widths0[3]/tot0 * tot)-1;
-				 }
-				 printf("ListView2 layout\n");
+				// double tot = listView2->ClientSize.Width;
+				 //static const double widths0[] = {140, 60, 50, 120};
+				 //double tot0 = widths0[0]+widths0[1]+widths0[2]+widths0[3];
+				 //if (this->finished_constructing==1)
+				 //{
+				//	 computerNameHeader->Width = (int) (widths0[0]/tot0 * tot);
+				//	 computerSizeHeader->Width = (int) (widths0[1]/tot0 * tot)-1;
+				//	 computerTypeHeader->Width = (int) (widths0[2]/tot0 * tot)-1;
+			//		 computerDateHeader->Width = (int) (widths0[3]/tot0 * tot)-1;
+			//	 }
+			//	 printf("ListView2 layout\n");
 			 }
 
 	private: System::Void listView2_ItemActivate(System::Object^  sender, System::EventArgs^  e) {
@@ -2138,6 +2259,12 @@ end_copy_to_pc:
 				 array<int>^              overwrite_action = gcnew array<int>(selected->Count);
 				 array<long long int>^    current_offsets = gcnew array<long long int>(selected->Count);
 
+				 ListView::ListViewItemCollection^ topfield_items = this->listView1->Items; 
+				 int ntopfield_items = topfield_items->Count;
+                 TopfieldItem^ titem;
+				 	 array<int>^ num_cat = {0,0,0}; //numbers of existing files (divided by category)
+				 int num_exist=0;
+				 array<String^>^ files_cat = {"","",""};
 				 while ( myEnum->MoveNext() )
 				 {
 					 item = safe_cast<ComputerItem^>(myEnum->Current);
@@ -2145,10 +2272,104 @@ end_copy_to_pc:
 					 if (item->isdir) {continue;}   // Don't support whole directories yet
 					 src_items[numfiles]=item;
 					 src_sizes[numfiles]=item->size;
+					 dest_filename[numfiles]=this->topfieldCurrentDirectory+"\\"+item->filename;
+                     dest_exists[numfiles]=false;
+					 for (int j=0; j<ntopfield_items; j++)
+					 {
+                         titem = safe_cast<TopfieldItem^>(topfield_items[j]);
+						 if (String::Compare(item->filename, titem->filename)==0 && !titem->isdir)
+						 {
+                             dest_exists[numfiles]=true;
+							 dest_size[numfiles]=titem->size;
+							 break;
+						 }
+					 }
+
+					  if (dest_exists[numfiles])
+					 {          // TODO: error handling
+				
+						 int cat=2;
+						 if (dest_size[numfiles] == item->size) // && dest_date[numfiles]==item->datetime)
+							 cat=0;
+						 else
+						 {
+							 if (dest_size[numfiles] < item->size) cat=1;
+						 }
+
+						 overwrite_category[numfiles]=cat;
+						 num_cat[cat]++;if (num_cat[cat]>1) files_cat[cat] = files_cat[cat]+"\n";
+						 files_cat[cat] = files_cat[cat]+dest_filename[numfiles]; 
+
+						 num_exist++;
+					 }
+
 					 current_offsets[numfiles]=0;
 					 numfiles++;
 					 totalsize += item->size;
 				 }
+                 if (numfiles==0) return;
+
+
+				  int num_skip=0;
+				 if (num_exist>0)
+				 {
+					 printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
+					 OverwriteConfirmation^ oc = gcnew OverwriteConfirmation();
+					 if (num_exist==1) oc->title_label->Text="Warning: a file with this name already exists                                                   ";
+					 oc->files1->Text = files_cat[0];
+					 if (num_cat[0]==0)
+					 {
+						 oc->panel1->Visible = false;oc->files1->Visible=false;
+					 }
+					 if (num_cat[0]>1) oc->label1->Text = "Files have correct size"; else oc->label1->Text = "File has correct size"; 
+
+					 oc->files2->Text = files_cat[1];
+					 if (num_cat[1]==0)
+					 {
+						 oc->panel2->Visible = false;oc->files2->Visible=false;
+					 }
+					 if (num_cat[1]>1) oc->label2->Text = "Undersized files"; else oc->label2->Text = "Undersized file";
+
+					 oc->files3->Text = files_cat[2];
+					 if (num_cat[2]==0)
+					 {
+						 oc->panel3->Visible = false;oc->files3->Visible=false;
+					 }
+					 if (num_cat[2]>1) oc->label3->Text = "These existing files are oversized:"; else oc->label3->Text = "This existing file is oversized:";
+
+					 if (::DialogResult::Cancel == oc->ShowDialog() ) return;
+
+					 int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
+					 int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
+					 int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
+
+					 for (int i=0; i<numfiles; i++)
+					 {
+						 item=src_items[i];
+						 overwrite_action[i]=OVERWRITE;
+						 if (dest_exists[i])
+						 {
+							 if(overwrite_category[i]==0)  overwrite_action[i]=action1; else
+								 if(overwrite_category[i]==1)  overwrite_action[i]=action2; else
+									 if(overwrite_category[i]==2)  overwrite_action[i]=action3;
+
+						 }
+						 if (overwrite_action[i]==RESUME && dest_size[i]<2*resume_granularity) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
+						 //  if (overwrite_action[i]==OVERWRITE) totalsize_notskip+=item->size;else
+						 //	 if (overwrite_action[i]==RESUME) totalsize_notskip+=item->size-dest_size[i];
+
+						 if (overwrite_action[i]==OVERWRITE) current_offsets[i]=0; else
+							 if (overwrite_action[i]==SKIP) {current_offsets[i]=item->size;num_skip++;} else
+								 if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
+					 }
+				 }
+				 if (num_skip==numfiles) return;
+
+
+				  if (this->checkBox1->Checked)
+					 this->set_turbo_mode(1); //TODO: error handling for turbo mode selection
+				 else
+					 this->set_turbo_mode( 0);
 
 
 				 CopyDialog^ copydialog = gcnew CopyDialog();
@@ -2179,7 +2400,7 @@ end_copy_to_pc:
 				 //copydialog->label3->Text = "";
 
 
-				 myEnum = selected->GetEnumerator();
+				 //myEnum = selected->GetEnumerator();
 				 long long bytes_sent;
 				 long long total_bytes_sent=0;
 				 long long byteCount;
@@ -2189,19 +2410,20 @@ end_copy_to_pc:
 				 struct tf_packet reply;
 				 int r;
 				 array<Byte>^ inp_buffer = gcnew array<unsigned char>(sizeof(packet.data));
-
-				 if (this->checkBox1->Checked)
-					 this->set_turbo_mode(1); //TODO: error handling for turbo mode selection
-				 else
-					 this->set_turbo_mode( 0);
+                 //array<Byte>^ existing_bytes = gcnew array<Byte>(2*resume_granularity);
+				
 
 				 for (int i=0; i<numfiles; i++)
 				 {
 					 item = src_items[i];
 					 Console::WriteLine(item->Text);
-					 if (item->isdir) {continue;}   // Don't support whole directories yet
+
+					 int this_overwrite_action = OVERWRITE;
+					 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
+					 if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
 
 					 byteCount=0;
+					 long long topfield_file_offset=0;
 					 String^ full_src_filename = this->computerCurrentDirectory + "\\" + item->filename;
 					 String^ full_dest_filename = this->topfieldCurrentDirectory + "\\" + item->filename;
 
@@ -2209,29 +2431,9 @@ end_copy_to_pc:
 					 // TODO:  Exception handling for file open
 					 FileStream^ src_file = File::Open(full_src_filename,System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
 
-					 //int bb;
-					 //while( (bb = src_file->ReadByte()) !=-1 ) printf("%c",(unsigned char) bb);copydialog->close_request_threadsafe();return;
-
-					 //Console::WriteLine(full_src_filename);return;
-
-					 //src = _open(srcPath, _O_RDONLY | _O_BINARY);
-					 //if(src < 0)
-					 //{
-					 //	 fprintf(stderr, "ERROR: Can not open source file: %s\n",
-					 //		 strerror(errno));
-					 //	 return;
-					 //}
 
 					 FileInfo^ src_file_info = gcnew FileInfo(full_src_filename);
 
-
-					 //if(0 != _fstat64(src, &srcStat))
-					 //{
-					 //	 fprintf(stderr, "ERROR: Can not examine source file: %s\n",
-					 //		 strerror(errno));
-					 //	 result = errno;
-					 //	 goto out;
-					 //}
 
 					 fileSize = src_file_info->Length; //srcStat.st_size;
 					 if(fileSize == 0)
@@ -2241,7 +2443,65 @@ end_copy_to_pc:
 						 continue;
 					 }
 					 char* dstPath = (char *) (void*) Marshal::StringToHGlobalAnsi(full_dest_filename);
-					 r = send_cmd_hdd_file_send(this->fd, PUT, dstPath);
+
+
+					 if (this_overwrite_action==RESUME)
+					 {
+						 	 long long existing_bytes_start = (dest_size[i]/resume_granularity)*resume_granularity - resume_granularity;
+							 int existing_bytes_count = dest_size[i]-existing_bytes_start;
+							 src_file->Seek(existing_bytes_start,SeekOrigin::Begin);
+							 int existing_bytes_count_PC = src_file->Read(inp_buffer, 0, existing_bytes_count);
+                             array<Byte>^ existing_bytes;
+							 existing_bytes = this->read_topfield_file_snippet(full_dest_filename,existing_bytes_start);
+							 int existing_bytes_count_PVR = existing_bytes->Length;
+							 
+							 int overlap = existing_bytes_count_PC < existing_bytes_count_PVR ? existing_bytes_count_PC : existing_bytes_count_PVR;
+                             bool overlap_failed=false;
+							 printf("dest_size[i]=%ld    existing_bytes_count PVR=%d PC=%d   overlap=%d\n",dest_size[i],existing_bytes_count_PVR, existing_bytes_count_PC, overlap);  
+							 if (overlap<resume_granularity)
+							 {
+								 overlap_failed=true;
+								 printf("Resume failed: overlap too small.\n");
+								 
+							 }
+							 else
+							 {
+								 for (int j=0; j<overlap; j++)
+								 {
+									 if (existing_bytes[j]!=inp_buffer[j])
+									 { 
+										 printf("Overlap failed: bytes disagree. Position %d.\n",j);
+										 overlap_failed=true;
+										 break;
+									 }
+								 }
+
+							 }
+
+
+							 if (!overlap_failed)
+							 {
+                                 printf("Overlap success.\n");
+								 topfield_file_offset = existing_bytes_start; 
+								 src_file->Seek(existing_bytes_start,SeekOrigin::Begin);
+								 current_offsets[i]=topfield_file_offset;
+							 }
+							 if (overlap_failed)
+							 {
+								 topfield_file_offset=0;
+								 current_offsets[i]=0;
+								 this_overwrite_action=OVERWRITE;
+								 src_file->Seek(0,SeekOrigin::Begin);
+							 }
+					 }
+
+
+                     
+                     printf("topfield_file_offset=%ld   = %f MB\n",topfield_file_offset,((double)topfield_file_offset)/1024.0/1024.0);
+					 if (topfield_file_offset==0)
+					     r = send_cmd_hdd_file_send(this->fd, PUT, dstPath);
+					 else
+                         r = send_cmd_hdd_file_send_with_offset(this->fd, PUT, dstPath,topfield_file_offset);
 					 Marshal::FreeHGlobal((System::IntPtr) (void*)dstPath);
 					 if(r < 0)
 					 {
@@ -2251,11 +2511,18 @@ end_copy_to_pc:
 					 bytes_sent=0;
 					 //time_t startTime = time(NULL);
 
+					 if (copydialog->current_start_time==0)
+					 {
 					 copydialog->current_start_time = time(NULL);
+					 copydialog->total_start_time = time(NULL);
+					 }
+					 else
+						 copydialog->current_start_time=time(NULL);
 
 					 copydialog->current_file = full_src_filename;
-					 copydialog->current_offsets[i]=0;
+					 //copydialog->current_offsets[i]=0;
 					 copydialog->current_index=i;
+					 copydialog->current_bytes_received = bytes_sent;
 					 //copydialog->current_filesize = fileSize;
 					 copydialog->update_dialog_threadsafe();
 
@@ -2322,13 +2589,14 @@ end_copy_to_pc:
 
 									 put_u16(&packet.length, PACKET_HEAD_SIZE + 8 + w);
 									 put_u32(&packet.cmd, DATA_HDD_FILE_DATA);
-									 put_u64(packet.data, byteCount);
+									 put_u64(packet.data, topfield_file_offset);// byteCount);  !!!!!!!!!!!!!!!!!!!!!!!!!test
 									 byteCount += w;
 									 bytes_sent+=w;
 									 total_bytes_sent+=w;
-
+                                     topfield_file_offset+=w;
 									 copydialog->total_bytes_received = total_bytes_sent;
-									 copydialog->current_offsets[i] = bytes_sent;
+									 copydialog->current_offsets[i] = topfield_file_offset;
+									 copydialog->current_bytes_received = bytes_sent;
 									 copydialog->update_dialog_threadsafe();
 
 
@@ -2339,7 +2607,7 @@ end_copy_to_pc:
 										 state = END;
 									 }
 									 /* Detect EOF and transition to END */
-									 if((w < 0) || (byteCount >= fileSize))
+									 if((w < 0) || (topfield_file_offset >= fileSize))
 									 {
 										 printf("\nEOF conditition. w=%d  byteCount=%f  fileSize=%f\n",w,(double) byteCount,(double) fileSize);
 										 state = END;
@@ -2450,6 +2718,10 @@ out:
 					 this->setTopfieldDir(dir);
 					 this->loadTopfieldDir();
 
+				 }
+				 else
+				 {
+					 this->ViewInfo(listview);
 				 }
 
 
@@ -2874,7 +3146,7 @@ out:
 				  FileItem^ item;
 				  tRECHeaderInfo ri;
 				  const int readsize = 2048;
-				  array<Byte>^ buffer = gcnew array<Byte>(readsize);
+				 
 				  char charbuf[readsize]; 
 				  while ( myEnum->MoveNext() )
 				  {
@@ -2882,10 +3154,10 @@ out:
 
 					  item = safe_cast<FileItem^>(myEnum->Current);
 					  if (item->isdir) continue;
+					  	  String^ fname = item->directory + "\\" + item->filename;
 					  if (type==1)
 					  {
-
-						  String^ fname=item->directory + "\\" + item->filename;
+                          array<Byte>^ buffer = gcnew array<Byte>(readsize);
 						  FileStream^ file = File::Open(fname,System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
 
 						  int size = file->Read(buffer, 0, readsize);
@@ -2906,11 +3178,26 @@ out:
 							  printf("EventEventDescription = %s\n",ri.EventEventDescription);
 							  printf("ExtEventText = %s\n",ri.ExtEventText);
 							  printf("-----------------------\n");
-							
+
 							  ProgInfo^ pi = gcnew ProgInfo(&ri,"Program Information, "+fname);
-						
+
 							  pi->ShowDialog();
-                              break;
+							  break;
+						  }
+					  }
+					  else  //type =0
+					  {
+					
+						  array<Byte>^ buff = this->read_topfield_file_snippet(fname, 0);
+						  int size = buff->Length;
+						  if (size>=readsize)
+						  {
+							  Marshal::Copy(buff,0,System::IntPtr( &charbuf[0]),readsize);
+							  HDD_DecodeRECHeader (charbuf, &ri);
+							  ProgInfo^ pi = gcnew ProgInfo(&ri,"Program Information, "+fname);
+
+							  pi->ShowDialog();
+							  break;
 						  }
 					  }
 
@@ -2932,6 +3219,159 @@ out:
 			 }
 
 
-	};
-};
+	private: array<Byte>^ read_topfield_file_snippet(String^ filename, long long offset) {    
+				 // Read one packet's worth of a file on the Topfield, starting at specified offset.
+				 // Return as an array of Bytes.
+
+
+				 array<Byte>^ out_array = gcnew array<Byte>(0); 
+				 struct tf_packet reply;
+				 int r;
+				 	 enum
+					 {
+						 START,
+						 DATA,
+						 ABORT
+					 } state;
+
+				 char* srcPath = (char*)(void*)Marshal::StringToHGlobalAnsi(filename);
+
+				 if (offset==0) 
+					 r = send_cmd_hdd_file_send(this->fd, GET, srcPath);   
+				 else
+					 r = send_cmd_hdd_file_send_with_offset(this->fd, GET, srcPath,offset);
+
+				 Marshal::FreeHGlobal((System::IntPtr)(void*)srcPath);
+
+				 if(r < 0)
+				 {
+					 return out_array;
+				 }
+
+				 state = START;
+
+
+
+
+				 while(0 < (r = get_tf_packet(fd, &reply)))
+				 {
+
+					 switch (get_u32(&reply.cmd))
+					 {
+					 case DATA_HDD_FILE_START:
+						 if(state == START)
+						 {
+
+							 send_success(fd);
+							 state = DATA;
+						 }
+						 else
+						 {
+							 fprintf(stderr,
+								 "ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
+								 state);
+							 send_cancel(fd);
+							 state = ABORT;
+						 }
+						 break;
+
+					 case DATA_HDD_FILE_DATA:
+						 if(state == DATA)
+						 {
+							 __u64 offset = get_u64(reply.data);
+							 __u16 dataLen =
+								 get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
+							 int w;
+
+							 // if( !quiet)
+							 // {
+							 //progressStats(bytecount, offset + dataLen, startTime);
+							 // }
+
+							 if(r < get_u16(&reply.length))
+							 {
+								 fprintf(stderr,
+									 "ERROR: Short packet %d instead of %d\n", r,
+									 get_u16(&reply.length));
+
+							 }
+
+
+							 Array::Resize(out_array,dataLen);
+							 Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , out_array, 0,(int) dataLen);
+
+							 send_cancel(fd);
+							 state = ABORT;
+
+
+						 }
+						 else
+						 {
+							 fprintf(stderr,
+								 "ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
+								 state);
+							 send_cancel(fd);
+							 state = ABORT;
+
+						 }
+						 break;
+
+					 case DATA_HDD_FILE_END:
+						 send_success(fd);
+					
+						 printf("DATA_HDD_FILE_END\n");
+
+						 state=ABORT;
+
+						 break;
+
+					 case FAIL:
+						 fprintf(stderr, "ERROR: Device reports %s\n",
+							 decode_error(&reply));
+						 send_cancel(fd);
+						 state = ABORT;
+
+						 break;
+
+					 case SUCCESS:
+						 printf("SUCCESS\n");
+
+						 break;
+
+					 default:
+						 fprintf(stderr, "ERROR: Unhandled packet (cmd 0x%x)\n",
+							 get_u32(&reply.cmd));
+					 }
+
+
+
+
+					 if (state==ABORT) break;
+				 }
+
+
+
+out:
+
+
+				 this->absorb_late_packets(2,200);
+                 return out_array;
+			 }
+
+
+
+
+
+	private: System::Void Form1_ResizeEnd(System::Object^  sender, System::EventArgs^  e) {
+				 Console::WriteLine("ResizeEnd");
+				 //this->ResumeLayout();
+			 }
+private: System::Void Form1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e) {
+			 Console::WriteLine("Paint");
+		 }
+private: System::Void Form1_ResizeBegin(System::Object^  sender, System::EventArgs^  e) {
+			// this->SuspendLayout();
+		 }
+};    // class form1
+};    // namespace antares
 

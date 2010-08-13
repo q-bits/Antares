@@ -40,7 +40,7 @@ namespace Antares {
 			String^ ext = gcnew String(ri->ExtEventText);
 			if (description->Length >0 && ext->Length >0 )
 			{
-				description = description + "\n  --- \n";
+				description = description + "\r\n  --- \r\n";
 			}
 			description = description + ext;
 
