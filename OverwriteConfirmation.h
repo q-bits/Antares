@@ -31,6 +31,46 @@ namespace Antares {
 			//
 		}
 
+		OverwriteConfirmation(String^ f1, String^ f2, String^ f3)
+		{
+			InitializeComponent();
+
+			array<String^>^ fa1 = f1->Split(L'\n');
+            array<String^>^ fa2 = f2->Split(L'\n');
+            array<String^>^ fa3 = f3->Split(L'\n');
+            int na1=fa1->Length;
+			int na2=fa2->Length;
+			int na3=fa3->Length;
+            const int max_rows = 35;
+
+			String^ s1="", ^s2="", ^s3="";
+
+			int i1=0, i2=0, i3=0;
+			//bool done=false;
+			while(1)
+			{
+				if (i1<na1) { s1=s1+ fa1[i1]+"\n"; i1++;}
+				if (i2<na2) { s2=s2+ fa2[i2]+"\n"; i2++;}
+				if (i3<na3) { s3=s3+ fa3[i3]+"\n"; i3++;}
+				if (i1+i2+i3 + 4*(i1>0) + 4*(i2>0) + 4*(i3>0) >=max_rows || (i1==na1 && i2==na2 && i3==na3)) break;
+				
+			}   
+			if (i1==na1-1) { s1=s1+ fa1[i1]+"\n"; i1++;}
+			if (i2==na2-1) { s2=s2+ fa2[i2]+"\n"; i2++;}
+			if (i3==na3-1) { s3=s3+ fa3[i3]+"\n"; i3++;}
+			if (i1<na1) s1=s1+" ... ("+(na1-i1).ToString() + " more) ...";
+			if (i2<na2) s2=s2+" ... ("+(na2-i2).ToString() + " more) ...";
+			if (i3<na3) s3=s3+" ... ("+(na3-i3).ToString() + " more) ...";
+
+			this->files1->Text = s1->Trim();
+			this->files2->Text = s2->Trim();
+			this->files3->Text = s3->Trim();
+
+		}
+
+
+
+
 	protected:
 		/// <summary>
 		/// Clean up any resources being used.

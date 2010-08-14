@@ -89,7 +89,7 @@ namespace Antares {
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(128, 29);
 			this->button1->TabIndex = 1;
-			this->button1->Text = L"Yes";
+			this->button1->Text = L"&Yes";
 			this->button1->UseVisualStyleBackColor = true;
 			// 
 			// button2
@@ -102,7 +102,7 @@ namespace Antares {
 			this->button2->Name = L"button2";
 			this->button2->Size = System::Drawing::Size(119, 29);
 			this->button2->TabIndex = 2;
-			this->button2->Text = L"No";
+			this->button2->Text = L"&No";
 			this->button2->UseVisualStyleBackColor = true;
 			// 
 			// label1

@@ -22,37 +22,30 @@ FILE old_stderr;
 FILE* hf;
 
 
-String^ safeString( char* filename )
+
+
+String^ safeString( String^ filename_str)
 {
 	int i;
-	//int len = strlen(filename);
-	System::String^ filename_str = gcnew System::String(filename);
-
 	System::Text::StringBuilder^ sb = gcnew System::Text::StringBuilder(filename_str);
-	//char* str = new char[len];
     wchar_t c;
-	//StringBuilder^ sb = gcnew System::Text::StringBuilder("",100);
     for (i=0;i<filename_str->Length; i++)
 	{
-
 		c = sb[i];
-		
-		//if (c==0) {break;}
 		if (c<32) c='_';
 		if (c==':') c='-';
 		if (c=='\"') c='\'';
-	
 		if (c=='<' || c=='>' || c=='/' || c=='\\' || c=='|' || c=='?' || c=='*')  c='_';
         sb[i]=c;
-		//sb->Append(c);
-        //str[i]=c;
-
-
 	}
     return sb->ToString();
-	//return gcnew System::String(str);
-
 }
+
+String^ safeString( char* filename )
+{
+	return safeString(gcnew System::String(filename));
+}
+
 
 System::DateTime Time_T2DateTime(time_t t)
 {
