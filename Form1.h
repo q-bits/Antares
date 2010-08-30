@@ -1262,6 +1262,7 @@ namespace Antares {
 			// 
 			// listView1
 			// 
+			this->listView1->AllowDrop = true;
 			this->listView1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom) 
 				| System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
@@ -1478,6 +1479,7 @@ namespace Antares {
 			// 
 			// listView2
 			// 
+			this->listView2->AllowDrop = true;
 			this->listView2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom) 
 				| System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
@@ -1524,7 +1526,7 @@ namespace Antares {
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.5";
+			this->Text = L"Antares  0.5.1";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2624,8 +2626,8 @@ end_copy_to_pc:
 
 							 case DATA:
 								 {
-									 int payloadSize = sizeof(packet.data) - 9;
-
+									 int payloadSize = sizeof(packet.data) - 9;    payloadSize = payloadSize / 1024*1024; 
+                                    
 									 int w;
 
 									 if (have_next_packet)
