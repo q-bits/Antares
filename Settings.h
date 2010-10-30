@@ -11,7 +11,7 @@ namespace Antares {
 	using namespace System::IO;
 	using namespace System::Xml;
 
-	ref class Settings
+	public ref class Settings
 	{
 	public:
 		Dictionary<String^, String^> ^dic;
@@ -27,7 +27,7 @@ namespace Antares {
 
 			// Apply default settings
 			dic->Add("ComputerDir","C:\\");
-			dic->Add("TopfieldDir","\DataFiles");
+			dic->Add("TopfieldDir","\\DataFiles");
 			dic->Add("PC_SortOrder","Ascending");
 			dic->Add("PC_SortColumn","0");
 			dic->Add("TurboMode","on");

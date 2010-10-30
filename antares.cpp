@@ -107,7 +107,7 @@ time_t DateTimeToTime_T(DateTime datetime)
 String^ HumanReadableSize(__u64 size)
 {
 	char str[100];
-	double x=size;
+	double x = (double) size;
 	int j;
 	
 	for (j=1; j<=5; j++)

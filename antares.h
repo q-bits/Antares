@@ -44,12 +44,21 @@ namespace Antares {
 	[DllImport("shell32.dll")]
 	DWORD_PTR SHGetFileInfo(LPCTSTR pszPath, DWORD dwFileAttributes, SHFILEINFO* psfi, UINT cbSizeFileInfo, UINT uFlags);
 
+
+	public value class TopfieldFreeSpace
+	{
+	public:
+		int freek;
+		int totalk;
+		bool valid;
+	};
+
 	public ref class Icons {
 	public:
 		Icons(void)
 		{
 			imagelist = GetFileIconList("test.txt");
-			folder_index = GetApproximateFileIconIndex("C:\\test\\");
+			folder_index = GetApproximateFolderIconIndex("c:\\test\\");
 			file_index = GetApproximateFileIconIndex("test.tkd3");
 			dic = gcnew Dictionary<String^,int>();
 
@@ -69,9 +78,9 @@ namespace Antares {
 			{
 				int ic;
 				if (istopfield)
-					GetApproximateFileIconIndex(path);
+					ic=GetApproximateFileIconIndex(path);
 				else
-					GetFileIconIndex( path);
+					ic=GetFileIconIndex( path);
 
 				if (ic>=0) 
 				{
@@ -102,7 +111,16 @@ namespace Antares {
 			SHFILEINFO shinfo;
 			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
 			DWORD_PTR ind;
-			ind = Antares::SHGetFileInfo( str, 0, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES | SHGFI_SMALLICON );
+			ind = Antares::SHGetFileInfo( str, FILE_ATTRIBUTE_NORMAL, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES | SHGFI_SMALLICON );
+			return shinfo.iIcon;
+
+		}
+			static int GetApproximateFolderIconIndex(String ^ path)
+		{
+			SHFILEINFO shinfo;
+			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
+			DWORD_PTR ind;
+			ind = Antares::SHGetFileInfo( str, FILE_ATTRIBUTE_DIRECTORY, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES | SHGFI_SMALLICON );
 			return shinfo.iIcon;
 
 		}
@@ -220,12 +238,6 @@ namespace Antares {
 
 		TopfieldItem(typefile *entry) : FileItem()
 		{
-
-
-			//tf_packet reply;
-
-			__u16 count;
-			int i,j;
 
 			time_t timestamp;
 			String ^namestring = gcnew String( (char *) entry->name);

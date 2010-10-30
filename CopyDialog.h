@@ -182,7 +182,7 @@ namespace Antares {
 
 			if (size>0)
 			{
-				int val1 = (double) this->progressBar1->Maximum * (double) offset / (double) size;
+				int val1 = (int)  (  (double) this->progressBar1->Maximum * (double) offset / (double) size  );
 				if (val1<= this->progressBar1->Maximum && val1>=this->progressBar1->Minimum)
 					this->progressBar1->Value= val1; 
                 else printf("Warning: progressBar1 out of bounds!\n");
@@ -197,7 +197,7 @@ namespace Antares {
 
 			if (total_size>0)
 			{
-				int val2 = (double) this->progressBar2->Maximum * (double) total_offset / (double) total_size;
+				int val2 = (int)  ( (double) this->progressBar2->Maximum * (double) total_offset / (double) total_size  );
 				if (val2<= this->progressBar2->Maximum && val2>=this->progressBar2->Minimum)
 				    this->progressBar2->Value = val2;
 				else printf("Warning: progressBar2 out of bounds!\n");

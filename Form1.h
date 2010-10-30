@@ -96,7 +96,7 @@ namespace Antares {
 	{
 
 	public: 
-	
+
 
 
 		void setListViewStyle(ListView^ listview)
@@ -143,14 +143,9 @@ namespace Antares {
 	public:
 		Form1(void)
 		{
-			//ListViewItem^ item;
-			TopfieldItem^ item;
 
-
-			
 			icons = gcnew Antares::Icons();
 
-			int reason;
 			this->listView1SortColumn = -1;
 			this->listView2SortColumn=-1;
 			this->turbo_mode = gcnew System::Boolean;
@@ -159,10 +154,6 @@ namespace Antares {
 			this->last_layout_x=-1;
 			this->last_layout_y=-1;
 			InitializeComponent();
-
-			//TopfieldMutex = gcnew System::Threading::Mutex(false);
-			//this->important_thread_waiting=false;
-
 
 			this->setTopfieldDir("\\DataFiles\\");
 			this->setComputerDir("C:\\");
@@ -279,7 +270,7 @@ namespace Antares {
 		{
 			libusb_device_handle* dh;
 			int success;
-			struct libusb_bus * bus;
+			//struct libusb_bus * bus;
 			struct libusb_device *dev, *device;
 			int i;
 			int r;
@@ -494,14 +485,14 @@ namespace Antares {
 				try{
 					list = System::IO::Directory::GetFileSystemEntries(dir);
 				}
-				catch(System::IO::IOException ^E)
+				catch(System::IO::IOException ^)
 				{
 					this->setComputerDir("");
 					this->loadComputerDir();
 					Console::WriteLine("Unhandled exception in loadComputerDir");
 					return;
 				}
-				catch(System::UnauthorizedAccessException ^E)
+				catch(System::UnauthorizedAccessException ^)
 				{
 					toolStripStatusLabel1->Text="Access denied: "+dir;
 					this->computerUpDir();
@@ -527,7 +518,7 @@ namespace Antares {
 					{
 						item->ImageIndex = this->icons->file_index;
 					}
-				
+
 					if (String::Compare(item->filename, start_rename)==0)
 					{
 						//Console::WriteLine( dir + " compares with "+start_rename);
@@ -579,7 +570,7 @@ namespace Antares {
 			try{
 				dir2 = Path::GetDirectoryName(dir);
 			}
-			catch (System::ArgumentException^ E)
+			catch (System::ArgumentException^ )
 			{
 				dir2="";
 				Console::WriteLine("Handled exception in computerUpDir");
@@ -591,7 +582,7 @@ namespace Antares {
 			{
 				dir2=dir2+"";
 			}
-			catch(System::NullReferenceException^ E)
+			catch(System::NullReferenceException^ )
 			{
 				dir2="";
 				Console::WriteLine("Handled exception in computerUpDir");
@@ -610,7 +601,7 @@ namespace Antares {
 			try{
 				dir2 = Path::GetDirectoryName(dir);
 			}
-			catch (System::ArgumentException^ E)
+			catch (System::ArgumentException^ )
 			{
 				dir2="";
 				Console::WriteLine("Handled exception in topfieldUpDir");
@@ -622,7 +613,7 @@ namespace Antares {
 			{
 				dir2=dir2+"";
 			}
-			catch(System::NullReferenceException^ E)
+			catch(System::NullReferenceException^ )
 			{
 				dir2="";
 				Console::WriteLine("Handled exception in topfieldUpDir");
@@ -633,19 +624,15 @@ namespace Antares {
 		}
 
 
-		// Load and display files in the current topfield directory.
-		// If a file is named start_rename, then start the name editing process after the directory is loaded.
-		// (useful when we have just created a new folder).
-		int loadTopfieldDir(String^ start_rename)               
+
+		// Load the specified topfield directory into an array of TopfieldItems
+		array<TopfieldItem^>^ loadTopfieldDirArray(String^ path)               
 		{
 			tf_packet reply;
 
 			__u16 count;
-			int i,j,r;
+			int i,j;
 
-			char type;
-			time_t timestamp;
-			//struct tm *newtime;
 			struct typefile *entries;
 
 
@@ -655,37 +642,91 @@ namespace Antares {
 			if (this->fd==NULL)
 			{
 				toolStripStatusLabel1->Text="Topfield not connected.";
-				return -EPROTO; 
+				return items; 
 			}
 
+			char* str2 = (char*)(void*)Marshal::StringToHGlobalAnsi(path);
 
-			bool hdd_size_successful = false;
-			unsigned int totalk, freek;
+			send_cmd_hdd_dir(this->fd,str2);
+			Marshal::FreeHGlobal((System::IntPtr)(void*)str2);
+
+			j=0;
+			int numitems=0;
+			while(0 < get_tf_packet(this->fd, &reply))
+			{
+				j=j+1; 
+				switch (get_u32(&reply.cmd))
+				{
+				case DATA_HDD_DIR:
+					count =
+						(get_u16(&reply.length) - PACKET_HEAD_SIZE) / sizeof(struct typefile);
+					entries = (struct typefile *) reply.data;
+					Array::Resize(items, items->Length + count);
+					for(i = 0; (i < count); i++)
+					{
+						item = gcnew TopfieldItem(&entries[i]);
+						item->directory = path;
+						if (String::Compare(item->filename,"..")!=0 ) 
+						{
+							items[numitems] = item;
+							numitems++;
+						}
+					}
+
+					send_success(this->fd);
+					break;
+
+				case DATA_HDD_DIR_END:
+					Array::Resize(items,numitems);
+					return items;
+					break;
+
+				case FAIL:
+					fprintf(stderr, "ERROR: Device reports %s\n",
+						decode_error(&reply));
+					return items;
+					break;
+				default:
+					fprintf(stderr, "ERROR: Unhandled packet\n");
+					return items;
+				}
+
+			}
+			return items;
+		}
+
+
+		// Query the Topfield for its free space and total size
+		TopfieldFreeSpace getTopfieldFreeSpace(void)
+		{
+
+			//bool hdd_size_successful = false;
+			//unsigned int totalk, freek;
+			int r;
+			tf_packet reply;
+			TopfieldFreeSpace v;
+
+			v.valid = false;
 			r = send_cmd_hdd_size(fd);
 			if(r < 0)
 			{
-				return -EPROTO;
+				return v;
 			}
 
 			r = get_tf_packet(fd, &reply);
 			if(r < 0)
 			{
-				return -EPROTO;
+				return v;
 			}
 
 			switch (get_u32(&reply.cmd))
 			{
 			case DATA_HDD_SIZE:
 				{
-					totalk = get_u32(&reply.data);
-					freek = get_u32(&reply.data[4]);
+					v.totalk = get_u32(&reply.data);
+					v.freek = get_u32(&reply.data[4]);
 
-					//printf("Total %10u kB %7u MB %4u GB\n", totalk, totalk / 1024,
-					//	totalk / (1024 * 1024));
-					//printf("Free  %10u kB %7u MB %4u GB\n", freek, freek / 1024,
-					//	freek / (1024 * 1024));
-					//return 0;
-					hdd_size_successful=true;
+					v.valid=true;
 					break;
 				}
 
@@ -697,126 +738,82 @@ namespace Antares {
 			default:
 				fprintf(stderr, "ERROR: Unhandled packet in load_topfield_dir/hdd_size\n");
 			}
+			return v;
+		}
 
-			this->label2->Text = " Topfield device  --  "+HumanReadableSize(1024* ((__u64) freek))+" free / " + HumanReadableSize(1024*( (__u64) totalk)) + " total";
+		// Load and display files in the current topfield directory.
+		// If a file is named start_rename, then start the name editing process after the directory is loaded.
+		// (useful when we have just created a new folder).
+		int loadTopfieldDir(String^ start_rename)               
+		{
+
+			int i;
+			TopfieldItem ^ item, ^rename_item;
+			bool do_rename;
+			array<TopfieldItem^>^ items;
 
 
 
+			if (this->fd==NULL)
+			{
+				toolStripStatusLabel1->Text="Topfield not connected.";
+				return -EPROTO; 
+			}
 
 
+			TopfieldFreeSpace v = getTopfieldFreeSpace();
 
-			toolStripStatusLabel1->Text="Beginning dir "+this->dircount.ToString();
+			this->label2->Text = " Topfield device  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " total";
 
-			char* str2 = (char*)(void*)Marshal::StringToHGlobalAnsi(this->topfieldCurrentDirectory);
-			//printf(str2);
-			send_cmd_hdd_dir(this->fd,str2);
-			Marshal::FreeHGlobal((System::IntPtr)(void*)str2);
-			TopfieldItem^ rename_item;bool do_rename=false;
+			items = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);
 
-			j=0;
-			int numitems=0;
-			while(0 < get_tf_packet(this->fd, &reply))
+			for(i = 0; i < items->Length ; i++)
 			{
 
 
-				j=j+1; 
-				toolStripStatusLabel1->Text=j.ToString() + "/" + this->dircount.ToString();
-				switch (get_u32(&reply.cmd))
+				item = items[i];
+				if (item->isdir)
+					item->ImageIndex = this->icons->folder_index;
+				else
+					item->ImageIndex = this->icons->GetCachedIconIndex(item->filename, true);
+
+				if (String::Compare(start_rename,item->filename)==0)
 				{
-				case DATA_HDD_DIR:
-					//decode_dir(&reply);
-
-					count =
-						(get_u16(&reply.length) - PACKET_HEAD_SIZE) / sizeof(struct typefile);
-					entries = (struct typefile *) reply.data;
-					Array::Resize(items, items->Length + count);
-
-
-					for(i = 0; (i < count); i++)
-					{
-
-
-						item = gcnew TopfieldItem(&entries[i]);
-						item->directory = this->topfieldCurrentDirectory;
-						if (String::Compare(item->filename,"..")!=0 ) 
-						{
-							//this->listView1->Items->Add(item);
-
-							if (item->isdir)
-								item->ImageIndex = this->icons->folder_index;
-							else
-								item->ImageIndex = this->icons->GetCachedIconIndex(item->filename, true);
-							items[numitems] = item;
-							numitems++;
-							if (String::Compare(start_rename,item->filename)==0)
-							{
-								rename_item=item; do_rename=true;
-							}
-
-							if (String::Compare(this->topfieldCurrentDirectory, this->TopfieldClipboardDirectory)==0)
-							{
-								int numc = this->TopfieldClipboard->Length;
-								if (numc>0)
-								{
-									bool iscut=false;
-									for (int ii=0; ii<numc; ii++)
-										if (String::Compare(item->filename, this->TopfieldClipboard[ii])==0)
-										{iscut=true; break;};
-									if (iscut) item->BackColor = this->cut_background_colour;
-								}
-
-							}
-
-
-
-						}
-
-
-					}
-
-					send_success(this->fd);
-					toolStripStatusLabel1->Text="Sent success, j="+j.ToString();
-
-					break;
-
-				case DATA_HDD_DIR_END:
-					//toolStripStatusLabel1->Text="Finished dir "+this->dircount.ToString();
-					//this->TopfieldMutex->ReleaseMutex();
-
-					settings->changeSetting("TopfieldDir",this->topfieldCurrentDirectory);
-					Array::Resize(items,numitems);
-					this->listView1->BeginUpdate();
-					this->listView1->Items->Clear();
-					this->listView1->Items->AddRange(items);
-					this->listView1->EndUpdate();
-					if (do_rename) rename_item->BeginEdit();
-					else
-					{
-						ListView::ListViewItemCollection^ q = this->listView1->Items; 
-						if (q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
-					}
-					return 0;
-					break;
-
-				case FAIL:
-					fprintf(stderr, "ERROR: Device reports %s\n",
-						decode_error(&reply));
-					//toolStripStatusLabel1->Text="FAIL in dir " + this->dircount.ToString();
-					//this->TopfieldMutex->ReleaseMutex();
-					return -EPROTO;
-					break;
-
-				default:
-					fprintf(stderr, "ERROR: Unhandled packet\n");
-					//toolStripStatusLabel1->Text="UNHANDLED in dir " + this->dircount.ToString();
-					//this->TopfieldMutex->ReleaseMutex();
-					return -EPROTO;
+					rename_item=item; do_rename=true;
 				}
 
+				if (String::Compare(this->topfieldCurrentDirectory, this->TopfieldClipboardDirectory)==0)
+				{
+					int numc = this->TopfieldClipboard->Length;
+					if (numc>0)
+					{
+						bool iscut=false;
+						for (int ii=0; ii<numc; ii++)
+							if (String::Compare(item->filename, this->TopfieldClipboard[ii])==0)
+							{iscut=true; break;};
+						if (iscut) item->BackColor = this->cut_background_colour;
+					}
+
+				}
 			}
-			//toolStripStatusLabel1->Text="Unexpected finished dir "+this->dircount.ToString();
-			//this->TopfieldMutex->ReleaseMutex();
-			return -EPROTO;
+
+
+
+			if (items->Length > 0)
+				settings->changeSetting("TopfieldDir",this->topfieldCurrentDirectory);
+
+			this->listView1->BeginUpdate();
+			this->listView1->Items->Clear();
+			this->listView1->Items->AddRange(items);
+			this->listView1->EndUpdate();
+			if (do_rename) rename_item->BeginEdit();
+			else
+			{
+				ListView::ListViewItemCollection^ q = this->listView1->Items; 
+				if (q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
+			}
+
+			return 0;
 		}
 
 		int loadTopfieldDir(void)
@@ -893,7 +890,7 @@ namespace Antares {
 
 			Settings^ settings;
 			Antares::Icons^ icons;
-		
+
 
 
 
@@ -1979,7 +1976,7 @@ namespace Antares {
 				 tf_packet reply;
 				 int r;
 
-				 array<Byte>^ existing_bytes = gcnew array<Byte>(2*resume_granularity);
+				 array<Byte>^ existing_bytes = gcnew array<Byte>(    2* (int) resume_granularity);
 				 long long existing_bytes_start; long long existing_bytes_count=0;
 
 				 for (int i=0; i<numfiles; i++)
@@ -2032,13 +2029,13 @@ restart_this_PVR_to_PC:
 							 existing_bytes_start = (dest_size[i]/resume_granularity)*resume_granularity - resume_granularity;
 							 existing_bytes_count = dest_size[i]-existing_bytes_start;
 							 dest_file->Seek(existing_bytes_start,SeekOrigin::Begin);
-							 existing_bytes_count = dest_file->Read(existing_bytes, 0, existing_bytes_count);
+							 existing_bytes_count = dest_file->Read(existing_bytes, 0,(int) existing_bytes_count);
 							 topfield_file_offset = existing_bytes_start; 
 
 						 }
 
 					 }
-					 catch(System::UnauthorizedAccessException ^E)
+					 catch(System::UnauthorizedAccessException ^)
 					 {
 						 copydialog->close_request_threadsafe();
 						 MessageBox::Show(this,"Antares cannot save the file to the location you chose. Please select another location and try again.","Write permission denied",MessageBoxButtons::OK);
@@ -2140,7 +2137,7 @@ restart_this_PVR_to_PC:
 								 Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , buffer, 0,(int) dataLen);
 								 if (topfield_file_offset == existing_bytes_start && existing_bytes_count>0)
 								 {
-									 int overlap_size = dataLen < existing_bytes_count ? dataLen : existing_bytes_count;
+									 int overlap_size = (int) ( dataLen < existing_bytes_count ? dataLen : existing_bytes_count );
 									 bool failed=false;
 									 printf("Overlap_size=%d\n",overlap_size);
 									 for (int j=0; j<overlap_size; j++)
@@ -2938,19 +2935,10 @@ out:
 				 if (result!=Windows::Forms::DialogResult::Yes) return;
 
 
-
-				 //this->important_thread_waiting=true;
-				 //this->TopfieldMutex->WaitOne();
-				 //this->important_thread_waiting=false;
-
-
-
 				 myEnum = selected->GetEnumerator();
-				 long long bytes_received;
 				 long long total_bytes_received=0;
 				 long long bytecount;
 				 time_t startTime = time(NULL);
-				 tf_packet reply;
 				 int r;
 
 
@@ -3034,7 +3022,7 @@ out:
 							 catch(...)
 							 {
 								 success=false;
-								 
+
 
 							 }
 							 if (!success)
@@ -3445,8 +3433,7 @@ out:
 							 __u64 offset = get_u64(reply.data);
 							 __u16 dataLen =
 								 get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
-							 int w;
-
+							
 							 // if( !quiet)
 							 // {
 							 //progressStats(bytecount, offset + dataLen, startTime);
@@ -3512,11 +3499,6 @@ out:
 
 					 if (state==ABORT) break;
 				 }
-
-
-
-out:
-
 
 				 this->absorb_late_packets(2,200);
 				 return out_array;
