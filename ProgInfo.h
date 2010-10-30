@@ -89,6 +89,8 @@ namespace Antares {
 
 	public: System::Windows::Forms::Label^  label6;
 
+	public: 
+
 	protected: 
 
 

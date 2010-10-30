@@ -366,14 +366,21 @@ void print_packet(struct tf_packet *packet, char *prefix)
  * CRC and send the packet out over a bulk pipe. */
 int send_tf_packet(libusb_device_handle* fd, struct tf_packet *packet)
 {
+
+
     unsigned int pl = get_u16(&packet->length);
+
+
     size_t byte_count = (pl + 1) & ~1;
 
     put_u16(&packet->crc, get_crc(packet));
     print_packet(packet, "OUT>");
     swap_out_packet(packet);
+	if (fd!=0)
     return usb_bulk_write(fd, 0x01, (__u8 *) packet, byte_count,
                           TF_PROTOCOL_TIMEOUT);
+	else 
+		return -1;
 }
 
 

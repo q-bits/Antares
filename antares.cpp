@@ -3,6 +3,7 @@
 #include "stdafx.h"
 #include "Form1.h"
 #include "copydialog.h"
+#include "Settings.h"
 
 extern "C" 
 {
@@ -17,6 +18,7 @@ using namespace Antares;
 using namespace System;
 using namespace System::Text;
 using namespace System::Threading;
+using namespace System::Xml;
 FILE old_stdout;
 FILE old_stderr;
 FILE* hf;
@@ -49,9 +51,16 @@ String^ safeString( char* filename )
 
 System::DateTime Time_T2DateTime(time_t t)
 {
+	//tf_datetime ttt;
+	//ttt.mjd=0;
+	//t=tfdt_to_time(&ttt); printf("time_t = %uld\n",t);
 	struct tm *newtime;
 	newtime = localtime(&t);
-	DateTime datetime = DateTime(1900+newtime->tm_year, newtime->tm_mon+1, newtime->tm_mday, newtime->tm_hour, newtime->tm_min, newtime->tm_min, System::DateTimeKind::Local);
+	DateTime datetime;
+	if (newtime==NULL)
+		datetime = DateTime(1999, 9, 9, 9, 9, 9, System::DateTimeKind::Local);
+	 else 
+     datetime = DateTime(1900+newtime->tm_year, newtime->tm_mon+1, newtime->tm_mday, newtime->tm_hour, newtime->tm_min, newtime->tm_min, System::DateTimeKind::Local);
 	//datetime = datetime.ToLocalTime();
 	//TimeSpan delta = TimeSpan::FromSeconds( (double) t);
     //datetime=datetime + delta; 
@@ -101,7 +110,7 @@ String^ HumanReadableSize(__u64 size)
 	double x=size;
 	int j;
 	
-	for (j=1; j<=4; j++)
+	for (j=1; j<=5; j++)
 	{
 		if (x<1024)
 		{
@@ -128,6 +137,8 @@ String^ HumanReadableSize(__u64 size)
 	case 4:
 		s = s + " GB";
 		break;
+	case 5:
+		s = s + " TB";
 	}
 	return s;
 }
@@ -147,7 +158,6 @@ int main(array<System::String ^> ^args)
 	
 
 	int hCrt, i;
-	
 	
 
 
@@ -173,6 +183,10 @@ int main(array<System::String ^> ^args)
 
 #endif
 
+
+
+
+
 	bool ^x;
 	bool ^y=gcnew System::Boolean;
 	x=y;
@@ -191,9 +205,13 @@ int main(array<System::String ^> ^args)
 	Form1^ form = gcnew Form1();
 	//form->copydialog = gcnew CopyDialog();
 
+    Settings ^settings = form->settings;
 
     
 	Application::Run(form);
+
+
+	settings->writeXmlSettings();
 
 	if (form->fd != NULL)
 	{

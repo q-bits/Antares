@@ -39,30 +39,89 @@ namespace Antares {
 	using namespace System::Drawing;
 	using namespace System::IO;
 	using namespace System::Configuration;
+	using namespace System::Runtime::InteropServices; // for class Marshal
 
-	 void CreateAppSettings(void)
-{
-	return;
-     // Get the application configuration file.
-	System::Configuration::Configuration^ config =
-		ConfigurationManager::OpenExeConfiguration(
-		ConfigurationUserLevel::None);
-	System::Configuration::KeyValueConfigurationCollection^ settings;
-	settings=config->AppSettings->Settings;
+	[DllImport("shell32.dll")]
+	DWORD_PTR SHGetFileInfo(LPCTSTR pszPath, DWORD dwFileAttributes, SHFILEINFO* psfi, UINT cbSizeFileInfo, UINT uFlags);
 
-	if (nullptr==settings["Path"])
-	{
-		Console::WriteLine("Adding Path to configuration\n");
-	settings->Add("Path","c:\\windows\\");
-	config->Save(ConfigurationSaveMode::Modified);
+	public ref class Icons {
+	public:
+		Icons(void)
+		{
+			imagelist = GetFileIconList("test.txt");
+			folder_index = GetApproximateFileIconIndex("C:\\test\\");
+			file_index = GetApproximateFileIconIndex("test.tkd3");
+			dic = gcnew Dictionary<String^,int>();
 
-	}
-	else Console::WriteLine("Path already in configuration: " + settings["Path"]->Value + "\n");
-	 };
+		}
 
 
 
+		int GetCachedIconIndex(String^ path)
+		{
+			return GetCachedIconIndex(path, false);
+		}
+		int GetCachedIconIndex(String ^path, bool istopfield)
+		{
+			if (dic->ContainsKey(path))
+				return dic[path];
+			else
+			{
+				int ic;
+				if (istopfield)
+					GetApproximateFileIconIndex(path);
+				else
+					GetFileIconIndex( path);
 
+				if (ic>=0) 
+				{
+					dic->Add(path, ic);
+					//Console::WriteLine("In dictionary, "+path+" has index "+ic.ToString());
+				}
+
+				return ic;
+			}
+		}
+
+
+
+		static int GetFileIconIndex(String ^ path)
+		{
+			SHFILEINFO shinfo;
+			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
+			DWORD_PTR ind;
+			ind = Antares::SHGetFileInfo( str, 0, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON );
+			return shinfo.iIcon;
+
+		}
+
+
+
+		static int GetApproximateFileIconIndex(String ^ path)
+		{
+			SHFILEINFO shinfo;
+			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
+			DWORD_PTR ind;
+			ind = Antares::SHGetFileInfo( str, 0, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES | SHGFI_SMALLICON );
+			return shinfo.iIcon;
+
+		}
+
+
+		static DWORD_PTR GetFileIconList(String ^ path)
+		{
+			SHFILEINFO shinfo;
+			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
+			DWORD_PTR im_list;
+			im_list = Antares::SHGetFileInfo( str, 0, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES  | 0*SHGFI_ICON);
+			return im_list;
+
+		}
+		DWORD_PTR imagelist;
+		int folder_index;
+		int file_index;
+		Dictionary<String^, int> ^dic;
+	};
 
 
 	public ref class FileItem : public System::Windows::Forms::ListViewItem{
@@ -76,6 +135,7 @@ namespace Antares {
 		System::String^ directory;
 		System::String^ safe_filename;
 		System::String^ datestring;
+		System::String^ full_filename;
 		System::DateTime datetime;
 		char type;
 		long long int size;
@@ -93,35 +153,36 @@ namespace Antares {
 
 		ComputerItem(int letter) : FileItem()    // Represents drive letter with letter-th letter of the alphabet
 		{
-            char dstr[2];
+			char dstr[2];
 			dstr[0]='A'+letter;
 			dstr[1]=0;
 			String^ namestring =  ( gcnew String(dstr) ) +":\\";
-            this->Text = namestring;
+			this->Text = namestring;
 			this->isdir=true;
 			this->datestring = "";
 			this->size=0;
 			this->type='f';
 			this->filename=namestring;
-		    
+            this->full_filename = namestring;
 
 		}
 
-		ComputerItem(String^ path) :  FileItem()
+		ComputerItem(String^ path, String^ dir) :  FileItem()
 		{
-			
+
 			FileInfo^ f = gcnew FileInfo(path);   //Todo: handle exceptions
 			FileAttributes attr = f->Attributes::get();
 			this->filename = Path::GetFileName(path);
-			 
+
 			String^ typestring;
 			String^ sizestring="";
+			this->directory = dir;
 			if ( (attr & FileAttributes::Directory) == FileAttributes::Directory)
 			{
 				this->isdir=true;
 				typestring = "Folder";
 				this->size=0;
-				this->ImageIndex = 0;
+				//this->ImageIndex = 0;
 			}
 			else
 			{
@@ -129,24 +190,25 @@ namespace Antares {
 				typestring="File";
 				this->size = f->Length::get();
 				sizestring = HumanReadableSize(this->size);
-				if (this->filename->EndsWith(".rec"))
-					this->ImageIndex = 2;
-				else
-					this->ImageIndex = 1;
+				//if (this->filename->EndsWith(".rec"))
+				//	this->ImageIndex = 2;
+				//else
+				//	this->ImageIndex = 1;
 
-				
+
+
 			}
 			DateTime date = f->LastWriteTime;
 			this->datetime = date;
-            this->datestring = DateString(date);
+			this->datestring = DateString(date);
 			this->Text = this->filename;
-
+			this->full_filename = path; 
 			this->SubItems->Add( sizestring );
 			this->SubItems->Add(typestring);
 			this->SubItems->Add(this->datestring);
 
 		}
-      
+
 
 	};
 
@@ -166,7 +228,7 @@ namespace Antares {
 			int i,j;
 
 			time_t timestamp;
-            String ^namestring = gcnew String( (char *) entry->name);
+			String ^namestring = gcnew String( (char *) entry->name);
 
 			//toolStripStatusLabel1->Text= " i= "+i.ToString();
 			String ^typestring = gcnew String("");
@@ -176,16 +238,16 @@ namespace Antares {
 				this->type = 'd';
 				typestring = "Folder";
 				this->isdir = true;
-				this->ImageIndex = 0;
+				//this->ImageIndex = 0;
 				break;
 
 			case 2:
 				this->type = 'f';
 				typestring = "File";
-				if (namestring->EndsWith(".rec"))
-					this->ImageIndex=2;
-				else
-					this->ImageIndex = 1;
+				//if (namestring->EndsWith(".rec"))
+				//	this->ImageIndex=2;
+				//else
+				//	this->ImageIndex = 1;
 				this->isdir=false;
 				break;
 
@@ -201,7 +263,7 @@ namespace Antares {
 			* USB cables, this condition is likely to be satisfied. */
 			timestamp = tfdt_to_time(&entry->stamp);
 			//printf("%c %20llu %24.24s %s\n", type, get_u64(&entry->size),	ctime(&timestamp), entry->name);
-			
+
 			String ^safe_namestring = safeString((char *) entry->name );
 			this->filename = namestring;
 			this->size = get_u64(&entry->size);
@@ -243,7 +305,7 @@ namespace Antares {
 
 
 
-	public ref class ListViewItemComparer : IComparer {
+	public ref class ListViewItemComparer : System::Collections::IComparer {
 	public:
 		int col;
 		int order;
@@ -258,30 +320,30 @@ namespace Antares {
 		}
 		virtual int Compare(System::Object^ x, System::Object^ y)
 		{
-            return this->order * CompareAscending(x,y);
+			return this->order * CompareAscending(x,y);
 		}
-        int CompareAscending(System::Object^x, System::Object^y)
+		int CompareAscending(System::Object^x, System::Object^y)
 		{
 			//int returnVal = 0;
-		
+
 			//returnVal = String::Compare(((ListViewItem)x).SubItems[col].Text,
 			//((ListViewItem)y).SubItems[col].Text);
-            FileItem^ fx = safe_cast<FileItem^> (x);
-            FileItem^ fy = safe_cast<FileItem^> (y);
+			FileItem^ fx = safe_cast<FileItem^> (x);
+			FileItem^ fy = safe_cast<FileItem^> (y);
 
 			// Whatever column it is, a folder is always "less" than a file
 			if (fx->isdir && !fy->isdir) return -1;
-            if (!fx->isdir && fy->isdir) return 1;
+			if (!fx->isdir && fy->isdir) return 1;
 
 			// Sort by name
 			if (this->col == 0) return String::Compare(fx->filename, fy->filename, true);
-           
+
 			// Sort by size
 			if (this->col == 1)
 			{
-            if (fx->size < fy->size) return -1;
-            if (fx->size > fy->size) return 1;
-			return 0;
+				if (fx->size < fy->size) return -1;
+				if (fx->size > fy->size) return 1;
+				return 0;
 			}
 
 			// Sort by type
@@ -293,8 +355,6 @@ namespace Antares {
 
 		}
 	};
-
-
 
 
 }

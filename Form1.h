@@ -32,6 +32,7 @@ extern FILE* hf;
 #include "deleteconfirmation.h"
 #include "overwriteconfirmation.h"
 #include "ProgInfo.h"
+#include "Settings.h"
 
 //ref class CopyDialog ;
 
@@ -66,6 +67,12 @@ namespace Antares {
 
 
 
+
+	[DllImport("user32.dll")]
+	BOOL WINAPI DestroyIcon(HICON hIcon);
+
+
+
 	enum
 	{
 		OVERWRITE,
@@ -88,16 +95,30 @@ namespace Antares {
 	public ref class Form1 : public System::Windows::Forms::Form
 	{
 
-	public: static void SuspendDrawing( Control^ parent ) 
-			{ 
-				Antares::SendMessage((HWND) parent->Handle.ToPointer(), WM_SETREDRAW, false, 0); 
-			} 
+	public: 
+	
 
-	public: static void ResumeDrawing( Control^ parent ) 
-			{ 
-				Antares::SendMessage((HWND) parent->Handle.ToPointer(), WM_SETREDRAW, true, 0); 
-				//parent->Refresh(); 
-			} 
+
+		void setListViewStyle(ListView^ listview)
+		{
+			HWND window_pointer = (HWND) listview->Handle.ToPointer();
+			Antares::SendMessage(window_pointer ,  LVM_SETIMAGELIST, LVSIL_SMALL, this->icons->imagelist);
+			LRESULT styles = Antares::SendMessage(window_pointer, (int) LVM_GETEXTENDEDLISTVIEWSTYLE, 0,0);
+			styles |= LVS_EX_DOUBLEBUFFER ;
+			Antares::SendMessage(window_pointer, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, (int) styles);
+		}
+
+
+		static void SuspendDrawing( Control^ parent ) 
+		{ 
+			Antares::SendMessage((HWND) parent->Handle.ToPointer(), WM_SETREDRAW, false, 0); 
+		} 
+
+		static void ResumeDrawing( Control^ parent ) 
+		{ 
+			Antares::SendMessage((HWND) parent->Handle.ToPointer(), WM_SETREDRAW, true, 0); 
+			//parent->Refresh(); 
+		} 
 
 	protected:
 		virtual void WndProc( Message% m ) override
@@ -125,6 +146,9 @@ namespace Antares {
 			//ListViewItem^ item;
 			TopfieldItem^ item;
 
+
+			
+			icons = gcnew Antares::Icons();
 
 			int reason;
 			this->listView1SortColumn = -1;
@@ -167,78 +191,43 @@ namespace Antares {
 			//this->basicIconsSmall->Images->Add( Bitmap::FromFile( "folder.bmp" ) );
 			//this->basicIconsSmall->Images->Add( Bitmap::FromFile( "document.bmp" ) );
 			//this->basicIconsSmall->Images->Add( Bitmap::FromFile( "rec_file.bmp" ) );
-			this->listView1->SmallImageList = this->basicIconsSmall;
-			this->listView2->SmallImageList = this->basicIconsSmall;
+			//this->listView1->SmallImageList = this->basicIconsSmall;
+			//this->listView2->SmallImageList = this->basicIconsSmall;
 
 
 			// Load configuration. 
+			this->settings = gcnew Settings();
 
-			try{
-				int sort_PC=0;  int sort_PVR=0;
-				this->config =  ConfigurationManager::OpenExeConfiguration( ConfigurationUserLevel::None);
-				this->settings=config->AppSettings->Settings;
-				if (nullptr!=settings["TurboMode"])
-					if (String::Compare("on",settings["TurboMode"]->Value)==0) this->checkBox1->Checked = true; else this->checkBox1->Checked = false;
+			if (String::Compare("on",settings["TurboMode"])==0) this->checkBox1->Checked = true; else this->checkBox1->Checked = false;
 
-				if (nullptr!=settings["TopfieldDir"])
-					this->setTopfieldDir(settings["TopfieldDir"]->Value);
-				if (nullptr!=settings["ComputerDir"])
-					this->setComputerDir(settings["ComputerDir"]->Value);
-				if (nullptr!=settings["PVR_SortColumn"])
-				{
-					this->listView1SortColumn = System::Convert::ToInt32(settings["PVR_SortColumn"]->Value);
-					sort_PVR++;
-				}
-				if (nullptr!=settings["PC_SortColumn"])
-				{
-					this->listView2SortColumn = System::Convert::ToInt32(settings["PC_SortColumn"]->Value);
-					Console::WriteLine("PC_SortColumn was "+this->listView2SortColumn.ToString());
-					sort_PC++;
-				}
-				if (nullptr!=settings["PVR_SortOrder"])
-				{
-					if (String::Compare(settings["PVR_SortOrder"]->Value, "Ascending") == 0)  
-					{
-						this->listView1->Sorting = SortOrder::Ascending;
-						sort_PVR++;
-					}
-
-					if (String::Compare(settings["PVR_SortOrder"]->Value, "Descending") == 0)  
-					{
-						this->listView1->Sorting = SortOrder::Descending;
-						sort_PVR++;
-					}
-				}
-				if (nullptr!=settings["PC_SortOrder"])
-				{
-					if (String::Compare(settings["PC_SortOrder"]->Value, "Ascending") == 0)  
-					{
-						this->listView2->Sorting = SortOrder::Ascending;
-						Console::WriteLine("PC_SortOrder was Ascending");
-						sort_PC++;
-					}
-
-					if (String::Compare(settings["PC_SortOrder"]->Value, "Descending") == 0)  
-					{
-						this->listView2->Sorting = SortOrder::Descending;
-						Console::WriteLine("PC_SortOrder was Descending");
-						sort_PC++;
-					}
-				}
-				if (sort_PC>1)
-				{
-					this->listView2->ListViewItemSorter = gcnew ListViewItemComparer(this->listView2SortColumn,this->listView2->Sorting);
-				}
-				if (sort_PVR>1)
-				{
-					this->listView1->ListViewItemSorter = gcnew ListViewItemComparer(this->listView1SortColumn,this->listView1->Sorting);
-				}
-
-			}
-			catch(...)
+			this->setTopfieldDir(settings["TopfieldDir"]);
+			this->setComputerDir(settings["ComputerDir"]);
+			this->listView1SortColumn = System::Convert::ToInt32(settings["PVR_SortColumn"]);
+			this->listView2SortColumn = System::Convert::ToInt32(settings["PC_SortColumn"]);
+			if (String::Equals(settings["PVR_SortOrder"], "Ascending"))  
 			{
+				this->listView1->Sorting = SortOrder::Ascending;
 
 			}
+			else
+			{
+				this->listView1->Sorting = SortOrder::Descending;
+			}
+
+			if (String::Equals(settings["PC_SortOrder"], "Ascending"))  
+			{
+				this->listView2->Sorting = SortOrder::Ascending;
+			}
+
+			else
+			{
+				this->listView2->Sorting = SortOrder::Descending;
+			}
+
+			this->listView2->ListViewItemSorter = gcnew ListViewItemComparer(this->listView2SortColumn,this->listView2->Sorting);
+			this->listView1->ListViewItemSorter = gcnew ListViewItemComparer(this->listView1SortColumn,this->listView1->Sorting);
+
+
 
 
 			this->TopfieldClipboard = gcnew array<String^> {};
@@ -252,42 +241,22 @@ namespace Antares {
 
 
 			// Enable double-buffering on the ListViews
-			LRESULT styles = Antares::SendMessage((HWND) this->listView2->Handle.ToPointer(), (int) LVM_GETEXTENDEDLISTVIEWSTYLE, 0,0);
-			styles |= LVS_EX_DOUBLEBUFFER ;
-			Antares::SendMessage((HWND)this->listView2->Handle.ToPointer(), LVM_SETEXTENDEDLISTVIEWSTYLE, 0, (int) styles);
-			Antares::SendMessage((HWND)this->listView1->Handle.ToPointer(), LVM_SETEXTENDEDLISTVIEWSTYLE, 0, (int) styles);
+
+			//Antares::SendMessage((HWND)this->listView1->Handle.ToPointer(), LVM_SETEXTENDEDLISTVIEWSTYLE, 0, (int) styles);
 
 
 			this->CheckConnection();
 			this->last_layout_x = -1;this->last_layout_y=-1;
 			this->Arrange();
+			//Antares::SendMessage((HWND) listView2->Handle.ToPointer() ,  LVM_SETIMAGELIST, LVSIL_SMALL, this->imagelist);
 
+			this->setListViewStyle(listView1);
+			this->setListViewStyle(listView2);
 
 		}
 
 
 
-
-		void changeSetting(String^ key, String^ val)
-		{
-			if (this->config != nullptr && this->settings != nullptr)
-			{
-				if (this->settings[key] == nullptr)
-				{
-					this->settings->Add(key,val);
-					this->config->Save(ConfigurationSaveMode::Modified);
-					Console::WriteLine("Added the setting "+key+" to " +val);
-				}
-				else
-				{
-					if (String::Compare(val, this->settings[key]->Value)==0) return;
-
-					this->settings[key]->Value = val;
-					this->config->Save(ConfigurationSaveMode::Modified);
-					Console::WriteLine("Changed the setting "+key+" to " +val);
-				}
-			}
-		}
 
 		void absorb_late_packets(int count, int timeout)
 		{
@@ -376,7 +345,7 @@ namespace Antares {
 			if (this->fd !=NULL && device!=NULL)  // Topfield is apparently still connected
 			{
 				libusb_free_device_list(devs, 1);
-				printf("Topfield is still connected.\n");
+				//printf("Topfield is still connected.\n");
 				return;
 			}
 
@@ -384,7 +353,7 @@ namespace Antares {
 			if (this->fd == NULL && device==NULL)  // Topfield is apparently still disconnected
 			{
 				libusb_free_device_list(devs, 1);
-				printf("Topfield is still disconnected.\n");
+				//printf("Topfield is still disconnected.\n");
 				this->label2->Text = "PVR: Device not connected";
 				return;
 			}
@@ -506,13 +475,18 @@ namespace Antares {
 					if ( (drives&1)==1)
 					{
 						item = gcnew ComputerItem(j);
+						int ic = this->icons->GetCachedIconIndex(item->full_filename);
+						if (ic>=0)
+							item->ImageIndex=ic;
+						else
+							item->ImageIndex=this->icons->folder_index;
 						this->listView2->Items->Add(item);
 					}
 
 					drives>>=1;
 				}
 				this->label1->Text = "My Computer";
-				this->changeSetting("ComputerDir","");
+				settings->changeSetting("ComputerDir","");
 			}
 			else   //List contents of actual directory
 			{
@@ -524,6 +498,7 @@ namespace Antares {
 				{
 					this->setComputerDir("");
 					this->loadComputerDir();
+					Console::WriteLine("Unhandled exception in loadComputerDir");
 					return;
 				}
 				catch(System::UnauthorizedAccessException ^E)
@@ -537,11 +512,22 @@ namespace Antares {
 				for (j=0; j<list->Length; j++)
 				{
 
-					item = gcnew ComputerItem(list[j]);
-					item->directory = dir;
-					//this->listView2->Items->Add(item);
-					Console::WriteLine(item->filename);
-					//Console::WriteLine( "How does " + dir + " compare with "+start_rename +				   "?");
+					item = gcnew ComputerItem(list[j], dir);
+					//try{
+					//Console::WriteLine(item->full_filename);
+					//System::Drawing::Icon^ icon = this->GetFileIcon(dir + "\\"+item->filename);
+					int ic = this->icons->GetCachedIconIndex(item->full_filename);
+					//Console::WriteLine(item->full_filename);
+
+					if (ic >= 0)
+					{
+						item->ImageIndex = ic;
+					}
+					else
+					{
+						item->ImageIndex = this->icons->file_index;
+					}
+				
 					if (String::Compare(item->filename, start_rename)==0)
 					{
 						//Console::WriteLine( dir + " compares with "+start_rename);
@@ -553,13 +539,15 @@ namespace Antares {
 				this->listView2->Items->Clear();
 				this->listView2->Items->AddRange(items);
 				this->listView2->EndUpdate();
-				this->changeSetting("ComputerDir",dir);
+				settings->changeSetting("ComputerDir",dir);
 				// Add a drive summary to label1:
 				String^ str = Path::GetPathRoot(dir);
 				if (str->Length > 0)
 				{
 					DriveInfo^ drive = gcnew DriveInfo(str);
 					str = " Local Disk "+str+"  --  " + HumanReadableSize(drive->AvailableFreeSpace) + " Free / " + HumanReadableSize(drive->TotalSize)+ " Total";
+					//str = " Local Disk "+str+"  --  " + HumanReadableSize(4e12) + " Free / " + HumanReadableSize(4e12)+ " Total";
+
 					label1->Text = str;
 
 				}
@@ -594,6 +582,7 @@ namespace Antares {
 			catch (System::ArgumentException^ E)
 			{
 				dir2="";
+				Console::WriteLine("Handled exception in computerUpDir");
 			}
 			//if (dir2==NULL) dir2="";
 
@@ -605,6 +594,7 @@ namespace Antares {
 			catch(System::NullReferenceException^ E)
 			{
 				dir2="";
+				Console::WriteLine("Handled exception in computerUpDir");
 			}
 
 			this->setComputerDir(dir2);
@@ -623,6 +613,7 @@ namespace Antares {
 			catch (System::ArgumentException^ E)
 			{
 				dir2="";
+				Console::WriteLine("Handled exception in topfieldUpDir");
 			}
 			//if (dir2==NULL) dir2="";
 
@@ -634,6 +625,7 @@ namespace Antares {
 			catch(System::NullReferenceException^ E)
 			{
 				dir2="";
+				Console::WriteLine("Handled exception in topfieldUpDir");
 			}
 
 			this->setTopfieldDir(dir2);
@@ -644,7 +636,7 @@ namespace Antares {
 		// Load and display files in the current topfield directory.
 		// If a file is named start_rename, then start the name editing process after the directory is loaded.
 		// (useful when we have just created a new folder).
-		int loadTopfieldDir(String^ start_rename)               // Uses the TopfieldMutex. Need to release before return.
+		int loadTopfieldDir(String^ start_rename)               
 		{
 			tf_packet reply;
 
@@ -660,18 +652,11 @@ namespace Antares {
 			TopfieldItem^ item;
 			array<TopfieldItem^>^ items = {};
 
-			//this->important_thread_waiting=true;
-			//this->TopfieldMutex->WaitOne();
-			//this->important_thread_waiting=false;
-
-
 			if (this->fd==NULL)
 			{
 				toolStripStatusLabel1->Text="Topfield not connected.";
 				return -EPROTO; 
 			}
-
-
 
 
 			bool hdd_size_successful = false;
@@ -757,6 +742,10 @@ namespace Antares {
 						{
 							//this->listView1->Items->Add(item);
 
+							if (item->isdir)
+								item->ImageIndex = this->icons->folder_index;
+							else
+								item->ImageIndex = this->icons->GetCachedIconIndex(item->filename, true);
 							items[numitems] = item;
 							numitems++;
 							if (String::Compare(start_rename,item->filename)==0)
@@ -794,7 +783,7 @@ namespace Antares {
 					//toolStripStatusLabel1->Text="Finished dir "+this->dircount.ToString();
 					//this->TopfieldMutex->ReleaseMutex();
 
-					this->changeSetting("TopfieldDir",this->topfieldCurrentDirectory);
+					settings->changeSetting("TopfieldDir",this->topfieldCurrentDirectory);
 					Array::Resize(items,numitems);
 					this->listView1->BeginUpdate();
 					this->listView1->Items->Clear();
@@ -849,6 +838,7 @@ namespace Antares {
 			fclose(hf);
 			FreeConsole();
 #endif
+
 			if (components)
 			{
 				delete components;
@@ -890,10 +880,6 @@ namespace Antares {
 			int listView1SortColumn;
 			int listView2SortColumn;
 
-			// Configuration related:
-			System::Configuration::Configuration^ config;
-			System::Configuration::KeyValueConfigurationCollection^ settings;
-
 
 			array<String^>^ TopfieldClipboard;  
 			String^ TopfieldClipboardDirectory;
@@ -905,7 +891,9 @@ namespace Antares {
 			int last_layout_x, last_layout_y;
 
 
-
+			Settings^ settings;
+			Antares::Icons^ icons;
+		
 
 
 
@@ -1526,7 +1514,7 @@ namespace Antares {
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.5.1";
+			this->Text = L"Antares  0.6";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -1635,6 +1623,7 @@ namespace Antares {
 				   Form::OnLayout(levent);
 				   for (int j=0; j<arr->Length; j++) this->ResumeDrawing(arr[j]);
 				   this->Refresh();
+				   Arrange_Buttons();
 				   //panel4->Refresh();
 			   }
 
@@ -1688,20 +1677,8 @@ namespace Antares {
 
 			 }
 
-	private: System::Void Arrange1(void)
+	private: System::Void Arrange_Buttons(void)
 			 {
-
-				 int fw = this->ClientRectangle.Width;
-				 int fh = this->ClientRectangle.Height;
-				 if (fw==this->last_layout_x && fh==this->last_layout_y) return;
-				 this->last_layout_x = fw;
-				 this->last_layout_y = fh;
-				 if (fw==0) return;
-				 int avg = (fw - this->panel2->Width)/2;
-
-				 this->panel4->Width=avg;
-				 this->panel3->Width=avg;
-
 
 				 int ph = this->panel2->Height;
 				 int bh = this->button1->Height;
@@ -1717,6 +1694,25 @@ namespace Antares {
 				 p2.Y = bp2;
 				 this->button1->Location=p1;
 				 this->button2->Location=p2;
+			 }
+
+	private: System::Void Arrange1(void)
+			 {
+
+				 int fw = this->ClientRectangle.Width;
+				 int fh = this->ClientRectangle.Height;
+				 if (fw==this->last_layout_x && fh==this->last_layout_y) return;
+				 this->last_layout_x = fw;
+				 this->last_layout_y = fh;
+				 if (fw==0) return;
+				 int avg = (fw - this->panel2->Width)/2;
+
+				 this->panel4->Width=avg;
+				 this->panel3->Width=avg;
+
+				 //Arrange_Buttons();
+
+
 
 
 
@@ -1729,11 +1725,12 @@ namespace Antares {
 			 }
 
 	private: System::Void Form1_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
-				 // Console::WriteLine("Layout");
+				 //Console::WriteLine("Layout");
 				 //this->Arrange();
 			 }
 
 	private: System::Void Form1_Resize(System::Object^  sender, System::EventArgs^  e) {
+
 
 				 //this->Arrange();
 
@@ -2627,7 +2624,7 @@ end_copy_to_pc:
 							 case DATA:
 								 {
 									 int payloadSize = sizeof(packet.data) - 9;    payloadSize = payloadSize / 1024*1024; 
-                                    
+
 									 int w;
 
 									 if (have_next_packet)
@@ -2854,12 +2851,12 @@ out:
 					 if (listview->Sorting == SortOrder::Ascending)
 					 {
 						 listview->Sorting = SortOrder::Descending;
-						 this->changeSetting(type+"_SortOrder","Descending");
+						 settings->changeSetting(type+"_SortOrder","Descending");
 					 }
 					 else
 					 {
 						 listview->Sorting = SortOrder::Ascending;
-						 this->changeSetting(type+"_SortOrder","Ascending");
+						 settings->changeSetting(type+"_SortOrder","Ascending");
 					 }
 					 printf("%d\n",listview->Sorting);
 
@@ -2867,14 +2864,15 @@ out:
 				 else
 				 {
 					 listview->Sorting = SortOrder::Ascending;
-					 this->changeSetting(type+"_SortOrder","Ascending");
+					 settings->changeSetting(type+"_SortOrder","Ascending");
 				 }
 				 *sortcolumn = e->Column;
-				 this->changeSetting(type+"_SortColumn", e->Column.ToString());
+				 settings->changeSetting(type+"_SortColumn", e->Column.ToString());
 
 				 listview->ListViewItemSorter = gcnew ListViewItemComparer(e->Column,listview->Sorting);
 
 				 listview->Sort();
+				 this->setListViewStyle(listview);
 			 }
 	private: System::Void toolStripButton7_Click(System::Object^  sender, System::EventArgs^  e) {
 
@@ -3036,6 +3034,7 @@ out:
 							 catch(...)
 							 {
 								 success=false;
+								 
 
 							 }
 							 if (!success)
@@ -3182,9 +3181,9 @@ out:
 
 	private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 				 if (this->checkBox1->Checked)
-					 this->changeSetting("TurboMode","on");
+					 settings->changeSetting("TurboMode","on");
 				 else
-					 this->changeSetting("TurboMode","off");
+					 settings->changeSetting("TurboMode","off");
 			 }
 	private: System::Void listView2_ItemSelectionChanged(System::Object^  sender, System::Windows::Forms::ListViewItemSelectionChangedEventArgs^  e) {
 				 //printf("ListView2 Item Selection Changed.\n");
@@ -3528,7 +3527,7 @@ out:
 
 
 	private: System::Void Form1_ResizeEnd(System::Object^  sender, System::EventArgs^  e) {
-				 Console::WriteLine("ResizeEnd");
+				 // Console::WriteLine("ResizeEnd");
 				 //this->ResumeLayout();
 			 }
 	private: System::Void Form1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e) {
