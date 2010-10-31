@@ -23,7 +23,7 @@ FILE old_stdout;
 FILE old_stderr;
 FILE* hf;
 
-
+namespace Antares {
 
 
 String^ safeString( String^ filename_str)
@@ -37,7 +37,7 @@ String^ safeString( String^ filename_str)
 		if (c<32) c='_';
 		if (c==':') c='-';
 		if (c=='\"') c='\'';
-		if (c=='<' || c=='>' || c=='/' || c=='\\' || c=='|' || c=='?' || c=='*')  c='_';
+		if (c=='<' || c=='>' || c=='/' || c=='|' || c=='?' || c=='*')  c='_';
         sb[i]=c;
 	}
     return sb->ToString();
@@ -141,6 +141,8 @@ String^ HumanReadableSize(__u64 size)
 		s = s + " TB";
 	}
 	return s;
+}
+
 }
 
 [STAThreadAttribute]

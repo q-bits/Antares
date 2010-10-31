@@ -19,17 +19,11 @@ extern "C" {
 
 }
 
-System::String^ HumanReadableSize(__u64 size);
-System::String^ DateString(time_t time);
-System::String^ DateString(System::DateTime time);
-System::String^ safeString( char* filename );
-System::DateTime Time_T2DateTime(time_t t);
-
-
 
 #define EPROTO 1
 
 namespace Antares {
+
 
 	using namespace System;
 	using namespace System::ComponentModel;
@@ -43,6 +37,17 @@ namespace Antares {
 
 	[DllImport("shell32.dll")]
 	DWORD_PTR SHGetFileInfo(LPCTSTR pszPath, DWORD dwFileAttributes, SHFILEINFO* psfi, UINT cbSizeFileInfo, UINT uFlags);
+
+
+	System::String^ HumanReadableSize(__u64 size);
+	System::String^ DateString(time_t time);
+	System::String^ DateString(System::DateTime time);
+	System::String^ safeString( char* filename );
+	System::String^ safeString( String^ filename );
+	System::DateTime Time_T2DateTime(time_t t);
+
+
+
 
 
 	public value class TopfieldFreeSpace
@@ -154,10 +159,12 @@ namespace Antares {
 		System::String^ safe_filename;
 		System::String^ datestring;
 		System::String^ full_filename;
+		System::String^ recursion_offset;
 		System::DateTime datetime;
 		char type;
 		long long int size;
 		bool isdir;
+
 
 
 	};
@@ -182,6 +189,7 @@ namespace Antares {
 			this->type='f';
 			this->filename=namestring;
             this->full_filename = namestring;
+			this->recursion_offset="";
 
 		}
 
@@ -194,6 +202,7 @@ namespace Antares {
 
 			String^ typestring;
 			String^ sizestring="";
+			this->recursion_offset="";
 			this->directory = dir;
 			if ( (attr & FileAttributes::Directory) == FileAttributes::Directory)
 			{
@@ -224,6 +233,7 @@ namespace Antares {
 			this->SubItems->Add( sizestring );
 			this->SubItems->Add(typestring);
 			this->SubItems->Add(this->datestring);
+			this->safe_filename = Antares::safeString(filename);
 
 		}
 
@@ -231,12 +241,28 @@ namespace Antares {
 	};
 
 
+
+	String^ combineTopfieldPath(String^ path1,  String^ path2)
+	{
+
+		String^ path;
+
+		path = path1; 
+		if (path->Length == 0 || !path->EndsWith("\\"))
+			path = path + "\\";
+
+		path = path + path2;
+
+		return path;
+	}
+
+
 	public ref class TopfieldItem : public FileItem {
 
 	public:
 
 
-		TopfieldItem(typefile *entry) : FileItem()
+		TopfieldItem(typefile *entry, String^ containing_directory) : FileItem()
 		{
 
 			time_t timestamp;
@@ -280,6 +306,7 @@ namespace Antares {
 			this->filename = namestring;
 			this->size = get_u64(&entry->size);
 			this->safe_filename = safe_namestring;
+			this->recursion_offset = "";
 			//char sizestr[100]; StrFormatByteSizeA( get_u64(&entries[i].size), sizestr, 99);
 			String ^sizestring =  HumanReadableSize((__u64) get_u64(&entry->size));
 			if (this->type=='d') sizestring="";
@@ -290,10 +317,13 @@ namespace Antares {
 			//dt->AddSeconds((double) timestamp);
 
 
+
 			//newtime = localtime(&timestamp);
 			this->datetime = Time_T2DateTime(timestamp);
 			this->datestring = DateString(this->datetime);
 
+			this->directory = containing_directory;
+			this->full_filename = combineTopfieldPath(containing_directory, filename);
 			//DateTime^ dt = DateTime::FromFileTimeUtc(timestamp * 10000000LL + 116444736000000000LL);
 
 

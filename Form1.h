@@ -38,11 +38,7 @@ extern FILE* hf;
 
 #include "antares.h"
 
-System::String^ HumanReadableSize(__u64 size);
-System::String^ DateString(time_t time);
-System::String^ safeString( char* filename );
-System::String^ safeString( String^ filename_str );
-time_t DateTimeToTime_T(System::DateTime datetime);
+
 
 #define EPROTO 1
 
@@ -61,6 +57,13 @@ namespace Antares {
 	using namespace System::Threading;
 	using namespace System::Runtime::InteropServices; // for class Marshal
 
+
+
+	System::String^ HumanReadableSize(__u64 size);
+System::String^ DateString(time_t time);
+System::String^ safeString( char* filename );
+System::String^ safeString( String^ filename_str );
+time_t DateTimeToTime_T(System::DateTime datetime);
 
 	[DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet::Auto)]
 	LRESULT SendMessage(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
@@ -231,16 +234,14 @@ namespace Antares {
 			//this->ResizeRedraw = true;
 
 
-			// Enable double-buffering on the ListViews
-
-			//Antares::SendMessage((HWND)this->listView1->Handle.ToPointer(), LVM_SETEXTENDEDLISTVIEWSTYLE, 0, (int) styles);
+			
 
 
 			this->CheckConnection();
 			this->last_layout_x = -1;this->last_layout_y=-1;
 			this->Arrange();
-			//Antares::SendMessage((HWND) listView2->Handle.ToPointer() ,  LVM_SETIMAGELIST, LVSIL_SMALL, this->imagelist);
 
+			// Set double-buffering and image list on the ListViews
 			this->setListViewStyle(listView1);
 			this->setListViewStyle(listView2);
 
@@ -442,6 +443,27 @@ namespace Antares {
 			this->textBox2->Text = this->topfieldCurrentDirectory;
 		};
 
+
+		array<ComputerItem^>^ loadComputerDirArray(String^ dir)
+		{
+			array<String^>^ list;
+			int j;
+			
+			
+
+			list = System::IO::Directory::GetFileSystemEntries(dir);
+
+			array<ComputerItem^>^ items = gcnew array<ComputerItem^>(list->Length);
+			for (j=0; j<list->Length; j++)
+			{
+
+				items[j] = gcnew ComputerItem(list[j], dir);
+			}
+			return items;
+		}
+
+
+
 		// Load and display files in the current computer directory.
 		// If a file is named start_rename, then start the name editing process after the directory is loaded.
 		// (useful when we have just created a new folder).
@@ -481,9 +503,9 @@ namespace Antares {
 			}
 			else   //List contents of actual directory
 			{
-				array<String^>^ list;
+				
 				try{
-					list = System::IO::Directory::GetFileSystemEntries(dir);
+					items = this->loadComputerDirArray(dir);
 				}
 				catch(System::IO::IOException ^)
 				{
@@ -499,17 +521,11 @@ namespace Antares {
 					return;
 
 				}
-				Array::Resize(items,list->Length);
-				for (j=0; j<list->Length; j++)
+				
+				for (j=0; j<items->Length; j++)
 				{
-
-					item = gcnew ComputerItem(list[j], dir);
-					//try{
-					//Console::WriteLine(item->full_filename);
-					//System::Drawing::Icon^ icon = this->GetFileIcon(dir + "\\"+item->filename);
+                    item = items[j];
 					int ic = this->icons->GetCachedIconIndex(item->full_filename);
-					//Console::WriteLine(item->full_filename);
-
 					if (ic >= 0)
 					{
 						item->ImageIndex = ic;
@@ -521,10 +537,8 @@ namespace Antares {
 
 					if (String::Compare(item->filename, start_rename)==0)
 					{
-						//Console::WriteLine( dir + " compares with "+start_rename);
 						rename_item=item; do_rename=true;
 					}
-					items[j]=item;
 				}
 				this->listView2->BeginUpdate();
 				this->listView2->Items->Clear();
@@ -628,6 +642,7 @@ namespace Antares {
 		// Load the specified topfield directory into an array of TopfieldItems
 		array<TopfieldItem^>^ loadTopfieldDirArray(String^ path)               
 		{
+			//Console::WriteLine("Loading directory: "+path);
 			tf_packet reply;
 
 			__u16 count;
@@ -664,7 +679,7 @@ namespace Antares {
 					Array::Resize(items, items->Length + count);
 					for(i = 0; (i < count); i++)
 					{
-						item = gcnew TopfieldItem(&entries[i]);
+						item = gcnew TopfieldItem(&entries[i],path);
 						item->directory = path;
 						if (String::Compare(item->filename,"..")!=0 ) 
 						{
@@ -765,7 +780,9 @@ namespace Antares {
 
 			this->label2->Text = " Topfield device  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " total";
 
+			///// Actually load the directory
 			items = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);
+			/////
 
 			for(i = 0; i < items->Length ; i++)
 			{
@@ -1812,73 +1829,155 @@ namespace Antares {
 
 	private: System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {    
 				 // Copy files from Topfield to computer
-
-
+                 const int max_folders = 1000;
+                 int j;
 				 // Enumerate selected source items (PVR)
 
 				 ListView^ listview = this->listView1;
 
 				 ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
 
-				 System::Collections::IEnumerator^ myEnum = selected->GetEnumerator();
+				 array<TopfieldItem^>^ items = gcnew array<TopfieldItem^>(selected->Count);
+				 selected->CopyTo(items,0);
+
+                 array<array<TopfieldItem^>^>^ items_by_folder = gcnew array<array<TopfieldItem^>^>(max_folders);
+
+
+				 array<TopfieldItem^>^ these_items;
+				 
+				 //Recurse into subdirectories, if applicable
+                 int numfolders=1;
+				 items_by_folder[0]=items;
+				 int folder_ind;
+				 int total_items_after_recursion = items->Length;
+				 for( folder_ind=0;folder_ind<numfolders; folder_ind++)
+				 {
+                     these_items = items_by_folder[folder_ind];
+                     for each (TopfieldItem^ item in these_items)
+					 {
+						 //Console::WriteLine(item->full_filename);
+						 if (item->isdir)
+						 {
+							 items = this->loadTopfieldDirArray(item->full_filename);
+
+							 for each ( TopfieldItem^ it in items)
+							 {
+								if (item->recursion_offset == "")
+								   it->recursion_offset = item->safe_filename;
+								else
+									it->recursion_offset = Antares::combineTopfieldPath(item->recursion_offset, item->safe_filename);
+								//Console::WriteLine("Item has full filename "+it->full_filename+", and recursion offset "+it->recursion_offset);
+							 }
+
+							 if (items->Length > 0 && numfolders<max_folders)
+							 {
+								 items_by_folder[numfolders]=items;
+								 total_items_after_recursion += items->Length;
+								 numfolders++;
+							 }
+						 }
+					 }
+				 }
+
+				 int numitems = total_items_after_recursion;
+				 // Copy the results into the flat "src_items" array
+				 array<TopfieldItem^>^    src_items = gcnew array<TopfieldItem^>(numitems);
+				 int ind=0;
+				 //int numdirs=1;
+				 for (folder_ind=0; folder_ind<numfolders; folder_ind++)
+				 {
+                     these_items = items_by_folder[folder_ind];
+                     for each (TopfieldItem^ item in these_items)
+					 {
+						 src_items[ind]=item;
+						 ind++;
+						 //if (item->isdir) numdirs++;
+					 }
+				 }
+
+			
+				 //System::Collections::IEnumerator^ myEnum = selected->GetEnumerator();
 				 TopfieldItem^ item;
 
-				 int numfiles =0;
+				 int num_files =0;
 				 long long totalsize = 0;
 				 //long long totalsize_notskip=0;
 				 long long resume_granularity=8192;
 
-				 array<TopfieldItem^>^    src_items = gcnew array<TopfieldItem^>(selected->Count );
-				 array<bool>^             dest_exists = gcnew array<bool>(selected->Count);
-				 array<DateTime>^         dest_date = gcnew array<DateTime>(selected->Count);
-				 array<long long int>^    dest_size = gcnew array<long long int>(selected->Count);
-				 array<long long int>^    src_sizes = gcnew array<long long int>(selected->Count);
-				 array<String^>^          dest_filename= gcnew array<String^>(selected->Count);
-				 array<int>^              overwrite_category=gcnew array<int>(selected->Count);
-				 array<int>^              overwrite_action = gcnew array<int>(selected->Count);
-				 array<long long int>^    current_offsets = gcnew array<long long int>(selected->Count);
+
+				 array<bool>^             dest_exists = gcnew array<bool>(numitems);
+				 array<DateTime>^         dest_date = gcnew array<DateTime>(numitems);
+				 array<long long int>^    dest_size = gcnew array<long long int>(numitems);
+				 array<long long int>^    src_sizes = gcnew array<long long int>(numitems);
+				 array<String^>^          dest_filename= gcnew array<String^>(numitems);
+				 array<int>^              overwrite_category=gcnew array<int>(numitems);
+				 array<int>^              overwrite_action = gcnew array<int>(numitems);
+				 array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
 
 
 				 array<int>^ num_cat = {0,0,0}; //numbers of existing files (divided by category)
 				 int num_exist=0;
 				 array<String^>^ files_cat = {"","",""};
-				 while ( myEnum->MoveNext() )
+
+
+
+				 //while ( myEnum->MoveNext() )
+				 for (ind=0; ind<numitems; ind++)
 				 {
-					 item = safe_cast<TopfieldItem^>(myEnum->Current);
-					 Console::WriteLine(item->Text);
-					 if (item->isdir) {continue;}   // Don't support whole directories yet
-					 src_items[numfiles]=item;
-					 src_sizes[numfiles]=item->size;
+					 //item = safe_cast<TopfieldItem^>(myEnum->Current);
+					 item=src_items[ind];
+					 //Console::WriteLine(item->Text);
+					 //if (item->isdir) {continue;}   // Don't support whole directories yet
+					 //src_items[numfiles]=item;
 
-					 dest_filename[numfiles]=this->computerCurrentDirectory + "\\" + item->safe_filename;
-					 dest_exists[numfiles]=File::Exists(dest_filename[numfiles]);
-					 if (dest_exists[numfiles])
+
+					 if (item->recursion_offset == "")
+						 dest_filename[ind] = Path::Combine(this->computerCurrentDirectory, item->safe_filename);
+					 else
+					 {
+
+						 dest_filename[ind] = Path::Combine(this->computerCurrentDirectory, Antares::safeString(item->recursion_offset));
+						 dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
+					 }
+					 if (item->isdir)
+					 {
+					
+						 continue;
+					 }
+                     
+					 src_sizes[ind]=item->size;
+
+
+					 //dest_filename[ind]=Path::Combine(this->computerCurrentDirectory, item->safe_filename);
+
+					 dest_exists[ind]=File::Exists(dest_filename[ind]);
+					 if (dest_exists[ind])
 					 {          // TODO: error handling
-						 FileInfo^ fi = gcnew FileInfo(dest_filename[numfiles]);
+						 FileInfo^ fi = gcnew FileInfo(dest_filename[ind]);
 
-						 dest_date[numfiles]=fi->CreationTime;//File::GetLastWriteTime(dest_filename[numfiles]);
-						 dest_size[numfiles]=fi->Length;
+						 dest_date[ind]=fi->CreationTime;//File::GetLastWriteTime(dest_filename[numfiles]);
+						 dest_size[ind]=fi->Length;
 						 int cat=2;
-						 if (dest_size[numfiles] == item->size) // && dest_date[numfiles]==item->datetime)
+						 if (dest_size[ind] == item->size) // && dest_date[numfiles]==item->datetime)
 							 cat=0;
 						 else
 						 {
-							 if (dest_size[numfiles] < item->size) cat=1;
+							 if (dest_size[ind] < item->size) cat=1;
 						 }
 
-						 overwrite_category[numfiles]=cat;
+						 overwrite_category[ind]=cat;
 						 num_cat[cat]++;if (num_cat[cat]>1) files_cat[cat] = files_cat[cat]+"\n";
-						 files_cat[cat] = files_cat[cat]+dest_filename[numfiles]; 
+						 files_cat[cat] = files_cat[cat]+dest_filename[ind]; 
 
 						 num_exist++;
 					 }
 
-					 numfiles++;
+					 num_files++;
 					 totalsize += item->size;
 				 }
 
 
-				 if (numfiles==0) return;
+				 if (numitems==0) return;
 
 				 int num_skip=0;
 				 if (num_exist>0)
@@ -1914,7 +2013,7 @@ namespace Antares {
 					 int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
 					 int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
 
-					 for (int i=0; i<numfiles; i++)
+					 for (int i=0; i<numitems; i++)
 					 {
 						 item=src_items[i];
 						 overwrite_action[i]=OVERWRITE;
@@ -1934,7 +2033,7 @@ namespace Antares {
 								 if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 					 }
 				 }
-				 if (num_skip==numfiles) return;
+				 if (num_skip==numitems) return;
 
 				 if (this->checkBox1->Checked)
 					 this->set_turbo_mode( 1); //TODO: error handling for turbo mode selection
@@ -1953,19 +2052,12 @@ namespace Antares {
 				 //copydialog->current_offset=0;
 				 copydialog->filesizes = src_sizes;
 				 copydialog->current_offsets = current_offsets;
-				 copydialog->numfiles = numfiles;
+				 copydialog->numfiles = num_files;
 				 copydialog->current_index = 0;
 				 copydialog->window_title="Copying File(s) ... [PVR --> PC]";
 				 copydialog->current_file="Waiting for PVR...";
 				 copydialog->turbo_mode = this->turbo_mode;
 				 copydialog->update_dialog_threadsafe();
-
-				 //
-				 //copydialog->label3->Text = "Waiting for PVR...";
-				 //this->important_thread_waiting=true;
-				 //this->TopfieldMutex->WaitOne();
-				 //this->important_thread_waiting=false;
-				 //copydialog->label3->Text = "";
 
 
 				 //myEnum = selected->GetEnumerator();
@@ -1979,19 +2071,47 @@ namespace Antares {
 				 array<Byte>^ existing_bytes = gcnew array<Byte>(    2* (int) resume_granularity);
 				 long long existing_bytes_start; long long existing_bytes_count=0;
 
-				 for (int i=0; i<numfiles; i++)
+				 for (int i=0; i<numitems; i++)
 				 {
+
+					 item=src_items[i];
+
+					 if (item->isdir)
+					 {
+						 if (File::Exists(dest_filename[i]) && !Directory::Exists(dest_filename[i]))
+						 {
+							 copydialog->close_request_threadsafe();
+							 MessageBox::Show(this,"The folder "+dest_filename[ind]+" could not be created because a file of that name already exists. Aborting transfer.","Error",MessageBoxButtons::OK);
+							 
+							 return;					
+						 }
+						 if (!Directory::Exists(dest_filename[i]))
+						 {
+							 try {
+							      Directory::CreateDirectory(dest_filename[i]);
+							 }
+							 catch (...)
+							 {
+								  copydialog->close_request_threadsafe();
+								 MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
+								
+								 return;
+							 }
+						 }
+						 continue;
+					 }
+
 
 					 //item = safe_cast<TopfieldItem^>(myEnum->Current);
 					 int this_overwrite_action = OVERWRITE;
 					 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
 					 if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
-					 item=src_items[i];
-					 Console::WriteLine(item->Text);
+					 
+					 //Console::WriteLine(item->Text);
 
 					 bytecount=0;
-					 String^ full_dest_filename = this->computerCurrentDirectory + "\\" + item->safe_filename;
-					 String^ full_source_filename = item->directory + "\\" + item->filename;
+					 String^ full_dest_filename = dest_filename[i]; //this->computerCurrentDirectory + "\\" + item->safe_filename;
+					 String^ full_source_filename = item->full_filename; //item->directory + "\\" + item->filename;
 
 
 
@@ -2049,7 +2169,7 @@ restart_this_PVR_to_PC:
 
 					 char* srcPath = (char*)(void*)Marshal::StringToHGlobalAnsi(full_source_filename);
 
-					 printf("topfield_file_offset = %ld\n",topfield_file_offset);
+					 //printf("topfield_file_offset = %ld\n",topfield_file_offset);
 					 if (topfield_file_offset==0) 
 						 r = send_cmd_hdd_file_send(this->fd, GET, srcPath);   
 					 else
@@ -2139,7 +2259,7 @@ restart_this_PVR_to_PC:
 								 {
 									 int overlap_size = (int) ( dataLen < existing_bytes_count ? dataLen : existing_bytes_count );
 									 bool failed=false;
-									 printf("Overlap_size=%d\n",overlap_size);
+									 //printf("Overlap_size=%d\n",overlap_size);
 									 for (int j=0; j<overlap_size; j++)
 									 {
 
@@ -2203,7 +2323,7 @@ restart_this_PVR_to_PC:
 						 case DATA_HDD_FILE_END:
 							 send_success(fd);
 							 item->Selected = false;
-							 printf("DATA_HDD_FILE_END\n");
+							 //printf("DATA_HDD_FILE_END\n");
 							 result = 0;
 							 goto out;
 							 break;
@@ -2216,7 +2336,7 @@ restart_this_PVR_to_PC:
 							 break;
 
 						 case SUCCESS:
-							 printf("SUCCESS\n");
+							 //printf("SUCCESS\n");
 							 goto out;
 							 break;
 
@@ -2229,9 +2349,6 @@ restart_this_PVR_to_PC:
 
 
 					 }
-
-					 //_utime64(dstPath,(struct __utimbuf64 *) &mod_utime_buf);     
-					 //finalStats(bytecount, startTime);
 
 out:
 					 //_close(dst);
@@ -2261,11 +2378,29 @@ end_copy_to_pc:
 
 			 }
 
+			 TopfieldItem^ topfieldFileExists(array<array<TopfieldItem^>^>^ topfield_items_by_folder,  String^ dest_path)
+			 {
+                  int num = topfield_items_by_folder->Length;
+				  int j;
+				  for (j=0; j<num; j++)
+				  {
+					 array<TopfieldItem^>^ these_items = topfield_items_by_folder[j];
+                     for each (TopfieldItem^ titem in these_items)
+					 {
+						 if (titem->full_filename == dest_path)
+							 return titem;
+					 }
+				  }
+				  return nullptr;
+			 }
+
 			 ////////////////////////////////////////////////////////////////////////////////////
 	private: System::Void button1_Click(System::Object^  sender, System::EventArgs^  e) {
 
 				 // Copy files from Computer to Topfield
 
+				 const int max_folders = 1000;
+				 int j;
 				 int result = -EPROTO;
 				 //time_t startTime = time(NULL);
 				 enum
@@ -2279,84 +2414,180 @@ end_copy_to_pc:
 				 //int r;
 				 int update = 0;
 
-				 //trace(4, fprintf(stderr, "%s\n", __FUNCTION__));
-
-
-
-
 				 // Enumerate selected source items (Computer)
 
 				 ListView^ listview = this->listView2;
 
 				 ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
 
-				 System::Collections::IEnumerator^ myEnum = selected->GetEnumerator();
-				 ComputerItem^ item;
+				 array<ComputerItem^>^ items = gcnew array<ComputerItem^>(selected->Count);
+				 selected->CopyTo(items,0);
+                 array<array<ComputerItem^>^>^ items_by_folder = gcnew array<array<ComputerItem^>^>(max_folders);
 
-				 int numfiles =0;
+				 array<ComputerItem^>^ these_items;
+
+
+				 //Recurse into subdirectories, if applicable
+                 int numfolders=1;
+				 items_by_folder[0]=items;
+				 int folder_ind;
+				 int total_items_after_recursion = items->Length;
+				 for( folder_ind=0;folder_ind<numfolders; folder_ind++)
+				 {
+                     these_items = items_by_folder[folder_ind];
+                     for each (ComputerItem^ item in these_items)
+					 {
+						 //Console::WriteLine(item->full_filename);
+						 if (item->isdir)
+						 {
+							 items = this->loadComputerDirArray(item->full_filename);
+
+							 for each ( ComputerItem^ it in items)
+							 {
+								if (item->recursion_offset == "")
+								   it->recursion_offset = item->safe_filename;
+								else
+									it->recursion_offset = Path::Combine(item->recursion_offset, item->safe_filename);
+								//Console::WriteLine("Item has full filename "+it->full_filename+", and recursion offset "+it->recursion_offset);
+							 }
+
+							 if (items->Length > 0 && numfolders<max_folders)
+							 {
+								 items_by_folder[numfolders]=items;
+								 total_items_after_recursion += items->Length;
+								 numfolders++;
+							 }
+						 }
+					 }
+				 }
+
+				 int numitems = total_items_after_recursion;
+				 // Copy the results into the flat "src_items" array
+				 array<ComputerItem^>^    src_items = gcnew array<ComputerItem^>(numitems);
+				 int ind=0;
+				 int numdirs=1;
+				 for (folder_ind=0; folder_ind<numfolders; folder_ind++)
+				 {
+                     these_items = items_by_folder[folder_ind];
+                     for each (ComputerItem^ item in these_items)
+					 {
+						 src_items[ind]=item;
+						 ind++;
+						 if (item->isdir) numdirs++;
+					 }
+				 }
+
+				 // Load the each topfield directory corresponding to a source directory, if it exists
+                array<array<TopfieldItem^>^>^ topfield_items_by_folder = gcnew array<array<TopfieldItem^>^>(numdirs);
+                ind=0;
+				topfield_items_by_folder[ind] = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);
+				for each (ComputerItem^ item in src_items)
+				{
+					if (item->isdir)
+					{
+						ind++;
+						String ^tmp;
+						if (item->recursion_offset=="")
+							tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->filename);
+						else
+						{
+							tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->recursion_offset);
+							tmp = Antares::combineTopfieldPath(tmp,item->filename);
+						}
+						topfield_items_by_folder[ind]=this->loadTopfieldDirArray(tmp);
+					}
+				}
+
+                topfield_items_by_folder->Resize(topfield_items_by_folder, ind+1);
+
+
+
+                 ComputerItem^ item;
+
+				 int num_files =0;
 				 long long totalsize=0;
 				 //long long totalsize_notskip=0;
 				 long long resume_granularity=8192;
 
-				 array<ComputerItem^>^    src_items = gcnew array<ComputerItem^>(selected->Count );
-				 array<bool>^             dest_exists = gcnew array<bool>(selected->Count);
-				 array<DateTime>^         dest_date = gcnew array<DateTime>(selected->Count);
-				 array<long long int>^    dest_size = gcnew array<long long int>(selected->Count);
-				 array<long long int>^    src_sizes = gcnew array<long long int>(selected->Count);
-				 array<String^>^          dest_filename= gcnew array<String^>(selected->Count);
-				 array<int>^              overwrite_category=gcnew array<int>(selected->Count);
-				 array<int>^              overwrite_action = gcnew array<int>(selected->Count);
-				 array<long long int>^    current_offsets = gcnew array<long long int>(selected->Count);
+				 //array<ComputerItem^>^    src_items = gcnew array<ComputerItem^>(selected->Count );
+				 array<bool>^             dest_exists = gcnew array<bool>(numitems);
+				 array<DateTime>^         dest_date = gcnew array<DateTime>(numitems);
+				 array<long long int>^    dest_size = gcnew array<long long int>(numitems);
+				 array<long long int>^    src_sizes = gcnew array<long long int>(numitems);
+				 array<String^>^          dest_filename= gcnew array<String^>(numitems);
+				 array<int>^              overwrite_category=gcnew array<int>(numitems);
+				 array<int>^              overwrite_action = gcnew array<int>(numitems);
+				 array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
 
-				 ListView::ListViewItemCollection^ topfield_items = this->listView1->Items; 
-				 int ntopfield_items = topfield_items->Count;
+				 //ListView::ListViewItemCollection^ topfield_items = this->listView1->Items; 
+				 //int ntopfield_items = topfield_items->Count;
 				 TopfieldItem^ titem;
 				 array<int>^ num_cat = {0,0,0}; //numbers of existing files (divided by category)
 				 int num_exist=0;
 				 array<String^>^ files_cat = {"","",""};
-				 while ( myEnum->MoveNext() )
+				 //while ( myEnum->MoveNext() )
+                 for (ind=0; ind<numitems; ind++)
 				 {
-					 item = safe_cast<ComputerItem^>(myEnum->Current);
-					 Console::WriteLine(item->Text);
-					 if (item->isdir) {continue;}   // Don't support whole directories yet
-					 src_items[numfiles]=item;
-					 src_sizes[numfiles]=item->size;
-					 dest_filename[numfiles]=this->topfieldCurrentDirectory+"\\"+item->filename;
-					 dest_exists[numfiles]=false;
-					 for (int j=0; j<ntopfield_items; j++)
+					 item = src_items[ind];
+					 //item = safe_cast<ComputerItem^>(myEnum->Current);
+					 //Console::WriteLine(item->Text);
+	                if (item->recursion_offset == "")
+						dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, item->safe_filename);
+					 else
 					 {
-						 titem = safe_cast<TopfieldItem^>(topfield_items[j]);
-						 if (String::Compare(item->filename, titem->filename)==0 && !titem->isdir)
-						 {
-							 dest_exists[numfiles]=true;
-							 dest_size[numfiles]=titem->size;
-							 break;
-						 }
+
+						 dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
+						 dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
 					 }
 
-					 if (dest_exists[numfiles])
+
+					 if (item->isdir) {continue;}   
+					 //src_items[numfiles]=item;
+					 src_sizes[ind]=item->size;
+					 //dest_filename[numfiles]=this->topfieldCurrentDirectory+"\\"+item->filename;
+					 titem = this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]);
+					 if (titem == nullptr)
+						 dest_exists[ind]=false;
+					 else
+					 {
+						 dest_exists[ind]=true;
+						 dest_size[ind] = titem->size;
+					 }
+					 //dest_exists[numfiles]=false;
+					 //for (int j=0; j<ntopfield_items; j++)
+					 //{
+					//	 titem = safe_cast<TopfieldItem^>(topfield_items[j]);
+					//	 if (String::Compare(item->filename, titem->filename)==0 && !titem->isdir)
+					//	 {
+					//		 dest_exists[numfiles]=true;
+					//		 dest_size[numfiles]=titem->size;
+					//		 break;
+					//	 }
+					 //}
+
+					 if (dest_exists[ind])
 					 {          // TODO: error handling
 
 						 int cat=2;
-						 if (dest_size[numfiles] == item->size) // && dest_date[numfiles]==item->datetime)
+						 if (dest_size[ind] == item->size) // && dest_date[numfiles]==item->datetime)
 							 cat=0;
 						 else
 						 {
-							 if (dest_size[numfiles] < item->size) cat=1;
+							 if (dest_size[ind] < item->size) cat=1;
 						 }
 
-						 overwrite_category[numfiles]=cat;
+						 overwrite_category[ind]=cat;
 						 num_cat[cat]++;if (num_cat[cat]>1) files_cat[cat] = files_cat[cat]+"\n";
-						 files_cat[cat] = files_cat[cat]+dest_filename[numfiles]; 
+						 files_cat[cat] = files_cat[cat]+dest_filename[ind]; 
 
 						 num_exist++;
 					 }
 
-					 current_offsets[numfiles]=0;
-					 numfiles++;
+					 current_offsets[ind]=0;
+					 //numfiles++;
 					 totalsize += item->size;
 				 }
-				 if (numfiles==0) return;
+				 if (numitems==0) return;
 
 
 				 int num_skip=0;
@@ -2394,7 +2625,7 @@ end_copy_to_pc:
 					 int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
 					 int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
 
-					 for (int i=0; i<numfiles; i++)
+					 for (int i=0; i<numitems; i++)
 					 {
 						 item=src_items[i];
 						 overwrite_action[i]=OVERWRITE;
@@ -2414,7 +2645,7 @@ end_copy_to_pc:
 								 if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 					 }
 				 }
-				 if (num_skip==numfiles) return;
+				 if (num_skip==numitems) return;
 
 
 				 if (this->checkBox1->Checked)
@@ -2435,7 +2666,7 @@ end_copy_to_pc:
 				 copydialog->current_bytes_received=0;
 				 copydialog->filesizes = src_sizes;
 				 copydialog->current_offsets = current_offsets;
-				 copydialog->numfiles=numfiles;
+				 copydialog->numfiles=numitems;
 				 copydialog->current_index=0;
 				 copydialog->window_title="Copying File(s) ... [PC --> PVR]";
 				 copydialog->current_file="Waiting for PVR...";
@@ -2464,10 +2695,30 @@ end_copy_to_pc:
 				 //array<Byte>^ existing_bytes = gcnew array<Byte>(2*resume_granularity);
 
 
-				 for (int i=0; i<numfiles; i++)
+				 for (int i=0; i<numitems; i++)
 				 {
 					 item = src_items[i];
-					 Console::WriteLine(item->Text);
+					 //Console::WriteLine(item->Text);
+
+					 if (item->isdir)
+					 {
+						 titem = this->topfieldFileExists(topfield_items_by_folder,dest_filename[i]);
+						 int r=0;
+						 if (titem==nullptr)
+						 {
+                             r = this->newTopfieldFolder(dest_filename[i]);
+						 }
+						 // Error handling? What if titem is a file?
+						 if (r<0 || (titem!=nullptr && !titem->isdir) )
+						 {
+							  copydialog->close_request_threadsafe();
+							 MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
+							
+							 return;
+						 }
+
+						 continue;
+					 }
 
 					 int this_overwrite_action = OVERWRITE;
 					 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
@@ -2475,8 +2726,8 @@ end_copy_to_pc:
 
 					 byteCount=0;
 					 long long topfield_file_offset=0;
-					 String^ full_src_filename = this->computerCurrentDirectory + "\\" + item->filename;
-					 String^ full_dest_filename = this->topfieldCurrentDirectory + "\\" + item->filename;
+					 String^ full_src_filename =    item->full_filename;//this->computerCurrentDirectory + "\\" + item->filename;
+					 String^ full_dest_filename = dest_filename[i];//this->topfieldCurrentDirectory + "\\" + item->filename;
 
 
 					 // TODO:  Exception handling for file open
@@ -2597,7 +2848,7 @@ end_copy_to_pc:
 									 put_u32(&packet.cmd, DATA_HDD_FILE_START);
 
 									 // TODO: how are timezones being accounted for?
-									 time_to_tfdt64(DateTimeToTime_T(src_file_info->LastWriteTime.ToUniversalTime()) , &tf->stamp); 
+									 time_to_tfdt64(Antares::DateTimeToTime_T(src_file_info->LastWriteTime.ToUniversalTime()) , &tf->stamp); 
 									 //time_to_tfdt64(1275312247 , &tf->stamp);
 									 tf->filetype = 2;
 									 put_u64(&tf->size, src_file_info->Length);
@@ -3107,6 +3358,14 @@ out:
 				 // Console::WriteLine(e->KeyCode);
 
 			 }
+			 int newTopfieldFolder(String^ dir)
+			 {
+				 int r;
+				 char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
+				 r = do_hdd_mkdir(this->fd,path);
+				 Marshal::FreeHGlobal((System::IntPtr)(void*)path);
+				 return r;
+			 }
 
 	private: System::Void toolStripButton8_Click(System::Object^  sender, System::EventArgs^  e) {
 
@@ -3154,11 +3413,7 @@ out:
 
 					 dir = this->topfieldCurrentDirectory + "\\"+ foldername; 
 
-					 char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
-
-
-					 r = do_hdd_mkdir(this->fd,path);
-					 Marshal::FreeHGlobal((System::IntPtr)(void*)path);
+                     r=this->newTopfieldFolder(dir);
 					 if (r!=0) this->toolStripStatusLabel1->Text="Error creating new folder.";
 					 success=true;
 					 break;
@@ -3333,7 +3588,7 @@ out:
 
 							  ProgInfo^ pi = gcnew ProgInfo(&ri,"Program Information, "+fname);
 
-							  pi->ShowDialog();
+							  pi->ShowDialog(this);
 							  break;
 						  }
 					  }
@@ -3348,7 +3603,7 @@ out:
 							  HDD_DecodeRECHeader (charbuf, &ri);
 							  ProgInfo^ pi = gcnew ProgInfo(&ri,"Program Information, "+fname);
 
-							  pi->ShowDialog();
+							  pi->ShowDialog(this);
 							  break;
 						  }
 					  }
