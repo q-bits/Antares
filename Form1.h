@@ -327,7 +327,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 				libusb_close(this->fd);
 				this->fd=NULL;
 				libusb_free_device_list(devs, 1);
-				printf("Topfield is now disconnected.\n");
+				//printf("Topfield is now disconnected.\n");
 				this->label2->Text = "PVR: Device not connected";
 				this->listView1->Items->Clear();
 				return;
@@ -656,7 +656,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 			if (this->fd==NULL)
 			{
-				toolStripStatusLabel1->Text="Topfield not connected.";
+				//toolStripStatusLabel1->Text="Topfield not connected.";
 				return items; 
 			}
 
@@ -764,14 +764,14 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 			int i;
 			TopfieldItem ^ item, ^rename_item;
-			bool do_rename;
+			bool do_rename=false;
 			array<TopfieldItem^>^ items;
 
 
 
 			if (this->fd==NULL)
 			{
-				toolStripStatusLabel1->Text="Topfield not connected.";
+				//toolStripStatusLabel1->Text="Topfield not connected.";
 				return -EPROTO; 
 			}
 
@@ -794,7 +794,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 				else
 					item->ImageIndex = this->icons->GetCachedIconIndex(item->filename, true);
 
-				if (String::Compare(start_rename,item->filename)==0)
+				if (String::Equals(start_rename,item->filename) && !String::Equals(start_rename,"") )
 				{
 					rename_item=item; do_rename=true;
 				}
@@ -1048,8 +1048,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 			// toolStripStatusLabel1
 			// 
 			this->toolStripStatusLabel1->Name = L"toolStripStatusLabel1";
-			this->toolStripStatusLabel1->Size = System::Drawing::Size(118, 17);
-			this->toolStripStatusLabel1->Text = L"toolStripStatusLabel1";
+			this->toolStripStatusLabel1->Size = System::Drawing::Size(0, 17);
 			// 
 			// panel1
 			// 
@@ -3372,7 +3371,7 @@ out:
 				 // Clicked "New Folder", Topfield.
 				 if (this->fd==NULL)
 				 {
-					 this->toolStripStatusLabel1->Text="Topfield not connected.";
+					 //this->toolStripStatusLabel1->Text="Topfield not connected.";
 					 return; 
 				 }
 
