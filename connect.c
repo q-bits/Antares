@@ -17,7 +17,7 @@ libusb_device_handle* connect_device2(int * reason)
 {
 	libusb_device_handle* dh;
 	int success;
-	struct libusb_bus * bus;
+	//struct libusb_bus * bus;
 	struct libusb_device *dev, *device;
 	int i;
 	int r;
@@ -160,7 +160,7 @@ libusb_device_handle* connect_device()
 {
 	libusb_device_handle* dh;
 	int success;
-	struct libusb_bus * bus;
+	//struct libusb_bus * bus;
 	struct libusb_device *dev, *device;
 	int i;
 	int r;

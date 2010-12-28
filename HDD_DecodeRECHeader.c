@@ -11,12 +11,12 @@ dword get_dword(void* addr)
 	return get_u32(addr);
 }
 
-dword get_word(void* addr)
+word get_word(void* addr)
 {
 	return get_u16(addr);
 }
 
-dword get_byte(void* addr)
+byte get_byte(void* addr)
 {
 	return *( (__u8*) addr);
 }

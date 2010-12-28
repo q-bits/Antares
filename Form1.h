@@ -467,7 +467,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 		// Load and display files in the current computer directory.
 		// If a file is named start_rename, then start the name editing process after the directory is loaded.
 		// (useful when we have just created a new folder).
-		void loadComputerDir(String^ start_rename)
+		void loadComputerDir(String^ start_rename, String^ name_to_select)
 		{
 
 			int j;
@@ -478,6 +478,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 			String^ dir = this->computerCurrentDirectory;
 			ComputerItem^ rename_item; bool do_rename=false;
+			ComputerItem^ select_item; bool do_select=false;
 
 			if (dir->Equals(""))  // List drives
 			{
@@ -539,6 +540,12 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 					{
 						rename_item=item; do_rename=true;
 					}
+
+					if (String::Compare(item->filename, name_to_select)==0)
+					{
+					     select_item = item; do_select=true;
+					}
+
 				}
 				this->listView2->BeginUpdate();
 				this->listView2->Items->Clear();
@@ -561,6 +568,12 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 					label1->Text = "";
 				}
 				if (do_rename) rename_item->BeginEdit();
+				else if (do_select)
+				{
+					select_item->Selected=true;
+					select_item->Focused=true;
+					select_item->EnsureVisible();
+				}
 				else
 				{
 					ListView::ListViewItemCollection^ q = this->listView2->Items; 
@@ -571,9 +584,14 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 		};
 
+		void loadComputerDir(String^ start_rename)
+		{
+			this->loadComputerDir(start_rename,"");
+		}
+
 		void loadComputerDir(void)
 		{
-			this->loadComputerDir("");
+			this->loadComputerDir("","");
 		}
 
 		void computerUpDir(void)
@@ -759,12 +777,12 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 		// Load and display files in the current topfield directory.
 		// If a file is named start_rename, then start the name editing process after the directory is loaded.
 		// (useful when we have just created a new folder).
-		int loadTopfieldDir(String^ start_rename)               
+		int loadTopfieldDir(String^ start_rename, String^ name_to_select)               
 		{
 
 			int i;
-			TopfieldItem ^ item, ^rename_item;
-			bool do_rename=false;
+			TopfieldItem^ item, ^rename_item;bool do_rename=false;
+			TopfieldItem^ select_item; bool do_select=false;
 			array<TopfieldItem^>^ items;
 
 
@@ -799,6 +817,11 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 					rename_item=item; do_rename=true;
 				}
 
+					if (String::Compare(item->filename, name_to_select)==0 && !String::Equals(name_to_select,"") )
+					{
+					     select_item = item; do_select=true;
+					}
+
 				if (String::Compare(this->topfieldCurrentDirectory, this->TopfieldClipboardDirectory)==0)
 				{
 					int numc = this->TopfieldClipboard->Length;
@@ -824,6 +847,12 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 			this->listView1->Items->AddRange(items);
 			this->listView1->EndUpdate();
 			if (do_rename) rename_item->BeginEdit();
+			else if (do_select)
+			{
+				select_item->Selected=true;
+				select_item->Focused=true;
+				select_item->EnsureVisible();
+			}
 			else
 			{
 				ListView::ListViewItemCollection^ q = this->listView1->Items; 
@@ -836,7 +865,13 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 		int loadTopfieldDir(void)
 		{
 			String^ start_rename = "";
-			return this->loadTopfieldDir(start_rename);
+			String^ name_to_select = "";
+			return this->loadTopfieldDir(start_rename, name_to_select);
+		}
+		int loadTopfieldDir(String^ start_rename)
+		{
+			String^ name_to_select = "";
+			return this->loadTopfieldDir(start_rename, name_to_select);
 		}
 
 
@@ -1829,7 +1864,6 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 	private: System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {    
 				 // Copy files from Topfield to computer
                  const int max_folders = 1000;
-                 int j;
 				 // Enumerate selected source items (PVR)
 
 				 ListView^ listview = this->listView1;
@@ -2399,7 +2433,6 @@ end_copy_to_pc:
 				 // Copy files from Computer to Topfield
 
 				 const int max_folders = 1000;
-				 int j;
 				 int result = -EPROTO;
 				 //time_t startTime = time(NULL);
 				 enum
@@ -3228,7 +3261,8 @@ out:
 						 TopfieldItem^ item = safe_cast<TopfieldItem^>(listview->Items[e->Item]);
 						 String^ old_full_filename = item->directory + "\\" + item->filename;
 						 char* old_path = (char*)(void*)Marshal::StringToHGlobalAnsi(old_full_filename);
-						 String^ new_full_filename = item->directory + "\\" + safeString(e->Label);
+						 String^ new_filename = safeString(e->Label);
+						 String^ new_full_filename = item->directory + "\\" + new_filename;
 						 char* new_path = (char*)(void*)Marshal::StringToHGlobalAnsi(new_full_filename);
 						 int r = do_hdd_rename(this->fd, old_path,new_path);
 
@@ -3237,12 +3271,12 @@ out:
 
 						 if (r==0) // success
 						 {
-
+							 this->loadTopfieldDir("",new_filename);
 						 }
 						 else
 						 {
 							 e->CancelEdit = true;
-							 this->loadTopfieldDir();
+							 this->loadTopfieldDir("" );
 						 }
 
 
@@ -3253,7 +3287,8 @@ out:
 					 {
 						 ComputerItem^ item = safe_cast<ComputerItem^>(listview->Items[e->Item]);
 						 String^ old_full_filename = item->directory + "\\" + item->filename;
-						 String^ new_full_filename = item->directory + "\\" + safeString(e->Label);
+						 String^ new_filename = safeString(e->Label);
+						 String^ new_full_filename = item->directory + "\\" + new_filename;
 
 						 if (String::Compare(old_full_filename, new_full_filename)!=0)
 						 {
@@ -3282,6 +3317,10 @@ out:
 								 MessageBox::Show(this,"An error occurred during rename.","Error.",MessageBoxButtons::OK);
 								 //this->listView2->Items->Clear();
 								 this->loadComputerDir();
+							 }
+							 else
+							 {
+								this->loadComputerDir("",new_filename);
 							 }
 
 
