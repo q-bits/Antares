@@ -58,12 +58,14 @@ namespace Antares {
 	using namespace System::Runtime::InteropServices; // for class Marshal
 
 
-
+    //TODO: put these prototypes somewhere better
 	System::String^ HumanReadableSize(__u64 size);
-System::String^ DateString(time_t time);
-System::String^ safeString( char* filename );
-System::String^ safeString( String^ filename_str );
-time_t DateTimeToTime_T(System::DateTime datetime);
+	System::String^ DateString(time_t time);
+	System::String^ safeString( char* filename );
+	System::String^ safeString( String^ filename_str );
+	time_t DateTimeToTime_T(System::DateTime datetime);
+	String^ ComputeTopfieldUpDir(String^ filename);
+	array<String^>^ TopfieldFileParts(String^ filename);
 
 	[DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet::Auto)]
 	LRESULT SendMessage(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
@@ -234,7 +236,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 			//this->ResizeRedraw = true;
 
 
-			
+
 
 
 			this->CheckConnection();
@@ -367,6 +369,67 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 			return;
 		}
 
+
+		int tf_init(void)
+		{
+			if (this->fd==NULL) return -1;
+
+			this->absorb_late_packets(2,100);
+			/* Send a cancel in case anything is outstanding */
+			if (do_cancel(this->fd) == 0) {
+				return 0;
+			}
+
+			/* Often the first cancel fails, so try again */
+			if (do_cancel(this->fd) == 0) {
+				return 0;
+			}
+
+			/* If that fails, ... */
+			/* First send a fail */
+			//tf_send_fail(tf, 2);
+
+			/* Now a success */
+			send_success(this->fd);
+
+			/* Try a ready command */
+			if (do_cmd_ready(this->fd) == 0) {
+				return 0;
+			}
+
+			/* And finally, one more cancel */
+			if (do_cancel(this->fd) == 0) {
+				return 0;
+			}
+
+			/* Give up */
+			return -1;
+		}
+
+
+
+		int wait_for_connection(Antares::CopyDialog^ copydialog)
+		{
+
+			copydialog->current_file = " * * * USB Error, trying to reconnect ... * * * ";
+			copydialog->update_dialog_threadsafe();
+			int r;
+			while(1)
+			{
+				r=this->tf_init();
+
+				if (r==0) {this->absorb_late_packets(2,100);return(0);};
+				if (copydialog->cancelled) return(-1);
+				System::Threading::Thread::Sleep(1000);
+				this->CheckConnection();
+				if (copydialog->cancelled) return(-1);
+
+			}
+
+
+            return 0;
+		}
+
 		int set_turbo_mode(int turbo_on)
 		{
 
@@ -448,8 +511,8 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 		{
 			array<String^>^ list;
 			int j;
-			
-			
+
+
 
 			list = System::IO::Directory::GetFileSystemEntries(dir);
 
@@ -504,7 +567,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 			}
 			else   //List contents of actual directory
 			{
-				
+
 				try{
 					items = this->loadComputerDirArray(dir);
 				}
@@ -522,10 +585,10 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 					return;
 
 				}
-				
+
 				for (j=0; j<items->Length; j++)
 				{
-                    item = items[j];
+					item = items[j];
 					int ic = this->icons->GetCachedIconIndex(item->full_filename);
 					if (ic >= 0)
 					{
@@ -543,7 +606,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 					if (String::Compare(item->filename, name_to_select)==0)
 					{
-					     select_item = item; do_select=true;
+						select_item = item; do_select=true;
 					}
 
 				}
@@ -623,35 +686,12 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 			this->setComputerDir(dir2);
 			this->loadComputerDir();
 		}
+
 		void topfieldUpDir(void)
 		{
 			if (this->fd == NULL) return;
 
-			// Todo: make this a bit more robust. What happens when directory name has a special character?
-			String^ dir = this->topfieldCurrentDirectory;
-			String^ dir2;
-			try{
-				dir2 = Path::GetDirectoryName(dir);
-			}
-			catch (System::ArgumentException^ )
-			{
-				dir2="";
-				Console::WriteLine("Handled exception in topfieldUpDir");
-			}
-			//if (dir2==NULL) dir2="";
-
-
-			try
-			{
-				dir2=dir2+"";
-			}
-			catch(System::NullReferenceException^ )
-			{
-				dir2="";
-				Console::WriteLine("Handled exception in topfieldUpDir");
-			}
-
-			this->setTopfieldDir(dir2);
+			this->setTopfieldDir(ComputeTopfieldUpDir(this->topfieldCurrentDirectory));
 			this->loadTopfieldDir();
 		}
 
@@ -726,6 +766,26 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 			}
 			return items;
+		}
+
+
+		// Reload the directory entry of a particular topfield item specified by filename (i.e., to retrieve an update on its size)
+		TopfieldItem^ reloadTopfieldItem(String^ filename)
+		{
+			TopfieldItem^ newitem = nullptr;
+			array<String^>^ fileparts = TopfieldFileParts(filename);
+			String^ dir = fileparts[0];
+			String^ file = fileparts[1];
+			array<TopfieldItem^>^ items = this->loadTopfieldDirArray(dir);
+			for each (TopfieldItem^ item in items)
+			{
+				if ( String::Compare(item->filename, file)==0)
+				{
+					newitem=item;
+					break;
+				}
+			}
+			return newitem;
 		}
 
 
@@ -817,10 +877,10 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 					rename_item=item; do_rename=true;
 				}
 
-					if (String::Compare(item->filename, name_to_select)==0 && !String::Equals(name_to_select,"") )
-					{
-					     select_item = item; do_select=true;
-					}
+				if (String::Compare(item->filename, name_to_select)==0 && !String::Equals(name_to_select,"") )
+				{
+					select_item = item; do_select=true;
+				}
 
 				if (String::Compare(this->topfieldCurrentDirectory, this->TopfieldClipboardDirectory)==0)
 				{
@@ -1562,7 +1622,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.6.1";
+			this->Text = L"Antares  0.7";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -1863,7 +1923,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 	private: System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {    
 				 // Copy files from Topfield to computer
-                 const int max_folders = 1000;
+				 const int max_folders = 1000;
 				 // Enumerate selected source items (PVR)
 
 				 ListView^ listview = this->listView1;
@@ -1873,20 +1933,20 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 				 array<TopfieldItem^>^ items = gcnew array<TopfieldItem^>(selected->Count);
 				 selected->CopyTo(items,0);
 
-                 array<array<TopfieldItem^>^>^ items_by_folder = gcnew array<array<TopfieldItem^>^>(max_folders);
+				 array<array<TopfieldItem^>^>^ items_by_folder = gcnew array<array<TopfieldItem^>^>(max_folders);
 
 
 				 array<TopfieldItem^>^ these_items;
-				 
+
 				 //Recurse into subdirectories, if applicable
-                 int numfolders=1;
+				 int numfolders=1;
 				 items_by_folder[0]=items;
 				 int folder_ind;
 				 int total_items_after_recursion = items->Length;
 				 for( folder_ind=0;folder_ind<numfolders; folder_ind++)
 				 {
-                     these_items = items_by_folder[folder_ind];
-                     for each (TopfieldItem^ item in these_items)
+					 these_items = items_by_folder[folder_ind];
+					 for each (TopfieldItem^ item in these_items)
 					 {
 						 //Console::WriteLine(item->full_filename);
 						 if (item->isdir)
@@ -1895,11 +1955,11 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 
 							 for each ( TopfieldItem^ it in items)
 							 {
-								if (item->recursion_offset == "")
-								   it->recursion_offset = item->safe_filename;
-								else
-									it->recursion_offset = Antares::combineTopfieldPath(item->recursion_offset, item->safe_filename);
-								//Console::WriteLine("Item has full filename "+it->full_filename+", and recursion offset "+it->recursion_offset);
+								 if (item->recursion_offset == "")
+									 it->recursion_offset = item->safe_filename;
+								 else
+									 it->recursion_offset = Antares::combineTopfieldPath(item->recursion_offset, item->safe_filename);
+								 //Console::WriteLine("Item has full filename "+it->full_filename+", and recursion offset "+it->recursion_offset);
 							 }
 
 							 if (items->Length > 0 && numfolders<max_folders)
@@ -1919,8 +1979,8 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 				 //int numdirs=1;
 				 for (folder_ind=0; folder_ind<numfolders; folder_ind++)
 				 {
-                     these_items = items_by_folder[folder_ind];
-                     for each (TopfieldItem^ item in these_items)
+					 these_items = items_by_folder[folder_ind];
+					 for each (TopfieldItem^ item in these_items)
 					 {
 						 src_items[ind]=item;
 						 ind++;
@@ -1928,7 +1988,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 					 }
 				 }
 
-			
+
 				 //System::Collections::IEnumerator^ myEnum = selected->GetEnumerator();
 				 TopfieldItem^ item;
 
@@ -1974,10 +2034,10 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 					 }
 					 if (item->isdir)
 					 {
-					
+
 						 continue;
 					 }
-                     
+
 					 src_sizes[ind]=item->size;
 
 
@@ -2115,19 +2175,19 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 						 {
 							 copydialog->close_request_threadsafe();
 							 MessageBox::Show(this,"The folder "+dest_filename[ind]+" could not be created because a file of that name already exists. Aborting transfer.","Error",MessageBoxButtons::OK);
-							 
+
 							 return;					
 						 }
 						 if (!Directory::Exists(dest_filename[i]))
 						 {
 							 try {
-							      Directory::CreateDirectory(dest_filename[i]);
+								 Directory::CreateDirectory(dest_filename[i]);
 							 }
 							 catch (...)
 							 {
-								  copydialog->close_request_threadsafe();
+								 copydialog->close_request_threadsafe();
 								 MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
-								
+
 								 return;
 							 }
 						 }
@@ -2139,7 +2199,7 @@ time_t DateTimeToTime_T(System::DateTime datetime);
 					 int this_overwrite_action = OVERWRITE;
 					 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
 					 if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
-					 
+
 					 //Console::WriteLine(item->Text);
 
 					 bytecount=0;
@@ -2391,12 +2451,13 @@ out:
 					 if (state==ABORT) break;
 					 //return result;
 
-					 /// End of section adapted from commands.c [wuppy]a
+					 /// End of section adapted from commands.c [wuppy]
 
 
 					 if (copydialog->turbo_request != *this->turbo_mode)
 					 {
 						 this->set_turbo_mode( copydialog->turbo_request ? 1:0);
+						
 					 }
 
 
@@ -2413,18 +2474,18 @@ end_copy_to_pc:
 
 			 TopfieldItem^ topfieldFileExists(array<array<TopfieldItem^>^>^ topfield_items_by_folder,  String^ dest_path)
 			 {
-                  int num = topfield_items_by_folder->Length;
-				  int j;
-				  for (j=0; j<num; j++)
-				  {
+				 int num = topfield_items_by_folder->Length;
+				 int j;
+				 for (j=0; j<num; j++)
+				 {
 					 array<TopfieldItem^>^ these_items = topfield_items_by_folder[j];
-                     for each (TopfieldItem^ titem in these_items)
+					 for each (TopfieldItem^ titem in these_items)
 					 {
 						 if (titem->full_filename == dest_path)
 							 return titem;
 					 }
-				  }
-				  return nullptr;
+				 }
+				 return nullptr;
 			 }
 
 			 ////////////////////////////////////////////////////////////////////////////////////
@@ -2454,20 +2515,20 @@ end_copy_to_pc:
 
 				 array<ComputerItem^>^ items = gcnew array<ComputerItem^>(selected->Count);
 				 selected->CopyTo(items,0);
-                 array<array<ComputerItem^>^>^ items_by_folder = gcnew array<array<ComputerItem^>^>(max_folders);
+				 array<array<ComputerItem^>^>^ items_by_folder = gcnew array<array<ComputerItem^>^>(max_folders);
 
 				 array<ComputerItem^>^ these_items;
 
 
 				 //Recurse into subdirectories, if applicable
-                 int numfolders=1;
+				 int numfolders=1;
 				 items_by_folder[0]=items;
 				 int folder_ind;
 				 int total_items_after_recursion = items->Length;
 				 for( folder_ind=0;folder_ind<numfolders; folder_ind++)
 				 {
-                     these_items = items_by_folder[folder_ind];
-                     for each (ComputerItem^ item in these_items)
+					 these_items = items_by_folder[folder_ind];
+					 for each (ComputerItem^ item in these_items)
 					 {
 						 //Console::WriteLine(item->full_filename);
 						 if (item->isdir)
@@ -2476,11 +2537,11 @@ end_copy_to_pc:
 
 							 for each ( ComputerItem^ it in items)
 							 {
-								if (item->recursion_offset == "")
-								   it->recursion_offset = item->safe_filename;
-								else
-									it->recursion_offset = Path::Combine(item->recursion_offset, item->safe_filename);
-								//Console::WriteLine("Item has full filename "+it->full_filename+", and recursion offset "+it->recursion_offset);
+								 if (item->recursion_offset == "")
+									 it->recursion_offset = item->safe_filename;
+								 else
+									 it->recursion_offset = Path::Combine(item->recursion_offset, item->safe_filename);
+								 //Console::WriteLine("Item has full filename "+it->full_filename+", and recursion offset "+it->recursion_offset);
 							 }
 
 							 if (items->Length > 0 && numfolders<max_folders)
@@ -2500,8 +2561,8 @@ end_copy_to_pc:
 				 int numdirs=1;
 				 for (folder_ind=0; folder_ind<numfolders; folder_ind++)
 				 {
-                     these_items = items_by_folder[folder_ind];
-                     for each (ComputerItem^ item in these_items)
+					 these_items = items_by_folder[folder_ind];
+					 for each (ComputerItem^ item in these_items)
 					 {
 						 src_items[ind]=item;
 						 ind++;
@@ -2510,38 +2571,36 @@ end_copy_to_pc:
 				 }
 
 				 // Load the each topfield directory corresponding to a source directory, if it exists
-                array<array<TopfieldItem^>^>^ topfield_items_by_folder = gcnew array<array<TopfieldItem^>^>(numdirs);
-                ind=0;
-				topfield_items_by_folder[ind] = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);
-				for each (ComputerItem^ item in src_items)
-				{
-					if (item->isdir)
-					{
-						ind++;
-						String ^tmp;
-						if (item->recursion_offset=="")
-							tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->filename);
-						else
-						{
-							tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->recursion_offset);
-							tmp = Antares::combineTopfieldPath(tmp,item->filename);
-						}
-						topfield_items_by_folder[ind]=this->loadTopfieldDirArray(tmp);
-					}
-				}
+				 array<array<TopfieldItem^>^>^ topfield_items_by_folder = gcnew array<array<TopfieldItem^>^>(numdirs);
+				 ind=0;
+				 topfield_items_by_folder[ind] = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);
+				 for each (ComputerItem^ item in src_items)
+				 {
+					 if (item->isdir)
+					 {
+						 ind++;
+						 String ^tmp;
+						 if (item->recursion_offset=="")
+							 tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->filename);
+						 else
+						 {
+							 tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->recursion_offset);
+							 tmp = Antares::combineTopfieldPath(tmp,item->filename);
+						 }
+						 topfield_items_by_folder[ind]=this->loadTopfieldDirArray(tmp);
+					 }
+				 }
 
-                topfield_items_by_folder->Resize(topfield_items_by_folder, ind+1);
+				 topfield_items_by_folder->Resize(topfield_items_by_folder, ind+1);
 
 
 
-                 ComputerItem^ item;
+				 ComputerItem^ item;
 
 				 int num_files =0;
 				 long long totalsize=0;
-				 //long long totalsize_notskip=0;
 				 long long resume_granularity=8192;
 
-				 //array<ComputerItem^>^    src_items = gcnew array<ComputerItem^>(selected->Count );
 				 array<bool>^             dest_exists = gcnew array<bool>(numitems);
 				 array<DateTime>^         dest_date = gcnew array<DateTime>(numitems);
 				 array<long long int>^    dest_size = gcnew array<long long int>(numitems);
@@ -2551,32 +2610,25 @@ end_copy_to_pc:
 				 array<int>^              overwrite_action = gcnew array<int>(numitems);
 				 array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
 
-				 //ListView::ListViewItemCollection^ topfield_items = this->listView1->Items; 
-				 //int ntopfield_items = topfield_items->Count;
-				 TopfieldItem^ titem;
-				 array<int>^ num_cat = {0,0,0}; //numbers of existing files (divided by category)
+				 TopfieldItem^ titem;				 
+				 array<int>^ num_cat={0,0,0}; //numbers of existing files (divided by category of destination file: 0=correct size,  1=undersized, 2=oversized).
 				 int num_exist=0;
 				 array<String^>^ files_cat = {"","",""};
-				 //while ( myEnum->MoveNext() )
-                 for (ind=0; ind<numitems; ind++)
+				 for (ind=0; ind<numitems; ind++)
 				 {
 					 item = src_items[ind];
-					 //item = safe_cast<ComputerItem^>(myEnum->Current);
-					 //Console::WriteLine(item->Text);
-	                if (item->recursion_offset == "")
-						dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, item->safe_filename);
+					 if (item->recursion_offset == "")
+						 dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, item->safe_filename);
 					 else
 					 {
 
 						 dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
 						 dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
 					 }
-
-
 					 if (item->isdir) {continue;}   
-					 //src_items[numfiles]=item;
+
 					 src_sizes[ind]=item->size;
-					 //dest_filename[numfiles]=this->topfieldCurrentDirectory+"\\"+item->filename;
+
 					 titem = this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]);
 					 if (titem == nullptr)
 						 dest_exists[ind]=false;
@@ -2585,38 +2637,21 @@ end_copy_to_pc:
 						 dest_exists[ind]=true;
 						 dest_size[ind] = titem->size;
 					 }
-					 //dest_exists[numfiles]=false;
-					 //for (int j=0; j<ntopfield_items; j++)
-					 //{
-					//	 titem = safe_cast<TopfieldItem^>(topfield_items[j]);
-					//	 if (String::Compare(item->filename, titem->filename)==0 && !titem->isdir)
-					//	 {
-					//		 dest_exists[numfiles]=true;
-					//		 dest_size[numfiles]=titem->size;
-					//		 break;
-					//	 }
-					 //}
 
 					 if (dest_exists[ind])
-					 {          // TODO: error handling
-
+					 { 
 						 int cat=2;
-						 if (dest_size[ind] == item->size) // && dest_date[numfiles]==item->datetime)
+						 if (dest_size[ind] == item->size) 
 							 cat=0;
-						 else
-						 {
-							 if (dest_size[ind] < item->size) cat=1;
-						 }
+						 else if (dest_size[ind] < item->size) cat=1;
 
 						 overwrite_category[ind]=cat;
 						 num_cat[cat]++;if (num_cat[cat]>1) files_cat[cat] = files_cat[cat]+"\n";
 						 files_cat[cat] = files_cat[cat]+dest_filename[ind]; 
-
 						 num_exist++;
 					 }
 
 					 current_offsets[ind]=0;
-					 //numfiles++;
 					 totalsize += item->size;
 				 }
 				 if (numitems==0) return;
@@ -2630,21 +2665,18 @@ end_copy_to_pc:
 					 if (num_exist==1) oc->title_label->Text="A file with this name already exists                                                   ";
 					 else oc->title_label->Text = "Files with these names already exist                                                              ";
 
-					 //oc->files1->Text = files_cat[0];
 					 if (num_cat[0]==0)
 					 {
 						 oc->panel1->Visible = false;oc->files1->Visible=false;
 					 }
 					 if (num_cat[0]>1) oc->label1->Text = "Files have correct size"; else oc->label1->Text = "File has correct size"; 
 
-					 // oc->files2->Text = files_cat[1];
 					 if (num_cat[1]==0)
 					 {
 						 oc->panel2->Visible = false;oc->files2->Visible=false;
 					 }
 					 if (num_cat[1]>1) oc->label2->Text = "Undersized files"; else oc->label2->Text = "Undersized file";
 
-					 //oc->files3->Text = files_cat[2];
 					 if (num_cat[2]==0)
 					 {
 						 oc->panel3->Visible = false;oc->files3->Visible=false;
@@ -2669,8 +2701,6 @@ end_copy_to_pc:
 
 						 }
 						 if (overwrite_action[i]==RESUME && dest_size[i]<2*resume_granularity) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
-						 //  if (overwrite_action[i]==OVERWRITE) totalsize_notskip+=item->size;else
-						 //	 if (overwrite_action[i]==RESUME) totalsize_notskip+=item->size-dest_size[i];
 
 						 if (overwrite_action[i]==OVERWRITE) current_offsets[i]=0; else
 							 if (overwrite_action[i]==SKIP) {current_offsets[i]=item->size;num_skip++;} else
@@ -2683,7 +2713,7 @@ end_copy_to_pc:
 				 if (this->checkBox1->Checked)
 					 this->set_turbo_mode(1); //TODO: error handling for turbo mode selection
 				 else
-					 this->set_turbo_mode( 0);
+					 this->set_turbo_mode(0);
 
 
 				 CopyDialog^ copydialog = gcnew CopyDialog();
@@ -2706,15 +2736,6 @@ end_copy_to_pc:
 				 copydialog->update_dialog_threadsafe();
 
 
-				 //
-				 //copydialog->label3->Text = "Waiting for PVR...";
-				 //this->important_thread_waiting=true;
-				 //this->TopfieldMutex->WaitOne();
-				 //this->important_thread_waiting=false;
-				 //copydialog->label3->Text = "";
-
-
-				 //myEnum = selected->GetEnumerator();
 				 long long bytes_sent;
 				 long long total_bytes_sent=0;
 				 long long byteCount;
@@ -2724,13 +2745,13 @@ end_copy_to_pc:
 				 struct tf_packet reply;
 				 int r;
 				 array<Byte>^ inp_buffer = gcnew array<unsigned char>(sizeof(packet.data));
-				 //array<Byte>^ existing_bytes = gcnew array<Byte>(2*resume_granularity);
 
-
+				 // Main loop over items to copy
 				 for (int i=0; i<numitems; i++)
 				 {
 					 item = src_items[i];
-					 //Console::WriteLine(item->Text);
+
+
 
 					 if (item->isdir)
 					 {
@@ -2738,39 +2759,87 @@ end_copy_to_pc:
 						 int r=0;
 						 if (titem==nullptr)
 						 {
-                             r = this->newTopfieldFolder(dest_filename[i]);
+							 r = this->newTopfieldFolder(dest_filename[i]);
 						 }
-						 // Error handling? What if titem is a file?
+						 // Abort if required destination folder is already a file name, or any other error creating folder.
 						 if (r<0 || (titem!=nullptr && !titem->isdir) )
 						 {
-							  copydialog->close_request_threadsafe();
-							 MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
-							
+							 copydialog->close_request_threadsafe();
+							 MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);							
 							 return;
 						 }
-
 						 continue;
 					 }
 
-					 int this_overwrite_action = OVERWRITE;
-					 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
-					 if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
+					 int this_overwrite_action;
+
+
 
 					 byteCount=0;
 					 long long topfield_file_offset=0;
-					 String^ full_src_filename =    item->full_filename;//this->computerCurrentDirectory + "\\" + item->filename;
-					 String^ full_dest_filename = dest_filename[i];//this->topfieldCurrentDirectory + "\\" + item->filename;
+					 long long probable_minimum_received_offset=-1;
+					 String^ full_src_filename =    item->full_filename;
+					 String^ full_dest_filename = dest_filename[i];
 
+					 FileStream^ src_file;
+					 bool has_restarted = false;
+					 if (0)
+					 {
+restart_copy_to_pvr:     
+						 has_restarted=true;
+						 topfield_file_offset=0;
 
-					 // TODO:  Exception handling for file open
-					 FileStream^ src_file = File::Open(full_src_filename,System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
+						 TopfieldItem^ reloaded = this->reloadTopfieldItem(full_dest_filename);
+                         if (reloaded==nullptr)
+						 {
+                             this_overwrite_action = OVERWRITE;
+                  
+						 }
+						 else
+						 {
+							 // If the user specified OVERWRITE initially, be careful about changing it to RESUME
+							 // just because an error has occurred.
+                             if (this_overwrite_action==OVERWRITE && dest_exists[i])   
+							 {
+                                   if (reloaded->size > 9000000 && reloaded->size <= (probable_minimum_received_offset + 65537))
+								   {
+                                        this_overwrite_action=RESUME;
+										
+								   }
+							 }
+							 dest_size[i] = reloaded->size;
+						 }
 
+					 }
+
+					 else
+					 {
+						 this_overwrite_action = OVERWRITE;
+						 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
+					 }
+
+					 if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
+
+					 if (this_overwrite_action==RESUME && dest_size[i]>=src_sizes[i]) {item->Selected=false;continue;}
+
+					 
+					 try {
+
+						 src_file = File::Open(full_src_filename,System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
+					 }
+					 catch(...)
+					 {
+						 //TODO: better error handling?
+						 copydialog->close_request_threadsafe();
+						 MessageBox::Show(this,"The file "+full_src_filename+" could not be opened for reading. Aborting transfer.","Error",MessageBoxButtons::OK);							
+						 return;
+					 }
 
 					 FileInfo^ src_file_info = gcnew FileInfo(full_src_filename);
 
 
-					 fileSize = src_file_info->Length; //srcStat.st_size;
-					 if(fileSize == 0)
+					 fileSize = src_file_info->Length;
+					 if(fileSize == 0)   //TODO: shouldn't we still create 0-byte files?
 					 {
 						 fprintf(stderr, "ERROR: Source file is empty - not transfering.\n");
 						 result = -1;
@@ -2778,40 +2847,56 @@ end_copy_to_pc:
 					 }
 					 char* dstPath = (char *) (void*) Marshal::StringToHGlobalAnsi(full_dest_filename);
 
+					 bool was_cancelled=false;
+					 bool usb_error=false;
+
 
 					 if (this_overwrite_action==RESUME)
 					 {
+						 bool overlap_failed;
 						 long long existing_bytes_start = (dest_size[i]/resume_granularity)*resume_granularity - resume_granularity;
-						 int existing_bytes_count = (int)  (dest_size[i]-existing_bytes_start);
-						 src_file->Seek(existing_bytes_start,SeekOrigin::Begin);
-						 int existing_bytes_count_PC = src_file->Read(inp_buffer, 0, existing_bytes_count);
-						 array<Byte>^ existing_bytes;
-						 existing_bytes = this->read_topfield_file_snippet(full_dest_filename,existing_bytes_start);
-						 int existing_bytes_count_PVR = existing_bytes->Length;
-
-						 int overlap = existing_bytes_count_PC < existing_bytes_count_PVR ? existing_bytes_count_PC : existing_bytes_count_PVR;
-						 bool overlap_failed=false;
-						 printf("dest_size[i]=%ld    existing_bytes_count PVR=%d PC=%d   overlap=%d\n",dest_size[i],existing_bytes_count_PVR, existing_bytes_count_PC, overlap);  
-						 if (overlap<resume_granularity)
-						 {
+						 if (existing_bytes_start<=0)
 							 overlap_failed=true;
-							 printf("Resume failed: overlap too small.\n");
-
-						 }
 						 else
 						 {
-							 for (int j=0; j<overlap; j++)
+							 int existing_bytes_count = (int)  (dest_size[i]-existing_bytes_start);
+							 src_file->Seek(existing_bytes_start,SeekOrigin::Begin);
+							 int existing_bytes_count_PC = src_file->Read(inp_buffer, 0, existing_bytes_count);
+							 array<Byte>^ existing_bytes;
+							 existing_bytes = this->read_topfield_file_snippet(full_dest_filename,existing_bytes_start);
+
+							 if (existing_bytes->Length == 0)
 							 {
-								 if (existing_bytes[j]!=inp_buffer[j])
-								 { 
-									 printf("Overlap failed: bytes disagree. Position %d.\n",j);
-									 overlap_failed=true;
-									 break;
-								 }
+								usb_error=true;
+								goto out;
+								 
 							 }
 
-						 }
+							 int existing_bytes_count_PVR = existing_bytes->Length;
 
+							 int overlap = existing_bytes_count_PC < existing_bytes_count_PVR ? existing_bytes_count_PC : existing_bytes_count_PVR;
+							 overlap_failed=false;
+							 printf("dest_size[i]=%lld    existing_bytes_count PVR=%d PC=%d   overlap=%d\n",dest_size[i],existing_bytes_count_PVR, existing_bytes_count_PC, overlap);  
+							 if (overlap<resume_granularity)
+							 {
+								 overlap_failed=true;
+								 printf("Resume failed: overlap too small.\n");
+
+							 }
+							 else
+							 {
+								 for (int j=0; j<overlap; j++)
+								 {
+									 if (existing_bytes[j]!=inp_buffer[j])
+									 { 
+										 printf("Overlap failed: bytes disagree. Position %d.\n",j);
+										 overlap_failed=true;
+										 break;
+									 }
+								 }
+
+							 }
+						 }
 
 						 if (!overlap_failed)
 						 {
@@ -2839,11 +2924,10 @@ end_copy_to_pc:
 					 Marshal::FreeHGlobal((System::IntPtr) (void*)dstPath);
 					 if(r < 0)
 					 {
-						 //TODO: better handling
+						 usb_error=true;
 						 goto out;
 					 }
 					 bytes_sent=0;
-					 //time_t startTime = time(NULL);
 
 					 if (copydialog->current_start_time==0)
 					 {
@@ -2863,8 +2947,17 @@ end_copy_to_pc:
 					 state = START;
 					 int nextw;
 					 bool have_next_packet=false;
-					 while(0 < get_tf_packet(this->fd, &reply))
+                    
+					 while(1)
 					 {
+						  r = get_tf_packet(this->fd, &reply);
+                          
+						  if (r<=0)
+						  {
+							  usb_error=true;
+							  goto out;
+						  }
+
 						 update = (update + 1) % 16;
 						 switch (get_u32(&reply.cmd))
 						 {
@@ -2895,6 +2988,7 @@ end_copy_to_pc:
 									 if(r < 0)
 									 {
 										 fprintf(stderr, "ERROR: Incomplete send.\n");
+										 usb_error=true;
 										 goto out;
 									 }
 									 state = DATA;
@@ -2940,6 +3034,7 @@ end_copy_to_pc:
 									 byteCount += w;
 									 bytes_sent+=w;
 									 total_bytes_sent+=w;
+									 probable_minimum_received_offset=topfield_file_offset;
 									 topfield_file_offset+=w;
 
 
@@ -2947,6 +3042,7 @@ end_copy_to_pc:
 									 {
 										 printf("CANCELLING\n");
 										 //send_cancel(fd);
+										 was_cancelled=true;
 										 state = END;
 									 }
 									 /* Detect EOF and transition to END */
@@ -2965,6 +3061,7 @@ end_copy_to_pc:
 										 if(r < w)
 										 {
 											 fprintf(stderr, "ERROR: Incomplete send.\n");
+											 usb_error=true;
 											 goto out;
 										 }
 									 }
@@ -3018,36 +3115,54 @@ end_copy_to_pc:
 								 if(r < 0)
 								 {
 									 fprintf(stderr, "ERROR: Incomplete send.\n");
+									 usb_error=true;
 									 goto out;
 								 }
 								 state = FINISHED;
-								 item->Selected = false;
+								 if (!was_cancelled) item->Selected = false;
 								 break;
 
 							 case FINISHED:
 								 result = 0;
 								 goto out;
 								 break;
-							 }
+							 }    //(end switch state)
 							 break;
 
 						 case FAIL:
 							 fprintf(stderr, "ERROR: Device reports %s\n",
 								 decode_error(&reply));
+							 usb_error=true;
 							 goto out;
 							 break;
 
 						 default:
 							 fprintf(stderr, "ERROR: Unhandled packet (copy PVR -> PC)\n");
+							 usb_error=true;
+							 goto out;
 							 break;
-						 }
-					 }
-					 //finalStats(byteCount, startTime);
+						 }   // (end switch reply.cmd) 
+					 }  // (end while loop over packets sent)
 
 out:
-					 //_close(src);
-					 //return result;
-					 src_file->Close();
+
+					 try {
+					  src_file->Close();
+					 }
+					 catch(...)
+					 {
+					 }
+
+					 if (usb_error)
+						 if (this->wait_for_connection(copydialog) < 0) 
+						 {
+							 copydialog->close_request_threadsafe();
+							 return;
+						 }
+						 else
+							 goto restart_copy_to_pvr;
+
+					
 
 					 if (copydialog->cancelled==true) break;
 					 //end section derived from commands.c
@@ -3320,7 +3435,7 @@ out:
 							 }
 							 else
 							 {
-								this->loadComputerDir("",new_filename);
+								 this->loadComputerDir("",new_filename);
 							 }
 
 
@@ -3451,7 +3566,7 @@ out:
 
 					 dir = this->topfieldCurrentDirectory + "\\"+ foldername; 
 
-                     r=this->newTopfieldFolder(dir);
+					 r=this->newTopfieldFolder(dir);
 					 if (r!=0) this->toolStripStatusLabel1->Text="Error creating new folder.";
 					 success=true;
 					 break;
@@ -3467,10 +3582,20 @@ out:
 					 settings->changeSetting("TurboMode","off");
 			 }
 	private: System::Void listView2_ItemSelectionChanged(System::Object^  sender, System::Windows::Forms::ListViewItemSelectionChangedEventArgs^  e) {
-				 //printf("ListView2 Item Selection Changed.\n");
+				 printf("ListView2 Item Selection Changed.\n");
 			 }
 	private: System::Void listView2_SelectedIndexChanged_1(System::Object^  sender, System::EventArgs^  e) {
-				 //printf("ListView2 Selected Index Changed\n");
+				 printf("ListView2 Selected Index Changed\n");
+				 if(this->listView2->SelectedItems->Count ==0 )
+				 {
+					 this->button1->Enabled = false;
+				 }
+				 else
+
+				 {
+					 this->button1->Enabled = true;
+				 }
+
 			 }
 	private: System::Void toolStripButton9_Click(System::Object^  sender, System::EventArgs^  e) {
 				 // "Cut" button pressed on the topfield side.
@@ -3726,7 +3851,7 @@ out:
 							 __u64 offset = get_u64(reply.data);
 							 __u16 dataLen =
 								 get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
-							
+
 							 // if( !quiet)
 							 // {
 							 //progressStats(bytecount, offset + dataLen, startTime);

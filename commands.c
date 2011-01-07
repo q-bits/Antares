@@ -134,7 +134,6 @@ int do_cmd_ready(libusb_device_handle* fd)
 int do_cancel(libusb_device_handle* fd)
 {
     int r;
-
     r = send_cancel(fd);
     if(r < 0)
     {

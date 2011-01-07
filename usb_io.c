@@ -1,4 +1,11 @@
 
+/*
+
+Adapted by Henry Haselgrove, for use in Antares
+
+*/
+
+
 /* $Id: usb_io.c,v 1.15 2005/08/26 16:25:33 purbanec Exp $ */
 
 /*

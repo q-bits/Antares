@@ -19,6 +19,12 @@ using namespace System;
 using namespace System::Text;
 using namespace System::Threading;
 using namespace System::Xml;
+
+
+// These namespaces for testing stdout redirection to original terminal
+using namespace Microsoft::Win32::SafeHandles;
+using namespace System::Diagnostics;
+
 FILE old_stdout;
 FILE old_stderr;
 FILE* hf;
@@ -102,6 +108,44 @@ time_t DateTimeToTime_T(DateTime datetime)
     return t;
 
 }
+// Compute the containing directory and the filename of the specified absolute filename path
+array<String^>^ TopfieldFileParts(String^ filename)
+{
+	array<String^>^ out = {"",""};
+	try
+	{
+
+		while(filename->EndsWith("\\"))   // remove trailing backslash
+			filename=filename->Substring(0,filename->Length - 1);      
+		int index=-1;
+        bool last_slash=false;
+		for (int j=0; j<filename->Length; j++)
+		{
+			String^ c  = filename->Substring(j,1);
+			bool is_slash = String::Compare(c, "\\")==0;
+			if (is_slash && !last_slash)
+				index = j;
+			last_slash=is_slash;
+		}        
+		if (index>0) 
+		{
+				out[0]=filename->Substring(0,index);
+				if (index+1 < filename->Length)
+				   out[1]=filename->Substring(index+1);	
+		}
+		return out;
+	}
+	catch(...)
+	{
+		return out;
+	}
+}
+
+// Compute the containing directory of the specified absolute filename
+String^ ComputeTopfieldUpDir(String^ filename)
+{
+	return TopfieldFileParts(filename)[0];
+}
 
 
 String^ HumanReadableSize(__u64 size)
@@ -145,9 +189,137 @@ String^ HumanReadableSize(__u64 size)
 
 }
 
+/*
+int CALLBACK wWinMain(
+  __in  HINSTANCE hInstance,
+  __in  HINSTANCE hPrevInstance,
+  __in  LPWSTR lpCmdLine,
+  __in  int nCmdShow
+)
+{
+	return(0);
+}
+int CALLBACK qqqwmain(
+  void
+)
+{
+	return(0);
+}
+
+
+
+extern "C"
+{
+int  _cdecl wWinMainCRTStartup(void);
+int  _cdecl wmainCRTStartup(void);
+}
+int main(void);
+int __stdcall custom_entry(void )
+{
+    wWinMainCRTStartup();
+    //wmainCRTStartup();
+   
+    main();
+	return 0;
+}
+*/
+
+
+
+void InitConsoleHandles()
+ {
+	 //SafeFileHandle ^hStdOut, ^hStdErr, ^hStdOutDup, ^hStdErrDup;
+	 HANDLE hStdOut, hStdErr, hStdOutDup, hStdErrDup;
+
+ BY_HANDLE_FILE_INFORMATION bhfi;
+ //hStdOut = gcnew SafeFileHandle((System::IntPtr) (void*) GetStdHandle(STD_OUTPUT_HANDLE),true);
+ //hStdErr = gcnew SafeFileHandle((System::IntPtr) (void*) GetStdHandle(STD_ERROR_HANDLE),true);
+ 
+ hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+ hStdErr = GetStdHandle(STD_ERROR_HANDLE);
+
+ // Get current process handle
+ HANDLE hProcess = (HANDLE) (void*) Process::GetCurrentProcess()->Handle;
+ // Duplicate Stdout handle to save initial value
+ DuplicateHandle(  hProcess, hStdOut, hProcess, &hStdOutDup,
+ 0, true, DUPLICATE_SAME_ACCESS);
+ // Duplicate Stderr handle to save initial value
+ DuplicateHandle(hProcess, hStdErr, hProcess, &hStdErrDup,
+ 0, true, DUPLICATE_SAME_ACCESS);
+ // Attach to console window – this may modify the standard handles
+ AttachConsole(ATTACH_PARENT_PROCESS);
+ // Adjust the standard handles
+ if (GetFileInformationByHandle(GetStdHandle(STD_OUTPUT_HANDLE), &bhfi))
+ {
+ SetStdHandle(STD_OUTPUT_HANDLE, hStdOutDup);
+ }
+ else
+ {
+ SetStdHandle(STD_OUTPUT_HANDLE, hStdOut);
+ }
+ if (GetFileInformationByHandle(GetStdHandle(STD_ERROR_HANDLE), &bhfi))
+ {
+ SetStdHandle(STD_ERROR_HANDLE, hStdErrDup);
+ }
+ else
+ {
+ SetStdHandle(STD_ERROR_HANDLE, hStdErr);
+ }
+ }
+
+/*
+ static void Main(string[] args)
+ {
+ bool NoGui = false;
+ string name = "";
+ int number = 0;
+ for (int i = 0; i != args.Length; ++i)
+ {
+ switch (args[i])
+ {
+ case "/NoGui": NoGui = true; break;
+ case "/name": name = args[++i]; break;
+ case "/number": number = int.Parse(args[++i]); break;
+ default: Console.WriteLine("Invalid args!"); return;
+ }
+ }
+*/
+
+
 [STAThreadAttribute]
 int main(array<System::String ^> ^args)
+//int main(void)
+
 {
+
+
+	if (args->Length > 0)
+	{
+		//InitConsoleHandles();
+			Console::CursorTop = Console::CursorTop-2;
+			//Console::SetIn(TextReader::Null);
+		printf("Hi There!\n");
+		fprintf(stderr,"Error something\n");
+		System::Console::WriteLine("Hello again!\n");
+		//Console::WindowHeight = 10;
+	
+		Console::ReadKey(true);
+		Console::ReadKey(true);
+				Console::ReadKey(true);
+		Console::ReadKey(true);
+		Console::ReadKey(true);
+		Console::ReadKey(true);
+				Console::ReadKey(true);
+		Console::ReadKey(true);
+  
+
+
+		//return 0;
+	}
+	else
+	{
+		      FreeConsole();
+	}
 
 
 	//Thread::Sleep(20000);

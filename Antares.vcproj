@@ -141,7 +141,8 @@
 				LinkIncremental="1"
 				GenerateDebugInformation="false"
 				AssemblyDebug="0"
-				SubSystem="2"
+				SubSystem="1"
+				OptimizeForWindows98="0"
 				EntryPointSymbol="main"
 				TargetMachine="1"
 			/>

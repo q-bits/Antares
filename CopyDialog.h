@@ -56,7 +56,7 @@ namespace Antares {
 			this->has_initialised=false;
 
 		}
-		void showDialog_(void)
+		void showDialog_thread(void)
 		{
 			this->ShowDialog();
 		}
@@ -73,7 +73,7 @@ namespace Antares {
 			//	Start(); 
 
 
-			ThreadStart^ threadDelegate = gcnew ThreadStart( this, &CopyDialog::showDialog_);
+			ThreadStart^ threadDelegate = gcnew ThreadStart( this, &CopyDialog::showDialog_thread);
 			Thread^ newThread = gcnew Thread( threadDelegate );
 			newThread->Start();
 
@@ -116,25 +116,17 @@ namespace Antares {
 		void update_dialog_threadsafe(void)
 		{
 
-			// InvokeRequired required compares the thread ID of the
-			// calling thread to the thread ID of the creating thread.
-			// If these threads are different, it returns true.
 			if (this->cancelled) return;
-			while (!this->IsHandleCreated) 
-				
+			while (!this->IsHandleCreated) 				
 			{
 				Thread::Sleep(100);
-
 			}
-			// if (this->label3->InvokeRequired)
-			// {
+
 			UpdateDialogCallback^ d = 
 				gcnew UpdateDialogCallback(this, &CopyDialog::update_dialog);
 			this->Invoke(d, gcnew array<Object^> { });
-			// }
-			// else
-			// {
 		}
+
 		void update_dialog(void)
 		{
 			this->Text = this->window_title;
@@ -166,8 +158,6 @@ namespace Antares {
 				this->checkBox1->Text = "Turbo mode";
 			}
 
-
-			//this->label3->Text = this->teststring;
 			this->label4->Text =  (offset / 1024).ToString("#,#,#")+"KB / "+(size/1024).ToString("#,#,#")+"KB";
 
 			long long total_offset=0;  long long total_size=0;
