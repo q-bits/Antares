@@ -411,23 +411,27 @@ namespace Antares {
 		int wait_for_connection(Antares::CopyDialog^ copydialog)
 		{
 
-			copydialog->current_file = " * * * USB Error, trying to reconnect ... * * * ";
+			copydialog->current_file = " * * * ERROR. Retrying... * * * ";
 			copydialog->update_dialog_threadsafe();
-			int r;
+			int r,ret;
+
 			while(1)
 			{
+				this->absorb_late_packets(4,100);
 				r=this->tf_init();
 
-				if (r==0) {this->absorb_late_packets(2,100);return(0);};
-				if (copydialog->cancelled) return(-1);
-				System::Threading::Thread::Sleep(1000);
+				if (r==0) {ret=0;break;};
+				if (copydialog->cancelled) {ret=-1;break;};
+				//System::Threading::Thread::Sleep(1000);
 				this->CheckConnection();
-				if (copydialog->cancelled) return(-1);
+				if (copydialog->cancelled) {ret=-1;break;};
 
 			}
 
+			if (ret==0)
+				this->set_turbo_mode(*this->turbo_mode);
 
-            return 0;
+            return ret;
 		}
 
 		int set_turbo_mode(int turbo_on)
@@ -661,9 +665,11 @@ namespace Antares {
 		{
 			String^ dir = this->computerCurrentDirectory;
 			String^ dir2;
+			String^ fn;
 			dir2="";
 			try{
 				dir2 = Path::GetDirectoryName(dir);
+				fn = Path::GetFileName(dir);
 			}
 			catch (System::ArgumentException^ )
 			{
@@ -676,6 +682,7 @@ namespace Antares {
 			try
 			{
 				dir2=dir2+"";
+				fn=fn+"";
 			}
 			catch(System::NullReferenceException^ )
 			{
@@ -684,15 +691,18 @@ namespace Antares {
 			}
 
 			this->setComputerDir(dir2);
-			this->loadComputerDir();
+			this->loadComputerDir("",fn);
 		}
 
 		void topfieldUpDir(void)
 		{
 			if (this->fd == NULL) return;
 
-			this->setTopfieldDir(ComputeTopfieldUpDir(this->topfieldCurrentDirectory));
-			this->loadTopfieldDir();
+			array<String^>^ parts = TopfieldFileParts(this->topfieldCurrentDirectory);
+			
+			this->setTopfieldDir(parts[0]);
+
+			this->loadTopfieldDir("",parts[1]);
 		}
 
 
@@ -941,7 +951,7 @@ namespace Antares {
 		/// </summary>
 		~Form1()
 		{
-#ifdef _DEBUG
+#ifdef _DEBUG____
 			*stdout = old_stdout;
 			*stderr = old_stderr;
 			fclose(hf);
@@ -979,12 +989,11 @@ namespace Antares {
 			System::String^ topfieldCurrentDirectory;
 			System::String^ computerCurrentDirectory;
 
-			//System::Threading::Mutex^ TopfieldMutex;
-			//bool important_thread_waiting;
 
-			bool^ turbo_mode;
+			// "turbo_mode" is what we believe the actual current turbo mode of the PVR is
+			// (which is not necessarily equal to the requested turbo mode setting)
+			bool^ turbo_mode; 
 
-			//System::Windows::Forms::ImageList^ basicIconsSmall;
 
 			int listView1SortColumn;
 			int listView2SortColumn;
@@ -1921,6 +1930,26 @@ namespace Antares {
 
 			 }
 
+			 // Helper function: return size (in bytes) of file on computer, or -1 if there's a problem.
+			 static long long int FileSize(String^ filename)
+			 {
+				 try
+				 {
+					 if (false == File::Exists(filename))
+						 return -1;
+					 else
+					 {
+
+						 FileInfo^ fi = gcnew FileInfo(filename); 
+						 return fi->Length;
+					 }
+				 }
+				 catch(...)
+				 {
+					 return -1;
+				 }
+			 }
+
 	private: System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {    
 				 // Copy files from Topfield to computer
 				 const int max_folders = 1000;
@@ -2196,9 +2225,7 @@ namespace Antares {
 
 
 					 //item = safe_cast<TopfieldItem^>(myEnum->Current);
-					 int this_overwrite_action = OVERWRITE;
-					 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
-					 if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
+				
 
 					 //Console::WriteLine(item->Text);
 
@@ -2226,11 +2253,50 @@ namespace Antares {
 					 FileStream^ dest_file;
 					 //String^ line = Console::ReadLine();full_dest_filename += line;
 
+					 int this_overwrite_action;
 					 long long topfield_file_offset = 0;
+					 long long probable_minimum_received_offset=-1;
 
+					 bool has_restarted=false;
 
-restart_this_PVR_to_PC:
+					 if(0)
+					 {
+restart_copy_to_pc:
+						 has_restarted=true;
+						 topfield_file_offset=0;
+						 copydialog->reset_rate();
 
+						 long long newsize = this->FileSize(full_dest_filename);
+						 if (newsize>=0) dest_exists[i]=true;
+						 if (newsize <= 1000000) 
+						 {
+							 printf (" newsize = %lld \n",newsize);
+							 this_overwrite_action = OVERWRITE;
+						 }
+						 else
+						 {
+							 // If the user specified OVERWRITE initially, be careful about changing it to RESUME
+							 // just because an error has occurred.
+							 if (this_overwrite_action==OVERWRITE && dest_exists[i])   
+							 {
+								 if (newsize > 1000000 && newsize <= (probable_minimum_received_offset + 65537))
+								 {
+									 this_overwrite_action=RESUME;
+
+								 }
+							 }
+							 dest_size[i] = newsize;
+						 }
+
+					 }
+					 else
+					 {
+						 this_overwrite_action = OVERWRITE;
+						 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
+
+					 }
+
+					 if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
 
 					 try{
 						 //  TODO: Further exception handling for file open?
@@ -2262,6 +2328,11 @@ restart_this_PVR_to_PC:
 
 					 char* srcPath = (char*)(void*)Marshal::StringToHGlobalAnsi(full_source_filename);
 
+					 bool was_cancelled=false;
+					 bool usb_error=false;
+					 bool turbo_changed=false;
+
+
 					 //printf("topfield_file_offset = %ld\n",topfield_file_offset);
 					 if (topfield_file_offset==0) 
 						 r = send_cmd_hdd_file_send(this->fd, GET, srcPath);   
@@ -2272,6 +2343,7 @@ restart_this_PVR_to_PC:
 
 					 if(r < 0)
 					 {
+						 usb_error=true;
 						 goto out;
 					 }
 
@@ -2294,9 +2366,18 @@ restart_this_PVR_to_PC:
 					 copydialog->update_dialog_threadsafe();
 
 
-
-					 while(0 < (r = get_tf_packet(fd, &reply)))
+					 int update=0;
+					 while(1)
 					 {
+
+						r = get_tf_packet(fd, &reply);
+						update = (update+1)%8;
+						if (r<=0)
+						{
+							usb_error=true;
+							goto out;
+						}
+
 
 						 switch (get_u32(&reply.cmd))
 						 {
@@ -2318,6 +2399,7 @@ restart_this_PVR_to_PC:
 									 "ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
 									 state);
 								 send_cancel(fd);
+								 usb_error=true;
 								 state = ABORT;
 							 }
 							 break;
@@ -2340,7 +2422,9 @@ restart_this_PVR_to_PC:
 									 fprintf(stderr,
 										 "ERROR: Short packet %d instead of %d\n", r,
 										 get_u16(&reply.length));
-									 /* TODO: Fetch the rest of the packet */
+									 
+									 usb_error=true;
+									 goto out;
 								 }
 
 
@@ -2367,15 +2451,18 @@ restart_this_PVR_to_PC:
 										 dest_file->Close();
 										 send_cancel(this->fd);
 										 absorb_late_packets(4,400);
-										 goto restart_this_PVR_to_PC;
+										 goto restart_copy_to_pc;
 									 }
 
 								 }
-								 dest_file->Write(buffer, 0, dataLen);
+								 dest_file->Write(buffer, 0, dataLen);        //TODO:  Catch full-disk errors  (Sytem::IO:IOException)
 								 topfield_file_offset+=dataLen;
+								 probable_minimum_received_offset=topfield_file_offset;
+								 copydialog->new_packet(dataLen);
 								 if (topfield_file_offset != offset)
 								 {
 									 //printf("Warning: offset mismatch! %lu %lu \n",topfield_file_offset,offset);
+									 // TODO: Handle this type of error
 								 }
 
 								 bytes_received += dataLen;
@@ -2383,10 +2470,15 @@ restart_this_PVR_to_PC:
 								 if (topfield_file_offset>item->size) printf("Warning: topfield_file_offset>item->size\n");else
 									 //copydialog->total_offset = total_bytes_received;
 									 copydialog->current_offsets[i] = topfield_file_offset;//bytes_received;
+
+
 								 copydialog->current_bytes_received = bytes_received;
 								 copydialog->total_bytes_received = total_bytes_received;
-								 //copydialog->teststring = offset.ToString();
-								 copydialog->update_dialog_threadsafe();
+								 if (update==0)
+								 {
+									 this->Update();
+									 copydialog->update_dialog_threadsafe();
+								 }
 								 //if(w < dataLen)
 								 //{
 								 //	 /* Can't write data - abort transfer */
@@ -2395,13 +2487,30 @@ restart_this_PVR_to_PC:
 								 //	 send_cancel(fd);
 								 //	 state = ABORT;
 								 //}
+
+
+
 								 if (copydialog->cancelled == true)
 								 {
 									 printf("CANCELLING\n");
 									 send_cancel(fd);
+									 was_cancelled=true;
 									 state = ABORT;
+									 goto out;
 
 								 }
+
+								 if (copydialog->turbo_request != *this->turbo_mode)
+								 {
+									 turbo_changed=true;
+
+									 send_cancel(fd);
+									 state=ABORT;
+									 goto out;
+								 }
+
+
+
 							 }
 							 else
 							 {
@@ -2409,6 +2518,7 @@ restart_this_PVR_to_PC:
 									 "ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
 									 state);
 								 send_cancel(fd);
+								 usb_error=true;
 								 state = ABORT;
 							 }
 							 break;
@@ -2426,6 +2536,7 @@ restart_this_PVR_to_PC:
 								 decode_error(&reply));
 							 send_cancel(fd);
 							 state = ABORT;
+							 usb_error=true;
 							 break;
 
 						 case SUCCESS:
@@ -2436,6 +2547,9 @@ restart_this_PVR_to_PC:
 						 default:
 							 fprintf(stderr, "ERROR: Unhandled packet (cmd 0x%x)\n",
 								 get_u32(&reply.cmd));
+							  send_cancel(fd);
+							 usb_error=true;
+							 goto out;
 						 }
 
 
@@ -2445,20 +2559,47 @@ restart_this_PVR_to_PC:
 
 out:
 					 //_close(dst);
+					 try
+					 {
 					 dest_file->Close();
 					 File::SetCreationTime(full_dest_filename, item->datetime);
 					 File::SetLastWriteTime(full_dest_filename, item->datetime);
-					 if (state==ABORT) break;
-					 //return result;
-
-					 /// End of section adapted from commands.c [wuppy]
-
-
-					 if (copydialog->turbo_request != *this->turbo_mode)
-					 {
-						 this->set_turbo_mode( copydialog->turbo_request ? 1:0);
-						
 					 }
+					 catch(...)
+					 {
+
+					 }
+
+					 if (was_cancelled) break;
+					 if (copydialog->cancelled==true) break;
+
+					 if (usb_error)
+						 if (this->wait_for_connection(copydialog) < 0) 
+						 {
+							 copydialog->close_request_threadsafe();
+							 return;
+						 }
+						 else
+							 goto restart_copy_to_pc;
+
+
+
+					
+					 if (turbo_changed || copydialog->turbo_request != *this->turbo_mode )
+					 {
+						 this->absorb_late_packets(4,100);
+						 this->set_turbo_mode(copydialog->turbo_request);
+						 copydialog->reset_rate();
+						 goto restart_copy_to_pc;
+					 }
+
+
+					 //if ()
+					 //{
+					//	 this->set_turbo_mode( copydialog->turbo_request ? 1:0);
+					//	 copydialog->reset_rate();
+					//	
+					 //}
 
 
 
@@ -2788,7 +2929,7 @@ end_copy_to_pc:
 restart_copy_to_pvr:     
 						 has_restarted=true;
 						 topfield_file_offset=0;
-
+                         copydialog->reset_rate();
 						 TopfieldItem^ reloaded = this->reloadTopfieldItem(full_dest_filename);
                          if (reloaded==nullptr)
 						 {
@@ -2801,7 +2942,7 @@ restart_copy_to_pvr:
 							 // just because an error has occurred.
                              if (this_overwrite_action==OVERWRITE && dest_exists[i])   
 							 {
-                                   if (reloaded->size > 9000000 && reloaded->size <= (probable_minimum_received_offset + 65537))
+                                   if (reloaded->size > 1000000 && reloaded->size <= (probable_minimum_received_offset + 65537))
 								   {
                                         this_overwrite_action=RESUME;
 										
@@ -2849,6 +2990,7 @@ restart_copy_to_pvr:
 
 					 bool was_cancelled=false;
 					 bool usb_error=false;
+					 bool turbo_changed=false;
 
 
 					 if (this_overwrite_action==RESUME)
@@ -2948,6 +3090,7 @@ restart_copy_to_pvr:
 					 int nextw;
 					 bool have_next_packet=false;
                     
+
 					 while(1)
 					 {
 						  r = get_tf_packet(this->fd, &reply);
@@ -2958,7 +3101,7 @@ restart_copy_to_pvr:
 							  goto out;
 						  }
 
-						 update = (update + 1) % 16;
+						 update = (update + 1) % 4;
 						 switch (get_u32(&reply.cmd))
 						 {
 						 case SUCCESS:
@@ -3045,6 +3188,13 @@ restart_copy_to_pvr:
 										 was_cancelled=true;
 										 state = END;
 									 }
+
+									 if (copydialog->turbo_request != *this->turbo_mode)
+									 {
+                                        turbo_changed=true;
+										state=END;
+									 }
+
 									 /* Detect EOF and transition to END */
 									 if((w < 0) || (topfield_file_offset >= fileSize))
 									 {
@@ -3064,13 +3214,18 @@ restart_copy_to_pvr:
 											 usb_error=true;
 											 goto out;
 										 }
+										 copydialog->new_packet(r);
 									 }
 
-									 copydialog->total_bytes_received = total_bytes_sent;
-									 copydialog->current_offsets[i] = topfield_file_offset;
-									 copydialog->current_bytes_received = bytes_sent;
-									 copydialog->update_dialog_threadsafe();
+									 if (update==0)
+									 {
+										 this->Update();
+										 copydialog->total_bytes_received = total_bytes_sent;
+										 copydialog->current_offsets[i] = topfield_file_offset;
+										 copydialog->current_bytes_received = bytes_sent;
+										 copydialog->update_dialog_threadsafe();
 
+									 }
 
 
 									 if (state != END)
@@ -3153,6 +3308,9 @@ out:
 					 {
 					 }
 
+					 if (copydialog->cancelled==true) break;
+					 if (was_cancelled) break;
+
 					 if (usb_error)
 						 if (this->wait_for_connection(copydialog) < 0) 
 						 {
@@ -3162,14 +3320,23 @@ out:
 						 else
 							 goto restart_copy_to_pvr;
 
+					 if (turbo_changed)
+					 {
+						 this->absorb_late_packets(2,100);
+						 this->set_turbo_mode(copydialog->turbo_request);
+						 copydialog->reset_rate();
+						 goto restart_copy_to_pvr;
+					 }
+
 					
 
-					 if (copydialog->cancelled==true) break;
+					 
 					 //end section derived from commands.c
 
 					 if (copydialog->turbo_request != *this->turbo_mode)
 					 {
 						 this->set_turbo_mode( copydialog->turbo_request ? 1:0);
+						 copydialog->reset_rate();
 					 }
 
 				 }

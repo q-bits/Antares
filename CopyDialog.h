@@ -4,6 +4,7 @@ extern "C"
 {
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 
 }
 
@@ -55,10 +56,69 @@ namespace Antares {
 			//this->total_offset=0;
 			this->has_initialised=false;
 
+			this->rate_stopwatch = gcnew System::Diagnostics::Stopwatch();
+			this->rate_bytes = 0;
+			this->rate_milliseconds = 0;
+			this->parent_win = nullptr;
+			
+
 		}
+	
+		CopyDialog(IWin32Window ^win)
+		{
+			CopyDialog();
+			this->parent_win = win;
+			//this->turbo_mode = form1->turbo_mode;
+
+		}
+	
+
+		void new_packet(long long bytes)
+		{
+           if ( false == this->rate_stopwatch->IsRunning)
+		   {
+			   this->rate_stopwatch->Reset();
+			   this->rate_bytes=0;
+			   this->rate_milliseconds=0;
+			   this->rate_stopwatch->Start();
+		   }
+		   else
+		   {
+			   this->rate_bytes += bytes;
+			   this->rate_milliseconds = this->rate_stopwatch->ElapsedMilliseconds;
+		   }
+
+		   //printf("bytes = %lld  milliseconds=%lld  \n",this->rate_bytes, this->rate_milliseconds);
+		}
+		void reset_rate(void)
+		{
+			this->rate_stopwatch->Reset();
+			this->rate_bytes=0;
+			this->rate_milliseconds=0;
+		}
+		double get_rate(void)
+		{
+			double ret;
+			if (this->rate_milliseconds == 0) 
+				ret= -1;
+			else
+			{
+				ret=(double) this->rate_bytes / (double) this->rate_milliseconds  * 1000.0;
+			}
+
+			//printf(" rate = %f\n",ret);
+
+			return ret;
+
+		}
+
+
 		void showDialog_thread(void)
 		{
-			this->ShowDialog();
+			if(this->parent_win == nullptr)
+				this->ShowDialog();
+			else
+				this->ShowDialog(this->parent_win);
 		}
 
 		void showCopyDialog(void)
@@ -131,27 +191,31 @@ namespace Antares {
 		{
 			this->Text = this->window_title;
 			this->label3->Text = current_file;
-			double current_delta = (double) (time(NULL) - this->current_start_time);
-			double total_delta = (double) (time(NULL) - this->total_start_time);
-			double current_rate, total_rate;
+			//double current_delta = (double) (time(NULL) - this->current_start_time);
+			//double total_delta = (double) (time(NULL) - this->total_start_time);
+			double current_delta = (double) this->rate_milliseconds / 1000.0;
+			double current_rate;//, total_rate;
 			int i = this->current_index;
 
 			long long size = this->filesizes[i];
 			long long offset = this->current_offsets[i]; 
 
-			if (current_delta>0)
-				current_rate = (double) (this->current_bytes_received) / current_delta;
-			else current_rate=0;
+			//if (current_delta>0)
+			//	current_rate = (double) (this->current_bytes_received) / current_delta;
+			//else current_rate=0;
 
-			if (total_delta>0)
-				total_rate = (double) (this->total_bytes_received) / total_delta;
-			else
-				total_rate=0;
+			current_rate = this->get_rate();
+
+
+			//if (total_delta>0)
+			//	total_rate = (double) (this->total_bytes_received) / total_delta;
+			//else
+			//	total_rate=0;
             
 			if (this->has_initialised==false) {this->checkBox1->Checked = *this->turbo_mode;this->has_initialised=true;};
 			if (*this->turbo_mode != this->turbo_request)
 			{
-				this->checkBox1->Text = "Turbo mode [from next file]";
+				this->checkBox1->Text = "Turbo mode [Changing...]";
 			}
 			else
 			{
@@ -175,14 +239,27 @@ namespace Antares {
 				int val1 = (int)  (  (double) this->progressBar1->Maximum * (double) offset / (double) size  );
 				if (val1<= this->progressBar1->Maximum && val1>=this->progressBar1->Minimum)
 					this->progressBar1->Value= val1; 
-                else printf("Warning: progressBar1 out of bounds!\n");
-				if ( current_delta > this->last_current_delta && current_delta>3.0)
+				else printf("Warning: progressBar1 out of bounds!\n");
+			}
+			if (current_rate<0)
+			{
+				this->label8->Text = "-- MB/sec";
+				this->label6->Text = "--:--:--";
+				this->label7->Text = "--:--:--";
+			}
+			else
+			{
+				if ( floor(current_delta) > floor(this->last_current_delta) && current_delta>1.0)
 				{
 					this->label8->Text = (current_rate/1024.0/1024.0).ToString("F2")+" MB/sec";
 					this->label6->Text = time_remaining_string(current_rate,(double) (size - offset ) );
-
+                    this->label7->Text = time_remaining_string(current_rate, (double) ( total_size - total_offset ) );
 				}
+
+
+
 			}
+
 
 
 			if (total_size>0)
@@ -191,12 +268,20 @@ namespace Antares {
 				if (val2<= this->progressBar2->Maximum && val2>=this->progressBar2->Minimum)
 				    this->progressBar2->Value = val2;
 				else printf("Warning: progressBar2 out of bounds!\n");
-				if ( total_delta > 3.0 && current_delta > this->last_current_delta)
-				{
-					this->label7->Text = time_remaining_string(total_rate, (double) ( total_size - total_offset ) );
-
-				}
 			}
+
+
+				//if ( total_delta > 3.0)
+				//{
+				//	if (current_delta > this->last_current_delta)
+				//	{
+				//		
+//
+//					}
+//				}
+//				else
+//					this->label7->Text = "--:--:--";
+	//		}
 			// }
 			int perc1 = ((int)(100.00 * (double) offset / (double) size));
 			int perc2 = ((int)(100.00 * (double) total_offset / (double) total_size));
@@ -227,6 +312,12 @@ namespace Antares {
 		bool turbo_request;
 		bool^ turbo_mode;
 	
+
+		long long rate_milliseconds;
+		long long rate_bytes;
+		System::Diagnostics::Stopwatch ^rate_stopwatch;
+
+
 		//long long int current_filesize;
 		//long long int total_filesize;
 		//long long int current_offset;
@@ -243,6 +334,7 @@ namespace Antares {
 		String^ current_file;
 		double last_current_delta;
 		bool has_initialised;
+		IWin32Window ^parent_win;
 
   
 
@@ -452,6 +544,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
 			this->Name = L"CopyDialog";
 			this->Padding = System::Windows::Forms::Padding(5);
+			this->ShowIcon = false;
 			this->SizeGripStyle = System::Windows::Forms::SizeGripStyle::Hide;
 			this->Text = L"CopyDialog";
 			this->TransparencyKey = System::Drawing::Color::Fuchsia;

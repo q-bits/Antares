@@ -127,9 +127,9 @@ array<String^>^ TopfieldFileParts(String^ filename)
 				index = j;
 			last_slash=is_slash;
 		}        
-		if (index>0) 
+		if (index>=0) 
 		{
-				out[0]=filename->Substring(0,index);
+			if (index>0) out[0]=filename->Substring(0,index);
 				if (index+1 < filename->Length)
 				   out[1]=filename->Substring(index+1);	
 		}
@@ -189,42 +189,6 @@ String^ HumanReadableSize(__u64 size)
 
 }
 
-/*
-int CALLBACK wWinMain(
-  __in  HINSTANCE hInstance,
-  __in  HINSTANCE hPrevInstance,
-  __in  LPWSTR lpCmdLine,
-  __in  int nCmdShow
-)
-{
-	return(0);
-}
-int CALLBACK qqqwmain(
-  void
-)
-{
-	return(0);
-}
-
-
-
-extern "C"
-{
-int  _cdecl wWinMainCRTStartup(void);
-int  _cdecl wmainCRTStartup(void);
-}
-int main(void);
-int __stdcall custom_entry(void )
-{
-    wWinMainCRTStartup();
-    //wmainCRTStartup();
-   
-    main();
-	return 0;
-}
-*/
-
-
 
 void InitConsoleHandles()
  {
@@ -232,9 +196,7 @@ void InitConsoleHandles()
 	 HANDLE hStdOut, hStdErr, hStdOutDup, hStdErrDup;
 
  BY_HANDLE_FILE_INFORMATION bhfi;
- //hStdOut = gcnew SafeFileHandle((System::IntPtr) (void*) GetStdHandle(STD_OUTPUT_HANDLE),true);
- //hStdErr = gcnew SafeFileHandle((System::IntPtr) (void*) GetStdHandle(STD_ERROR_HANDLE),true);
- 
+
  hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
  hStdErr = GetStdHandle(STD_ERROR_HANDLE);
 
@@ -267,23 +229,6 @@ void InitConsoleHandles()
  }
  }
 
-/*
- static void Main(string[] args)
- {
- bool NoGui = false;
- string name = "";
- int number = 0;
- for (int i = 0; i != args.Length; ++i)
- {
- switch (args[i])
- {
- case "/NoGui": NoGui = true; break;
- case "/name": name = args[++i]; break;
- case "/number": number = int.Parse(args[++i]); break;
- default: Console.WriteLine("Invalid args!"); return;
- }
- }
-*/
 
 
 [STAThreadAttribute]
@@ -318,7 +263,9 @@ int main(array<System::String ^> ^args)
 	}
 	else
 	{
+#ifndef _DEBUG
 		      FreeConsole();
+#endif
 	}
 
 
@@ -336,7 +283,7 @@ int main(array<System::String ^> ^args)
 
 
 
-#ifdef _DEBUG
+#ifdef _DEBUG____
 	AllocConsole(); 
 
 	hCrt = _open_osfhandle((long) GetStdHandle(STD_OUTPUT_HANDLE), _O_TEXT);
@@ -360,7 +307,7 @@ int main(array<System::String ^> ^args)
 
 
 
-
+/*
 	bool ^x;
 	bool ^y=gcnew System::Boolean;
 	x=y;
@@ -373,7 +320,7 @@ int main(array<System::String ^> ^args)
 	Console::WriteLine(x->ToString() + " " + y->ToString());
 	*y=true;
 	Console::WriteLine(x->ToString() + " " + y->ToString());
-    
+    */
 
 	// Create the main window and run it
 	Form1^ form = gcnew Form1();

@@ -68,6 +68,7 @@ int verbose = 0;
                      int timeout)
   {
 	  int r;
+	  if (dev==NULL) return(LIBUSB_ERROR_NO_DEVICE);
 	  libusb_bulk_transfer(dev,(unsigned char) ep,bytes,size,&r,timeout);
 	  return(r);
   }
@@ -75,6 +76,7 @@ int verbose = 0;
                     int timeout)
   {
       int r;
+	  if (dev==NULL) return(LIBUSB_ERROR_NO_DEVICE);
 	  libusb_bulk_transfer(dev,(unsigned char) ep,bytes,size,&r,timeout);
 	  return(r);
   }

@@ -50,8 +50,7 @@ namespace Antares {
 
 			filename = Path::Combine(folder, "antares.setttings.xml");
 
-
-			Console::WriteLine("----------------" + filename + "---------------");
+			//Console::WriteLine("----------------" + filename + "---------------");
 
 			loadOldSettings();
 			readXmlSettings();
@@ -70,10 +69,10 @@ namespace Antares {
 					if (r->NodeType == XmlNodeType::Element)
 					{
 						key=""; val="";
-						Console::WriteLine(" -- Node --");
+						//Console::WriteLine(" -- Node --");
 						while(r->MoveToNextAttribute())
 						{
-							Console::WriteLine( " Name = "+r->Name   +  "Value =" +r->Value);
+							//Console::WriteLine( " Name = "+r->Name   +  "Value =" +r->Value);
 							if ( r->Name == "key") key = r->Value;
 							else if ( r->Name == "value") val = r->Value;
 						}
@@ -169,7 +168,7 @@ namespace Antares {
 					dic[key]=val;
 				else
 					dic->Add(key, val);
-		   Console::WriteLine("Key = "+key+", val = "+val);
+		   //Console::WriteLine("Key = "+key+", val = "+val);
 		}
 
 		String^ getSetting(String^ key)

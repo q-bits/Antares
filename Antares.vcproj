@@ -65,7 +65,7 @@
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				AssemblyDebug="1"
-				SubSystem="2"
+				SubSystem="1"
 				EntryPointSymbol="main"
 				TargetMachine="1"
 			/>
