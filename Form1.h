@@ -58,6 +58,9 @@ namespace Antares {
 	using namespace System::Runtime::InteropServices; // for class Marshal
 
 
+	delegate void ListViewSelectionDelegate(void);
+
+
     //TODO: put these prototypes somewhere better
 	System::String^ HumanReadableSize(__u64 size);
 	System::String^ DateString(time_t time);
@@ -162,6 +165,9 @@ namespace Antares {
 
 			this->setTopfieldDir("\\DataFiles\\");
 			this->setComputerDir("C:\\");
+
+			listView2_selection_was_changed=false; 
+			listView1_selection_was_changed=false;
 
 			//this->SetStyle(ControlStyles::AllPaintingInWmPaint | ControlStyles::UserPaint | ControlStyles::DoubleBuffer,true);
 
@@ -1012,6 +1018,8 @@ namespace Antares {
 			Settings^ settings;
 			Antares::Icons^ icons;
 
+			bool listView2_selection_was_changed, listView1_selection_was_changed;
+
 
 
 
@@ -1065,6 +1073,7 @@ namespace Antares {
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton11;
 	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator3;
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton12;
+
 
 
 
@@ -1384,6 +1393,7 @@ namespace Antares {
 			this->listView1->View = System::Windows::Forms::View::Details;
 			this->listView1->ItemActivate += gcnew System::EventHandler(this, &Form1::listView1_ItemActivate);
 			this->listView1->AfterLabelEdit += gcnew System::Windows::Forms::LabelEditEventHandler(this, &Form1::listView_AfterLabelEdit);
+			this->listView1->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView1_SelectedIndexChanged);
 			this->listView1->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView1_Layout);
 			this->listView1->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
 			this->listView1->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
@@ -1600,10 +1610,9 @@ namespace Antares {
 			this->listView2->View = System::Windows::Forms::View::Details;
 			this->listView2->ItemActivate += gcnew System::EventHandler(this, &Form1::listView2_ItemActivate);
 			this->listView2->AfterLabelEdit += gcnew System::Windows::Forms::LabelEditEventHandler(this, &Form1::listView_AfterLabelEdit);
-			this->listView2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView2_SelectedIndexChanged_1);
+			this->listView2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView2_SelectedIndexChanged);
 			this->listView2->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView2_Layout);
 			this->listView2->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
-			this->listView2->ItemSelectionChanged += gcnew System::Windows::Forms::ListViewItemSelectionChangedEventHandler(this, &Form1::listView2_ItemSelectionChanged);
 			this->listView2->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
 			// 
 			// timer1
@@ -1662,10 +1671,6 @@ namespace Antares {
 	private: System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
 			 }
 	private: System::Void splitContainer1_Panel1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e) {
-			 }
-	private: System::Void listView1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
-			 }
-	private: System::Void listView2_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
 			 }
 	private: System::Void toolStripButton1_Click(System::Object^  sender, System::EventArgs^  e) {
 
@@ -3748,22 +3753,137 @@ out:
 				 else
 					 settings->changeSetting("TurboMode","off");
 			 }
-	private: System::Void listView2_ItemSelectionChanged(System::Object^  sender, System::Windows::Forms::ListViewItemSelectionChangedEventArgs^  e) {
-				 printf("ListView2 Item Selection Changed.\n");
-			 }
-	private: System::Void listView2_SelectedIndexChanged_1(System::Object^  sender, System::EventArgs^  e) {
-				 printf("ListView2 Selected Index Changed\n");
-				 if(this->listView2->SelectedItems->Count ==0 )
-				 {
-					 this->button1->Enabled = false;
-				 }
-				 else
 
+			 private: System::Void listView2_SelectionChanged_Finally(void)
+					  {
+						  this->listView2_selection_was_changed=false;
+						  ListView^ listview = this->listView2;
+						   String^ txt = "";
+						  if(listview->SelectedItems->Count ==0 )
+						  {
+							  this->button1->Enabled = false;
+						  }
+						  else
+
+						  {
+							  this->button1->Enabled = true;
+
+
+							  ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
+							  long long totalsize = 0;
+							  int numfiles=0;
+							  int numdirs=0;
+							  for each (ComputerItem^ item in selected)
+							  {
+								  if (!item->isdir)
+								  {
+									  totalsize+=item->size;
+									  numfiles++;
+								  }
+								  else numdirs++;
+							  }
+
+							 
+
+							  if (numfiles>1)
+							  {
+								  txt = "  Selected " + numfiles.ToString() +" files on PC  ( "+Antares::HumanReadableSize(totalsize)+" )";
+
+								  if (numdirs>0)
+								  {
+									  txt = txt + "     and   "+numdirs.ToString();
+									  if (numdirs>1) txt=txt+" folders"; else txt=txt+" folder";
+									  txt=txt+" (size unknown) ";
+								  }
+
+							  }
+
+
+							  
+
+						  }
+						  this->toolStripStatusLabel1->Text = txt;
+
+					  }
+
+
+
+			 private: System::Void listView1_SelectionChanged_Finally(void)
+					  {
+						  this->listView1_selection_was_changed=false;
+
+						  ListView^ listview = this->listView1;
+						  String^ txt = "";
+						  if(listview->SelectedItems->Count ==0 )
+						  {
+							  this->button2->Enabled = false;
+						  }
+						  else
+
+						  {
+							  this->button2->Enabled = true;
+
+
+							  ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
+							  long long totalsize = 0;
+							  int numfiles=0;
+							  int numdirs=0;
+							  for each (TopfieldItem^ item in selected)
+							  {
+								  if (!item->isdir)
+								  {
+									  totalsize+=item->size;
+									  numfiles++;
+								  }
+								  else numdirs++;
+							  }
+
+
+
+							  if (numfiles>1)
+							  {
+								  txt = "  Selected " + numfiles.ToString() +" files on PVR ( "+Antares::HumanReadableSize(totalsize)+" )";
+
+								  if (numdirs>0)
+								  {
+									  txt = txt + "     and   "+numdirs.ToString();
+									  if (numdirs>1) txt=txt+" folders"; else txt=txt+" folder";
+									  txt=txt+" (size unknown) ";
+								  }
+
+							  }
+
+
+
+
+						  }
+						  this->toolStripStatusLabel1->Text = txt;
+
+					  }
+
+	private: System::Void listView2_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+
+
+				 if (this->listView2_selection_was_changed==false)
 				 {
-					 this->button1->Enabled = true;
+					 ListViewSelectionDelegate^ d = gcnew ListViewSelectionDelegate(this, &Form1::listView2_SelectionChanged_Finally);
+					 this->listView2_selection_was_changed=true;
+					 this->BeginInvoke(d);//, gcnew array<Object^> { });
 				 }
 
 			 }
+
+	private: System::Void listView1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+				  if (this->listView1_selection_was_changed==false)
+				 {
+					 ListViewSelectionDelegate^ d = gcnew ListViewSelectionDelegate(this, &Form1::listView1_SelectionChanged_Finally);
+					 this->listView1_selection_was_changed=true;
+					 this->BeginInvoke(d);//, gcnew array<Object^> { });
+				 }
+
+			 }
+
+
 	private: System::Void toolStripButton9_Click(System::Object^  sender, System::EventArgs^  e) {
 				 // "Cut" button pressed on the topfield side.
 				 // Change colour of cut items, and record the filenames on the clipboard.   
@@ -4237,6 +4357,7 @@ out:
 					 MessageBox::Show(this,"An error occurred while creating the new folder.","Error.",MessageBoxButtons::OK);
 
 			 }
-	};    // class form1
+
+};    // class form1
 };    // namespace antares
 

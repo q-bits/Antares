@@ -163,7 +163,7 @@ namespace Antares {
 			if (this->InvokeRequired)
 			{
 				CloseRequestCallback^ d = gcnew CloseRequestCallback(this, &CopyDialog::close_request_threadsafe);
-				this->Invoke(d, gcnew array<Object^> { });
+				this->Invoke(d);//, gcnew array<Object^> { });
 			}
 			else
 			{
