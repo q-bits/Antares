@@ -140,6 +140,8 @@ namespace Antares {
 			this->Controls->Add(this->button2);
 			this->Controls->Add(this->button1);
 			this->Name = L"DeleteConfirmation";
+			this->ShowInTaskbar = false;
+			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;
 			this->Text = L"Delete Confirmation";
 			this->ResumeLayout(false);
 			this->PerformLayout();

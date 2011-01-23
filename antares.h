@@ -28,6 +28,8 @@ namespace Antares {
 	using namespace System;
 	using namespace System::ComponentModel;
 	using namespace System::Collections;
+	using namespace System::Collections::Generic;
+
 	using namespace System::Windows::Forms;
 	using namespace System::Data;
 	using namespace System::Drawing;
@@ -45,6 +47,7 @@ namespace Antares {
 	System::String^ safeString( char* filename );
 	System::String^ safeString( String^ filename );
 	System::DateTime Time_T2DateTime(time_t t);
+	String^ combineTopfieldPath(String^ path1,  String^ path2);
 
 
 
@@ -60,6 +63,10 @@ namespace Antares {
 
 	public ref class Icons {
 	public:
+		DWORD_PTR imagelist;
+		int folder_index;
+		int file_index;
+		Dictionary<String^, int> ^dic;
 		Icons(void)
 		{
 			imagelist = GetFileIconList("test.txt");
@@ -140,10 +147,7 @@ namespace Antares {
 			return im_list;
 
 		}
-		DWORD_PTR imagelist;
-		int folder_index;
-		int file_index;
-		Dictionary<String^, int> ^dic;
+
 	};
 
 
@@ -241,20 +245,6 @@ namespace Antares {
 	};
 
 
-
-	String^ combineTopfieldPath(String^ path1,  String^ path2)
-	{
-
-		String^ path;
-
-		path = path1; 
-		if (path->Length == 0 || !path->EndsWith("\\"))
-			path = path + "\\";
-
-		path = path + path2;
-
-		return path;
-	}
 
 
 	public ref class TopfieldItem : public FileItem {

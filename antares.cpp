@@ -97,6 +97,21 @@ String^ DateString(DateTime time)
   
 }
 
+String^ combineTopfieldPath(String^ path1,  String^ path2)
+{
+
+	String^ path;
+
+	path = path1; 
+	if (path->Length == 0 || !path->EndsWith("\\"))
+		path = path + "\\";
+
+	path = path + path2;
+
+	return path;
+}
+
+
 time_t DateTimeToTime_T(DateTime datetime)
 {
 	DateTime startTime = DateTime(1970,1,1,0,0,0,0,System::DateTimeKind::Utc);

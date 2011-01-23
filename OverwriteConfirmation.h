@@ -492,6 +492,8 @@ namespace Antares {
 			this->Controls->Add(this->panel1);
 			this->Controls->Add(this->title_label);
 			this->Name = L"OverwriteConfirmation";
+			this->ShowInTaskbar = false;
+			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;
 			this->Text = L"Files exist";
 			this->Shown += gcnew System::EventHandler(this, &OverwriteConfirmation::OverwriteConfirmation_Shown);
 			this->panel1->ResumeLayout(false);

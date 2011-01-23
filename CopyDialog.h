@@ -7,17 +7,23 @@ extern "C"
 #include <math.h>
 
 }
+#include "antares.h"
 
-using namespace System;
-using namespace System::ComponentModel;
-using namespace System::Collections;
-using namespace System::Windows::Forms;
-using namespace System::Data;
-using namespace System::Drawing;
-using namespace System::Threading;
+
 
 
 namespace Antares {
+
+	using namespace System;
+	using namespace System::ComponentModel;
+	using namespace System::Collections;
+	using namespace System::Windows::Forms;
+	using namespace System::Data;
+	using namespace System::Drawing;
+	using namespace System::Text;
+	using namespace System::IO;
+	using namespace System::Threading;
+	using namespace System::Runtime::InteropServices;
 
 	delegate void UpdateDialogCallback(void);
 	delegate void CloseRequestCallback(void);
@@ -50,6 +56,8 @@ namespace Antares {
 			this->label7->Text = "";
 			this->label8->Text = "";
 			this->window_title="";
+			//this->full_src_filename="";
+			//this->full_dest_filename="";
 			this->current_file="";
 			this->last_current_delta=0;
 			//this->current_offset=0; 
@@ -60,6 +68,11 @@ namespace Antares {
 			this->rate_bytes = 0;
 			this->rate_milliseconds = 0;
 			this->parent_win = nullptr;
+			
+			this->usb_error=false;
+			this->file_error="";
+			this->loaded = false;
+			this->maximum_successful_index=-1;
 			
 
 		}
@@ -75,6 +88,7 @@ namespace Antares {
 
 		void new_packet(long long bytes)
 		{
+		   
            if ( false == this->rate_stopwatch->IsRunning)
 		   {
 			   this->rate_stopwatch->Reset();
@@ -115,6 +129,7 @@ namespace Antares {
 
 		void showDialog_thread(void)
 		{
+			this->Visible=false;
 			if(this->parent_win == nullptr)
 				this->ShowDialog();
 			else
@@ -177,18 +192,25 @@ namespace Antares {
 		{
 
 			if (this->cancelled) return;
+		
 			while (!this->IsHandleCreated) 				
 			{
 				Thread::Sleep(100);
 			}
 
+			if (this->InvokeRequired)
+			{
 			UpdateDialogCallback^ d = 
 				gcnew UpdateDialogCallback(this, &CopyDialog::update_dialog);
-			this->Invoke(d, gcnew array<Object^> { });
+			this->BeginInvoke(d, gcnew array<Object^> { });
+			}
+			else 
+			   this->update_dialog();
 		}
 
 		void update_dialog(void)
 		{
+			if ( ! this->Visible) return;
 			this->Text = this->window_title;
 			this->label3->Text = current_file;
 			//double current_delta = (double) (time(NULL) - this->current_start_time);
@@ -325,7 +347,7 @@ namespace Antares {
 		long long current_bytes_received;
 		long long total_bytes_received;
 		array<long long int>^ filesizes;
-		array<long long int>^ current_offsets;
+		//array<long long int>^ current_offsets;
 		int current_index;
         int numfiles;
 
@@ -336,6 +358,19 @@ namespace Antares {
 		bool has_initialised;
 		IWin32Window ^parent_win;
 
+
+		//String^ full_dest_filename, ^full_src_filename;
+		array<bool>^          dest_exists;
+		array<long long int>^ dest_size;
+		array<int>^           overwrite_action;
+		array<long long int>^ current_offsets;
+		array<String^>^       dest_filename;
+		array<FileItem^>^     src_items;
+		array<array<TopfieldItem^>^>^ topfield_items_by_folder;
+		bool usb_error; 
+		String^ file_error; 
+		bool loaded;
+		int maximum_successful_index;
   
 
 
@@ -542,12 +577,18 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->Controls->Add(this->progressBar2);
 			this->Controls->Add(this->progressBar1);
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
+			this->KeyPreview = true;
 			this->Name = L"CopyDialog";
 			this->Padding = System::Windows::Forms::Padding(5);
 			this->ShowIcon = false;
+			this->ShowInTaskbar = false;
 			this->SizeGripStyle = System::Windows::Forms::SizeGripStyle::Hide;
+			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;
 			this->Text = L"CopyDialog";
 			this->TransparencyKey = System::Drawing::Color::Fuchsia;
+			this->Load += gcnew System::EventHandler(this, &CopyDialog::CopyDialog_Load);
+			this->FormClosing += gcnew System::Windows::Forms::FormClosingEventHandler(this, &CopyDialog::CopyDialog_FormClosing);
+			this->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &CopyDialog::CopyDialog_KeyDown);
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -564,6 +605,23 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 this->turbo_request  = this->checkBox1->Checked;
 			
+		 }
+private: System::Void CopyDialog_Load(System::Object^  sender, System::EventArgs^  e) {
+			 printf("CopyDialog loaded\n");
+			 this->loaded=true;
+		 }
+
+private: System::Void CopyDialog_KeyDown(System::Object^  sender, System::Windows::Forms::KeyEventArgs^  e) {
+			 if (e->KeyCode == Keys::Escape)
+			 {
+				 this->button1->Enabled=false;
+				 this->cancelled=true;
+			 }
+		 }
+private: System::Void CopyDialog_FormClosing(System::Object^  sender, System::Windows::Forms::FormClosingEventArgs^  e) {
+			 this->button1->Enabled=false;
+			 this->cancelled=true;
+			 
 		 }
 };
 }
