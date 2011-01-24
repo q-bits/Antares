@@ -349,6 +349,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\LowSpaceAlert.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\mjd.c"
 				>
 				<FileConfiguration
@@ -517,6 +521,15 @@
 			<File
 				RelativePath="..\libusb\libusb.h"
 				>
+			</File>
+			<File
+				RelativePath=".\LowSpaceAlert.h"
+				FileType="3"
+				>
+				<File
+					RelativePath=".\LowSpaceAlert.resx"
+					>
+				</File>
 			</File>
 			<File
 				RelativePath=".\mjd.h"

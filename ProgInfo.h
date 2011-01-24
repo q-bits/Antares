@@ -323,6 +323,8 @@ namespace Antares {
 			this->Controls->Add(this->label2);
 			this->ForeColor = System::Drawing::Color::Green;
 			this->Name = L"ProgInfo";
+			this->ShowInTaskbar = false;
+			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;
 			this->Text = L"Program Information";
 			this->panel1->ResumeLayout(false);
 			this->panel1->PerformLayout();

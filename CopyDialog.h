@@ -28,6 +28,8 @@ namespace Antares {
 	delegate void UpdateDialogCallback(void);
 	delegate void CloseRequestCallback(void);
 
+	public enum class CopyDirection {PVR_TO_PC, PC_TO_PVR, UNDEFINED};
+
 	/// <summary>
 	/// Summary for CopyDialog
 	///
@@ -73,7 +75,8 @@ namespace Antares {
 			this->file_error="";
 			this->loaded = false;
 			this->maximum_successful_index=-1;
-			
+			this->copydirection = CopyDirection::UNDEFINED;
+			this->current_error = "";
 
 		}
 	
@@ -186,6 +189,15 @@ namespace Antares {
 			}
 		}
 
+		void set_error(String^ str)
+		{
+			this->current_error = str;
+		}
+
+		void clear_error()
+		{
+            this->current_error="";
+		}
 
 
 		void update_dialog_threadsafe(void)
@@ -212,7 +224,20 @@ namespace Antares {
 		{
 			if ( ! this->Visible) return;
 			this->Text = this->window_title;
-			this->label3->Text = current_file;
+
+			if (this->current_error->Length >  0)
+			{
+				this->label3->Text = this->current_error;
+				this->label3->ForeColor = Color::FromArgb(200,0,0);
+				
+			}
+			else
+			{
+				this->label3->Text = current_file;
+				this->label3->ForeColor = System::Drawing::SystemColors::ControlText;
+			}
+
+			
 			//double current_delta = (double) (time(NULL) - this->current_start_time);
 			//double total_delta = (double) (time(NULL) - this->total_start_time);
 			double current_delta = (double) this->rate_milliseconds / 1000.0;
@@ -234,8 +259,21 @@ namespace Antares {
 			//else
 			//	total_rate=0;
             
-			if (this->has_initialised==false) {this->checkBox1->Checked = *this->turbo_mode;this->has_initialised=true;};
-			if (*this->turbo_mode != this->turbo_request)
+			if (this->has_initialised==false) {
+				this->checkBox1->Checked = *this->turbo_mode;this->has_initialised=true;
+
+				if (this->numfiles<=1)
+				{
+					this->label2->Visible=false;
+					this->label5->Visible=false;
+					this->label7->Visible=false;
+					this->progressBar2->Visible=false;
+					this->Height=225;
+
+				}
+
+			};
+			if (*this->turbo_mode != this->turbo_request && this->current_error->Length == 0)
 			{
 				this->checkBox1->Text = "Turbo mode [Changing...]";
 			}
@@ -244,7 +282,9 @@ namespace Antares {
 				this->checkBox1->Text = "Turbo mode";
 			}
 
-			this->label4->Text =  (offset / 1024).ToString("#,#,#")+"KB / "+(size/1024).ToString("#,#,#")+"KB";
+			//this->label4->Text =  (offset / 1024).ToString("#,#,#")+"KB / "+(size/1024).ToString("#,#,#")+"KB";
+			this->label4->Text =  (offset / 1024/1024).ToString("#,#,#")+" MB / "+(size/1024/1024).ToString("#,#,#")+" MB";
+
 
 			long long total_offset=0;  long long total_size=0;
 			for (int j=0; j < this->numfiles; j++)
@@ -254,7 +294,8 @@ namespace Antares {
 			}
 
 
-			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
+//			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
+this->label5->Text =  (total_offset / 1024/1024).ToString("#,#,#")+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
 
 			if (size>0)
 			{
@@ -371,6 +412,9 @@ namespace Antares {
 		String^ file_error; 
 		bool loaded;
 		int maximum_successful_index;
+
+        CopyDirection copydirection;
+		String^ current_error;
   
 
 
@@ -465,9 +509,11 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			// 
 			// button1
 			// 
+			this->button1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->button1->Location = System::Drawing::Point(270, 220);
+			this->button1->Location = System::Drawing::Point(270, 229);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(140, 31);
 			this->button1->TabIndex = 4;
@@ -477,8 +523,6 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			// 
 			// label3
 			// 
-			this->label3->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
-				| System::Windows::Forms::AnchorStyles::Right));
 			this->label3->AutoSize = true;
 			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
@@ -549,8 +593,9 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			// 
 			// checkBox1
 			// 
+			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->Location = System::Drawing::Point(9, 261);
+			this->checkBox1->Location = System::Drawing::Point(11, 243);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 11;
