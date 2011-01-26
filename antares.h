@@ -168,6 +168,7 @@ namespace Antares {
 		char type;
 		long long int size;
 		bool isdir;
+		bool isdrive;
 
 
 
@@ -179,6 +180,7 @@ namespace Antares {
 
 
 	public:
+		bool isdrive;
 
 		ComputerItem(int letter) : FileItem()    // Represents drive letter with letter-th letter of the alphabet
 		{
@@ -194,6 +196,7 @@ namespace Antares {
 			this->filename=namestring;
             this->full_filename = namestring;
 			this->recursion_offset="";
+			this->isdrive = true;
 
 		}
 
@@ -203,7 +206,7 @@ namespace Antares {
 			FileInfo^ f = gcnew FileInfo(path);   //Todo: handle exceptions
 			FileAttributes attr = f->Attributes::get();
 			this->filename = Path::GetFileName(path);
-
+            this->isdrive = false;
 			String^ typestring;
 			String^ sizestring="";
 			this->recursion_offset="";

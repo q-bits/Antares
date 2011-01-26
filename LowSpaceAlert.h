@@ -47,6 +47,7 @@ namespace Antares {
 	private: System::Windows::Forms::Label^  label1;
 	public: System::Windows::Forms::Label^  required_label;
 	public: System::Windows::Forms::Label^  available_label;
+	public: System::Windows::Forms::Label^  label4;
 	private: 
 
 	private: 
@@ -54,7 +55,7 @@ namespace Antares {
 	public: 
 
 
-	private: System::Windows::Forms::Label^  label4;
+
 
 	protected: 
 

@@ -77,6 +77,7 @@ namespace Antares {
 			this->maximum_successful_index=-1;
 			this->copydirection = CopyDirection::UNDEFINED;
 			this->current_error = "";
+			this->freespace_check_needed=false;
 
 		}
 	
@@ -295,7 +296,7 @@ namespace Antares {
 
 
 //			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
-this->label5->Text =  (total_offset / 1024/1024).ToString("#,#,#")+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
+			this->label5->Text =  (total_offset / 1024/1024).ToString("#,#,#")+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
 
 			if (size>0)
 			{
@@ -415,6 +416,8 @@ this->label5->Text =  (total_offset / 1024/1024).ToString("#,#,#")+" MB / "+(tot
 
         CopyDirection copydirection;
 		String^ current_error;
+
+		bool freespace_check_needed;
   
 
 

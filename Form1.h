@@ -60,6 +60,8 @@ namespace Antares {
 
 
 	delegate void ListViewSelectionDelegate(void);
+	delegate void TopfieldSummaryCallback(void);
+	delegate void CheckConnectionCallback(void);
 
 
 	//TODO: put these prototypes somewhere better
@@ -156,6 +158,9 @@ namespace Antares {
 	public:
 		Form1(void)
 		{
+
+			this->last_topfield_freek = -1;
+			this->last_topfield_freek_time = 0;
 
 			icons = gcnew Antares::Icons();
 
@@ -282,106 +287,114 @@ namespace Antares {
 
 		void CheckConnection(void)
 		{
-			libusb_device_handle* dh;
-			int success;
-			//struct libusb_bus * bus;
-			struct libusb_device *dev, *device;
-			int i;
-			int r;
-			int cnt;
-			libusb_device **devs;
-			struct libusb_device_descriptor desc;
-
-			cnt = libusb_get_device_list(NULL, &devs);
-			dh = NULL;
-			device = NULL;
-			success = 0;
-			bool threadsafe = ! this->InvokeRequired;
-			for (i=0; i<cnt; i++)
+			if (this->InvokeRequired)
 			{
-				dev=devs[i];
-				r = libusb_get_device_descriptor(dev, &desc);
-
-				if (desc.idVendor==0x11db && desc.idProduct == 0x1000)
-				{
-					device=dev;
-				}
-				else {continue;};
-
-				if (this->fd != NULL) break;
-
-				r=libusb_open(device,&dh);
-				if (r) {
-					fprintf(stderr,"New open call failed");
-
-					continue;
-				}
-
-				// Select configuration 0x01
-				if (libusb_set_configuration(dh, 0x01))
-				{
-					fprintf(stderr, "connect: Select configuration failed\n");
-
-					continue;
-				}
-
-				// Claim interface 0x00
-				if (libusb_claim_interface(dh, 0x00))
-				{
-					fprintf(stderr, "connect: Claim interface failed\n");
-
-					continue;
-				}
-				success=1; break;
-
+				CheckConnectionCallback^ d = gcnew CheckConnectionCallback(this, &Form1::CheckConnection);
+				this->Invoke(d);
 			}
-
-			if (this->fd != NULL && device==NULL)    // Topfield has apparently been disconnected. 
+			else
 			{
-				libusb_close(this->fd);
-				this->fd=NULL;
-				libusb_free_device_list(devs, 1);
-				//printf("Topfield is now disconnected.\n");
-				if (threadsafe)
+				libusb_device_handle* dh;
+				int success;
+				//struct libusb_bus * bus;
+				struct libusb_device *dev, *device;
+				int i;
+				int r;
+				int cnt;
+				libusb_device **devs;
+				struct libusb_device_descriptor desc;
+
+				cnt = libusb_get_device_list(NULL, &devs);
+				dh = NULL;
+				device = NULL;
+				success = 0;
+				bool threadsafe = true;//! this->InvokeRequired;
+				for (i=0; i<cnt; i++)
 				{
-					this->label2->Text = "PVR: Device not connected";
-					this->listView1->Items->Clear();
+					dev=devs[i];
+					r = libusb_get_device_descriptor(dev, &desc);
+
+					if (desc.idVendor==0x11db && desc.idProduct == 0x1000)
+					{
+						device=dev;
+					}
+					else {continue;};
+
+					if (this->fd != NULL) break;
+
+					r=libusb_open(device,&dh);
+					if (r) {
+						fprintf(stderr,"New open call failed");
+
+						continue;
+					}
+
+					// Select configuration 0x01
+					if (libusb_set_configuration(dh, 0x01))
+					{
+						fprintf(stderr, "connect: Select configuration failed\n");
+
+						continue;
+					}
+
+					// Claim interface 0x00
+					if (libusb_claim_interface(dh, 0x00))
+					{
+						fprintf(stderr, "connect: Claim interface failed\n");
+
+						continue;
+					}
+					success=1; break;
+
 				}
+
+				if (this->fd != NULL && device==NULL)    // Topfield has apparently been disconnected. 
+				{
+					libusb_close(this->fd);
+					this->fd=NULL;
+					libusb_free_device_list(devs, 1);
+					//printf("Topfield is now disconnected.\n");
+					if (threadsafe)
+					{
+						this->label2->Text = "PVR: Device not connected";
+						this->listView1->Items->Clear();
+					}
+					return;
+				}
+
+
+				if (this->fd !=NULL && device!=NULL)  // Topfield is apparently still connected
+				{
+					libusb_free_device_list(devs, 1);
+					//printf("Topfield is still connected.\n");
+					return;
+				}
+
+
+				if (this->fd == NULL && device==NULL)  // Topfield is apparently still disconnected
+				{
+					libusb_free_device_list(devs, 1);
+					//printf("Topfield is still disconnected.\n");
+					if (threadsafe) this->label2->Text = "PVR: Device not connected";
+					return;
+				}
+
+
+				if (!success && dh)
+				{
+					libusb_close(dh);
+					this->fd=NULL;
+					libusb_free_device_list(devs, 1);
+					printf("Topfield is connected, but could not be opened.\n");
+					return;
+				}
+
+				this->fd=dh;
+				printf("Topfield is now connected.\n");
+				libusb_free_device_list(devs, 1);
+				if (threadsafe) this->loadTopfieldDir();
 				return;
 			}
-
-
-			if (this->fd !=NULL && device!=NULL)  // Topfield is apparently still connected
-			{
-				libusb_free_device_list(devs, 1);
-				//printf("Topfield is still connected.\n");
-				return;
-			}
-
-
-			if (this->fd == NULL && device==NULL)  // Topfield is apparently still disconnected
-			{
-				libusb_free_device_list(devs, 1);
-				//printf("Topfield is still disconnected.\n");
-				if (threadsafe) this->label2->Text = "PVR: Device not connected";
-				return;
-			}
-
-
-			if (!success && dh)
-			{
-				libusb_close(dh);
-				this->fd=NULL;
-				libusb_free_device_list(devs, 1);
-				printf("Topfield is connected, but could not be opened.\n");
-				return;
-			}
-
-			this->fd=dh;
-			printf("Topfield is now connected.\n");
-			libusb_free_device_list(devs, 1);
-			if (threadsafe) this->loadTopfieldDir();
-			return;
 		}
 
 
@@ -459,41 +472,62 @@ namespace Antares {
 		int wait_for_connection(Antares::CopyDialog^ copydialog)
 		{
 
-			copydialog->set_error( " ERROR CONNECTING TO THE PVR. Retrying . . . ");
+			if (copydialog->usb_error)
+			    copydialog->set_error( " ERROR CONNECTING TO THE PVR. Retrying . . . ");
+			if (copydialog->freespace_check_needed)
+			{
+				copydialog->current_file = "Checking free space on PVR...";
+				
+				copydialog->update_dialog_threadsafe();
+				goto check_freespace;
+			}
 			copydialog->reset_rate();
 			copydialog->update_dialog_threadsafe();
-			int r,ret;
+			int r,ret=0;
 
 wait_again:
 			while(1)
 			{
 				this->absorb_late_packets(4,100);
 				r=this->tf_init();
-
-				if (r==0) {ret=0;break;};
 				if (copydialog->cancelled) {ret=-1;break;};
+				if (r==0) {ret=0;break;};
+			
 				//System::Threading::Thread::Sleep(1000);
 				this->CheckConnection();
 				if (copydialog->cancelled) {ret=-1;break;};
 
 			}
 
-			if (ret==0)
+check_freespace:
+
+			if (ret==0 && copydialog->copydirection == CopyDirection::PC_TO_PVR)
 			{
 				
 
 				TopfieldFreeSpace freespace = this->getTopfieldFreeSpace();
 				if (freespace.freek<0) goto wait_again;
 
-				if (freespace.freek<128) {
+				printf("freek = %d\n",freespace.freek);
+				if (freespace.freek < this->topfield_minimum_free_megs*1024.0) {
+					printf("copydialog->cancelled %d \n",copydialog->cancelled);
 					copydialog->set_error( " NO SPACE LEFT ON PVR. Retrying . . . ");
+					copydialog->reset_rate();
+					copydialog->update_dialog_threadsafe();
 					this->set_turbo_mode(0);
-					Thread::Sleep(5000);
+
+					for (int j=0; j<5; j++)
+					{
+						Thread::Sleep(1000);
+						if (copydialog->cancelled) {ret=-1;break;};
+					}
+					
 					goto wait_again;
 				}
 
-					this->set_turbo_mode(copydialog->turbo_request);
 				}
+
+					this->set_turbo_mode(copydialog->turbo_request);
 
             if (ret==0) copydialog->clear_error();
 
@@ -539,7 +573,7 @@ wait_again:
 				break;
 
 			case FAIL:
-				fprintf(stderr, "ERROR: Device reports %s\n",
+				fprintf(stderr, "ERROR: Device reports %s in set_turbo_mode\n",
 					decode_error(&reply));
 				break;
 
@@ -862,8 +896,8 @@ wait_again:
 					break;
 
 				case FAIL:
-					fprintf(stderr, "ERROR: Device reports %s\n",
-						decode_error(&reply));
+					fprintf(stderr, "ERROR: Device reports %s in loadTopfieldDirArray, path %s\n",
+						decode_error(&reply),path);
 					return items;
 					break;
 				default:
@@ -931,14 +965,36 @@ wait_again:
 				}
 
 			case FAIL:
-				fprintf(stderr, "ERROR: Device reports %s\n",
+				fprintf(stderr, "ERROR: Device reports %s in getTopfieldFreeSpace\n",
 					decode_error(&reply));
 				break;
 
 			default:
 				fprintf(stderr, "ERROR: Unhandled packet in load_topfield_dir/hdd_size\n");
 			}
+			this->last_topfield_freek = v.freek;
+			this->last_topfield_freek_time = time(NULL);
+			this->bytes_sent_since_last_freek = 0;
 			return v;
+		}
+
+		void updateTopfieldSummary(void)
+		{
+			if (this->InvokeRequired)
+			{
+				TopfieldSummaryCallback^ d = gcnew TopfieldSummaryCallback(this, &Form1::updateTopfieldSummary);
+				this->Invoke(d);
+			}
+			else
+			{
+
+				TopfieldFreeSpace v = getTopfieldFreeSpace();
+
+				if (v.valid)
+				   this->label2->Text = " Topfield device  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " total";
+
+			}
+
 		}
 
 		// Load and display files in the current topfield directory.
@@ -960,10 +1016,7 @@ wait_again:
 				return -EPROTO; 
 			}
 
-
-			TopfieldFreeSpace v = getTopfieldFreeSpace();
-
-			this->label2->Text = " Topfield device  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " total";
+            this->updateTopfieldSummary();
 
 			///// Actually load the directory
 			items = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);     //TODO: handle errors in directory load
@@ -1062,18 +1115,9 @@ wait_again:
 		}
 
 
-		//void showCopyDialog(void)   //DELETE?
-		//{
-		//ThreadStart^ threadDelegate = gcnew ThreadStart( copydialog, &CopyDialog::showDialog_);
-		//Thread^ newThread = gcnew Thread( threadDelegate );
-		//newThread->Start();
-		//
-		//		}
-
-
 
 	public: libusb_device_handle *fd;
-	public: int dircount;
+	        int dircount;
 			System::Windows::Forms::ColumnHeader^ topfieldNameHeader;
 			System::Windows::Forms::ColumnHeader^ topfieldSizeHeader;
 			System::Windows::Forms::ColumnHeader^ topfieldTypeHeader;
@@ -1112,6 +1156,13 @@ wait_again:
 			bool listView2_selection_was_changed, listView1_selection_was_changed;
 			static const long long resume_granularity = 8192;
 			bool transfer_in_progress;
+
+			int last_topfield_freek;
+			time_t last_topfield_freek_time;
+			long long bytes_sent_since_last_freek;
+
+			static double topfield_minimum_free_megs = 150.0; // Antares won't let the free space get lower than this.
+		    static double worst_case_fill_rate = 4.5;  // Worst case MB/sec rate that we can imagine the topfield HD being filled up
 
 
 
@@ -1165,6 +1216,7 @@ wait_again:
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton11;
 	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator3;
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton12;
+private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 
 
 
@@ -1228,6 +1280,7 @@ wait_again:
 			this->listView2 = (gcnew System::Windows::Forms::ListView());
 			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->basicIconsSmall = (gcnew System::Windows::Forms::ImageList(this->components));
+			this->toolStripSeparator4 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->statusStrip1->SuspendLayout();
 			this->panel1->SuspendLayout();
 			this->panel3->SuspendLayout();
@@ -1315,6 +1368,7 @@ wait_again:
 			this->checkBox1->AutoSize = true;
 			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F));
 			this->checkBox1->Location = System::Drawing::Point(410, 11);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
@@ -1345,9 +1399,9 @@ wait_again:
 			this->toolStrip2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->toolStrip2->GripMargin = System::Windows::Forms::Padding(1);
-			this->toolStrip2->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(9) {this->toolStripButton5, 
+			this->toolStrip2->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(10) {this->toolStripButton5, 
 				this->toolStripButton6, this->toolStripButton7, this->toolStripButton8, this->toolStripSeparator1, this->toolStripButton9, this->toolStripButton10, 
-				this->toolStripSeparator2, this->toolStripButton11});
+				this->toolStripSeparator2, this->toolStripButton11, this->toolStripSeparator4});
 			this->toolStrip2->LayoutStyle = System::Windows::Forms::ToolStripLayoutStyle::HorizontalStackWithOverflow;
 			this->toolStrip2->Location = System::Drawing::Point(0, 0);
 			this->toolStrip2->Name = L"toolStrip2";
@@ -1358,8 +1412,7 @@ wait_again:
 			// 
 			// toolStripButton5
 			// 
-			this->toolStripButton5->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton5->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton5->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton5.Image")));
 			this->toolStripButton5->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton5->ImageTransparentColor = System::Drawing::Color::Magenta;
@@ -1373,8 +1426,7 @@ wait_again:
 			// 
 			// toolStripButton6
 			// 
-			this->toolStripButton6->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton6->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton6->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton6.Image")));
 			this->toolStripButton6->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton6->ImageTransparentColor = System::Drawing::Color::Magenta;
@@ -1387,8 +1439,7 @@ wait_again:
 			// 
 			// toolStripButton7
 			// 
-			this->toolStripButton7->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton7->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton7->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton7.Image")));
 			this->toolStripButton7->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton7->ImageTransparentColor = System::Drawing::Color::Magenta;
@@ -1401,8 +1452,7 @@ wait_again:
 			// 
 			// toolStripButton8
 			// 
-			this->toolStripButton8->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton8->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton8->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton8.Image")));
 			this->toolStripButton8->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton8->ImageTransparentColor = System::Drawing::Color::Magenta;
@@ -1421,8 +1471,7 @@ wait_again:
 			// 
 			// toolStripButton9
 			// 
-			this->toolStripButton9->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton9->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton9->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton9.Image")));
 			this->toolStripButton9->ImageTransparentColor = System::Drawing::Color::Magenta;
 			this->toolStripButton9->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
@@ -1435,8 +1484,7 @@ wait_again:
 			// 
 			// toolStripButton10
 			// 
-			this->toolStripButton10->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton10->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton10->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton10.Image")));
 			this->toolStripButton10->ImageTransparentColor = System::Drawing::Color::Magenta;
 			this->toolStripButton10->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
@@ -1454,8 +1502,7 @@ wait_again:
 			// 
 			// toolStripButton11
 			// 
-			this->toolStripButton11->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton11->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton11->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton11.Image")));
 			this->toolStripButton11->ImageTransparentColor = System::Drawing::Color::Magenta;
 			this->toolStripButton11->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
@@ -1472,6 +1519,8 @@ wait_again:
 			this->listView1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom) 
 				| System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
+			this->listView1->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->listView1->FullRowSelect = true;
 			this->listView1->GridLines = true;
 			this->listView1->HideSelection = false;
@@ -1609,8 +1658,7 @@ wait_again:
 			// 
 			// toolStripButton1
 			// 
-			this->toolStripButton1->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton1->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton1->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton1.Image")));
 			this->toolStripButton1->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton1->ImageTransparentColor = System::Drawing::Color::Magenta;
@@ -1624,8 +1672,7 @@ wait_again:
 			// 
 			// toolStripButton2
 			// 
-			this->toolStripButton2->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton2->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton2->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton2.Image")));
 			this->toolStripButton2->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton2->ImageTransparentColor = System::Drawing::Color::Magenta;
@@ -1638,8 +1685,7 @@ wait_again:
 			// 
 			// toolStripButton3
 			// 
-			this->toolStripButton3->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton3->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton3->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image")));
 			this->toolStripButton3->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton3->ImageTransparentColor = System::Drawing::Color::Magenta;
@@ -1652,8 +1698,7 @@ wait_again:
 			// 
 			// toolStripButton4
 			// 
-			this->toolStripButton4->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton4->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton4->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton4.Image")));
 			this->toolStripButton4->ImageScaling = System::Windows::Forms::ToolStripItemImageScaling::None;
 			this->toolStripButton4->ImageTransparentColor = System::Drawing::Color::Magenta;
@@ -1672,8 +1717,7 @@ wait_again:
 			// 
 			// toolStripButton12
 			// 
-			this->toolStripButton12->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->toolStripButton12->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
 			this->toolStripButton12->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton12.Image")));
 			this->toolStripButton12->ImageTransparentColor = System::Drawing::Color::Magenta;
 			this->toolStripButton12->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
@@ -1690,6 +1734,8 @@ wait_again:
 			this->listView2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom) 
 				| System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
+			this->listView2->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
 			this->listView2->FullRowSelect = true;
 			this->listView2->GridLines = true;
 			this->listView2->HideSelection = false;
@@ -1720,6 +1766,11 @@ wait_again:
 			this->basicIconsSmall->Images->SetKeyName(0, L"folder.bmp");
 			this->basicIconsSmall->Images->SetKeyName(1, L"document.bmp");
 			this->basicIconsSmall->Images->SetKeyName(2, L"rec_file.bmp");
+			// 
+			// toolStripSeparator4
+			// 
+			this->toolStripSeparator4->Name = L"toolStripSeparator4";
+			this->toolStripSeparator4->Size = System::Drawing::Size(6, 38);
 			// 
 			// Form1
 			// 
@@ -1848,8 +1899,12 @@ wait_again:
 			 {
 				 if (this->finished_constructing ==1)
 				 {
-					 static const double widths0[] = {140, 60, 50, 120};
-					 static const double mwidths[] = {0,  60, 50, 120};
+					 //static const double widths0[] = {140, 60, 50, 120};
+					 //static const double mwidths[] = {0,  60, 50, 120};
+
+					 static const double widths0[] = {140, 60, 0, 120};
+					 static const double mwidths[] = {0,  70, 0, 130};
+
 					 double tot0 = widths0[0]+widths0[1]+widths0[2]+widths0[3];
 					 double tot0_ = widths0[1]+widths0[2]+widths0[3];
 					 double tot0m = mwidths[1]+mwidths[2]+mwidths[3];
@@ -1870,9 +1925,9 @@ wait_again:
 					 else
 					 {
 						 this->topfieldNameHeader->Width =  (int) (widths0[0]/tot0 * tot1);
-						 this->topfieldSizeHeader->Width =  (int) (widths0[1]/tot0 * tot1)-1;
-						 this->topfieldTypeHeader->Width =  (int) (widths0[2]/tot0 * tot1)-1;
-						 this->topfieldDateHeader->Width =  (int) (widths0[3]/tot0 * tot1)-1;
+						 this->topfieldSizeHeader->Width =  (int) (widths0[1]/tot0 * tot1);
+						 this->topfieldTypeHeader->Width =  (int) (widths0[2]/tot0 * tot1);
+						 this->topfieldDateHeader->Width =  (int) (widths0[3]/tot0 * tot1);
 					 }
 					 if (tot0_ / tot0 * tot2  > tot0m)
 					 {
@@ -1885,9 +1940,9 @@ wait_again:
 					 else
 					 {
 						 this->computerNameHeader->Width =  (int) (widths0[0]/tot0 * tot2);
-						 this->computerSizeHeader->Width =  (int) (widths0[1]/tot0 * tot2)-1;
-						 this->computerTypeHeader->Width =  (int) (widths0[2]/tot0 * tot2)-1;
-						 this->computerDateHeader->Width =  (int) (widths0[3]/tot0 * tot2)-1;
+						 this->computerSizeHeader->Width =  (int) (widths0[1]/tot0 * tot2);
+						 this->computerTypeHeader->Width =  (int) (widths0[2]/tot0 * tot2);
+						 this->computerDateHeader->Width =  (int) (widths0[3]/tot0 * tot2);
 					 }
 
 				 }
@@ -2421,7 +2476,7 @@ restart_copy_to_pc:
 							 break;
 
 						 case FAIL:
-							 fprintf(stderr, "ERROR: Device reports %s\n",
+							 fprintf(stderr, "ERROR: Device reports %s in transfer_to_PC\n",
 								 decode_error(&reply));
 							 send_cancel(fd);
 							 state = ABORT;
@@ -2831,6 +2886,9 @@ end_copy_to_pc:
 					 String^ full_dest_filename = dest_filename[i];
 					 String^ full_src_filename = item->full_filename;
 
+					 
+					 if (  (time(NULL) - this->last_topfield_freek_time) > 60) this->updateTopfieldSummary();
+
 					 if (item->isdir)
 					 {
 						 titem = this->topfieldFileExists(topfield_items_by_folder,dest_filename[i]);
@@ -2909,6 +2967,7 @@ restart_copy_to_pvr:
 
 					 if (this_overwrite_action==RESUME && dest_size[i]>=src_sizes[i]) {printf("Not resuming.\n");continue;} // TODO: Handle this case better
 
+					 copydialog->freespace_check_needed = false;
 
 					 try {
 
@@ -3132,6 +3191,7 @@ restart_copy_to_pvr:
 									 }
 									 //byteCount += w;
 									 bytes_sent+=w;
+									 this->bytes_sent_since_last_freek += w;
 									 copydialog->total_bytes_received+=w;
 									 probable_minimum_received_offset=topfield_file_offset;
 									 topfield_file_offset+=w;
@@ -3168,6 +3228,7 @@ restart_copy_to_pvr:
 										 {
 											 fprintf(stderr, "ERROR: Incomplete send.\n");
 											 copydialog->usb_error=true;
+											 state=END;break;  // This line an experiment, 26/1/11
 											 goto out;
 										 }
 										 copydialog->new_packet(r);
@@ -3176,12 +3237,24 @@ restart_copy_to_pvr:
 									 if (update==0)
 									 {
 										 //this->Update();
-
+                                        
 										 copydialog->current_offsets[i] = topfield_file_offset;
 										 copydialog->current_bytes_received = bytes_sent;
 										 copydialog->update_dialog_threadsafe();
 
 									 }
+
+									  double dt = time(NULL)-this->last_topfield_freek_time;
+									  if (dt>30)
+									  {
+										  double worst_free_mb = (double) this->last_topfield_freek / 1024.0;
+										  worst_free_mb -=  (this->bytes_sent_since_last_freek/1024.0/1024.0 + 2.0 * dt);
+										  if (worst_free_mb < this->topfield_minimum_free_megs)
+										  {
+											  copydialog->freespace_check_needed = true;
+											  state=END;
+										  }
+									  }
 
 
 									 if (state != END)
@@ -3241,9 +3314,10 @@ restart_copy_to_pvr:
 							 break;
 
 						 case FAIL:
-							 fprintf(stderr, "ERROR: Device reports %s\n",
+							 fprintf(stderr, "ERROR: Device reports %s in transfer_to_PVR\n",
 								 decode_error(&reply));
 							 copydialog->usb_error=true;
+							 state=END; copydialog->usb_error=true;break;  // This line an experiment, 26/1/11.
 							 goto out;
 							 break;
 
@@ -3277,6 +3351,19 @@ out:
 						 }
 						 else
 							 goto restart_copy_to_pvr;
+
+					 if (copydialog->freespace_check_needed)
+					 {
+						 this->updateTopfieldSummary();
+						 if (this->last_topfield_freek < 1024.0 * this->topfield_minimum_free_megs )
+						 {
+                             if (this->wait_for_connection(copydialog)<0)
+							 {
+								 goto finish_transfer;
+							 }
+						 }
+						 goto restart_copy_to_pvr;
+					 }
 
 					 if (turbo_changed)
 					 {
@@ -3329,6 +3416,8 @@ finish_transfer:
 
 				 array<ComputerItem^>^ items = gcnew array<ComputerItem^>(selected->Count);
 				 selected->CopyTo(items,0);
+				 for (int i=0; i<items->Length; i++) if (items[i]->isdrive) {return;};  // Can't copy whole drives at a time
+
 				 array<array<ComputerItem^>^>^ items_by_folder = gcnew array<array<ComputerItem^>^>(max_folders);
 
 				 array<ComputerItem^>^ these_items;
@@ -3535,9 +3624,11 @@ finish_transfer:
 				 }
 				
 
-
-				 TopfieldFreeSpace tfs = this->getTopfieldFreeSpace();
+				 
+                 TopfieldFreeSpace tfs = this->getTopfieldFreeSpace();
+				 
 				 long long int freespace = (long long int) tfs.freek * 1024LL;
+				 long long int margin = 1024*1024*3; if (freespace>margin) freespace-=margin;  // You can never seem to use the last couple of MB on topfield
 				 if (tfs.valid)
 				 {
 					 if (space_required > freespace)
@@ -3546,6 +3637,11 @@ finish_transfer:
 						 LowSpaceAlert^ alert = gcnew LowSpaceAlert();
 						 alert->required_label->Text = "Required: " + HumanReadableSize(space_required);
 						 alert->available_label->Text = "Available: " + HumanReadableSize(freespace);
+						 if (freespace < this->topfield_minimum_free_megs*1024*1024)
+						 {
+							 alert->label4->Visible = false;
+							 alert->button1->Visible = false;
+						 }
 						 if (::DialogResult::Cancel ==  alert->ShowDialog())
 						 {
 							 return;
@@ -4445,7 +4541,7 @@ finish_transfer:
 						 break;
 
 					 case FAIL:
-						 fprintf(stderr, "ERROR: Device reports %s\n",
+						 fprintf(stderr, "ERROR: Device reports %s in read_topfield_file_snippet\n",
 							 decode_error(&reply));
 						 send_cancel(fd);
 						 state = ABORT;
