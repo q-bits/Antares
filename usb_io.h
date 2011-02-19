@@ -124,7 +124,7 @@ void print_packet(struct tf_packet *packet, char *prefix);
 
 int get_tf_packet(libusb_device_handle* fd, struct tf_packet *packet);
 
-int get_tf_packet2(libusb_device_handle* fd, struct tf_packet *packet, int timeout);
+int get_tf_packet2(libusb_device_handle* fd, struct tf_packet *packet, int timeout, int no_reply);
 
 int send_tf_packet(libusb_device_handle* fd, struct tf_packet *packet);
 

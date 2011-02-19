@@ -1,7 +1,10 @@
 ﻿#pragma once
+
+#include "antares.h"
+
 extern "C" {
 
-#include <libusb/libusb.h>
+	//#include <libusb/libusb.h>
 #include <stdio.h>
 #include <io.h>
 #include <string.h>
@@ -16,6 +19,12 @@ extern "C" {
 #include "commctrl.h"
 #include <time.h>
 #include "FBLib_rec.h"
+
+	struct husb_device_handle;
+	int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int max_length_paths);
+	struct husb_device_handle* open_winusb_device(HANDLE hdev);
+	char *windows_error_str(uint32_t retval);
+	void husb_free(struct husb_device_handle *fd);
 
 }
 
@@ -37,7 +46,7 @@ extern FILE* hf;
 
 //ref class CopyDialog ;
 
-#include "antares.h"
+
 
 
 
@@ -161,6 +170,7 @@ namespace Antares {
 
 			this->last_topfield_freek = -1;
 			this->last_topfield_freek_time = 0;
+			this->pid=0;
 
 			icons = gcnew Antares::Icons();
 
@@ -277,7 +287,7 @@ namespace Antares {
 			for (int i=0; i<count; i++)
 
 			{
-				r = get_tf_packet2(this->fd, &reply,timeout);
+				r = get_tf_packet2(this->fd, &reply,timeout, 1);
 				printf("r=%d   reply.cmd = %d \n",r,get_u32(&reply.cmd));
 
 			}
@@ -285,7 +295,82 @@ namespace Antares {
 
 
 
+
+
 		void CheckConnection(void)
+		{
+
+			if (this->InvokeRequired)
+			{
+				CheckConnectionCallback^ d = gcnew CheckConnectionCallback(this, &Form1::CheckConnection);
+				this->Invoke(d);
+			}
+			else
+			{
+				const int max_paths=10;
+				const int paths_max_length=256;
+				char dev_paths[max_paths][paths_max_length];
+				char *device_path;
+				int pids[max_paths];
+				//int this_pid=-1;
+				//HANDLE usb_handle;
+				HANDLE hdev;
+				husb_device_handle *fdtemp;
+				fdtemp=NULL;
+				String^ error_str = "PVR: Device not connected";
+				if (this->fd != NULL) 
+				{
+					//MessageBox::Show(" husb_free,  "+( (int) this->fd).ToString());
+					printf("husb_free, %ld \n",(long int) this->fd);
+					husb_free((husb_device_handle*) (void*) this->fd);
+					this->fd=NULL;
+				};
+
+				int ndev = find_usb_paths(&dev_paths[0][0],  pids, max_paths,  paths_max_length);
+
+				for (int j=0; j<ndev; j++)
+				{
+					device_path = &dev_paths[j][0];
+					hdev = CreateFileA(device_path, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+						OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,  NULL);
+
+					if (hdev==INVALID_HANDLE_VALUE)
+					{
+						DWORD last_error = GetLastError();
+						printf("%s\n",windows_error_str(last_error));
+						if (last_error==ERROR_ACCESS_DENIED) error_str="PVR: Error -- already in use.";
+
+
+						continue;
+					}
+
+					fdtemp  = open_winusb_device(hdev);
+					//bResult = WinUsb_Initialize(deviceHandle, &usbHandle);
+                   
+					this->pid=pids[j];
+
+
+
+				}
+
+				//this->fd=NULL;
+				printf("this->fd = %ld   fdtemp=%ld  \n",(long int) this->fd, (long int) fdtemp);
+				this->fd = (libusb_device_handle *) (void*) fdtemp;
+
+				if (this->fd !=NULL)
+				{
+					this->loadTopfieldDir();
+				}
+				else
+				{
+					this->label2->Text = error_str;
+					this->listView1->Items->Clear();
+				}
+			}
+		}
+
+
+		void CheckConnection_old(void)
 		{
 			if (this->InvokeRequired)
 			{
@@ -309,14 +394,22 @@ namespace Antares {
 				device = NULL;
 				success = 0;
 				bool threadsafe = true;//! this->InvokeRequired;
+				int pid = 0;
+
+				//winusb_experiment();
+				//int find_usb_paths(char **dev_paths,  int max_paths,  int max_length_paths);
 				for (i=0; i<cnt; i++)
 				{
 					dev=devs[i];
 					r = libusb_get_device_descriptor(dev, &desc);
 
-					if (desc.idVendor==0x11db && desc.idProduct == 0x1000)
+					printf("%04x:%04x\n",desc.idVendor,desc.idProduct);
+					if (desc.idVendor==0x11db && ( desc.idProduct == 0x1000 || desc.idProduct == 0x1100) )
+						//if (desc.idVendor==0x11db &&  desc.idProduct ,0x1100 )
+
 					{
 						device=dev;
+						pid=desc.idProduct;
 					}
 					else {continue;};
 
@@ -324,8 +417,8 @@ namespace Antares {
 
 					r=libusb_open(device,&dh);
 					if (r) {
-						fprintf(stderr,"New open call failed");
-
+						printf("New open call failed.\n");
+						device=NULL;
 						continue;
 					}
 
@@ -392,7 +485,9 @@ namespace Antares {
 				this->fd=dh;
 				printf("Topfield is now connected.\n");
 				libusb_free_device_list(devs, 1);
+				this->pid=pid;
 				if (threadsafe) this->loadTopfieldDir();
+
 				return;
 			}
 		}
@@ -443,7 +538,7 @@ namespace Antares {
 
 			copydialog->reset_rate();
 			copydialog->update_dialog_threadsafe();
-            
+
 			while(1)
 			{
 				if (copydialog->cancelled) {return -1;};
@@ -473,11 +568,11 @@ namespace Antares {
 		{
 
 			if (copydialog->usb_error)
-			    copydialog->set_error( " ERROR CONNECTING TO THE PVR. Retrying . . . ");
+				copydialog->set_error( " ERROR CONNECTING TO THE PVR. Retrying . . . ");
 			if (copydialog->freespace_check_needed)
 			{
 				copydialog->current_file = "Checking free space on PVR...";
-				
+
 				copydialog->update_dialog_threadsafe();
 				goto check_freespace;
 			}
@@ -489,10 +584,11 @@ wait_again:
 			while(1)
 			{
 				this->absorb_late_packets(4,100);
+				Thread::Sleep(500);
 				r=this->tf_init();
 				if (copydialog->cancelled) {ret=-1;break;};
 				if (r==0) {ret=0;break;};
-			
+
 				//System::Threading::Thread::Sleep(1000);
 				this->CheckConnection();
 				if (copydialog->cancelled) {ret=-1;break;};
@@ -503,7 +599,7 @@ check_freespace:
 
 			if (ret==0 && copydialog->copydirection == CopyDirection::PC_TO_PVR)
 			{
-				
+
 
 				TopfieldFreeSpace freespace = this->getTopfieldFreeSpace();
 				if (freespace.freek<0) goto wait_again;
@@ -521,15 +617,15 @@ check_freespace:
 						Thread::Sleep(1000);
 						if (copydialog->cancelled) {ret=-1;break;};
 					}
-					
+
 					goto wait_again;
 				}
 
-				}
+			}
 
-					this->set_turbo_mode(copydialog->turbo_request);
+			this->set_turbo_mode(copydialog->turbo_request);
 
-            if (ret==0) copydialog->clear_error();
+			if (ret==0) copydialog->clear_error();
 
 			return ret;
 		}
@@ -568,7 +664,7 @@ check_freespace:
 					fprintf(stderr, "Turbo mode: %s\n",
 					turbo_on ? "ON" : "OFF"));
 				this->absorb_late_packets(2,100);
-				
+
 				return 0;
 				break;
 
@@ -618,9 +714,9 @@ check_freespace:
 			int j;
 
 
-            try 
+			try 
 			{
-			list = System::IO::Directory::GetFileSystemEntries(dir);
+				list = System::IO::Directory::GetFileSystemEntries(dir);
 			}
 			catch(...)
 			{
@@ -757,7 +853,7 @@ check_freespace:
 				if (freespaceArray[0] > -1)
 				{
 					String ^str = " Local Disk "+str+"  --  " + HumanReadableSize(freespaceArray[0]) + " Free / " + HumanReadableSize(freespaceArray[1])+ " Total";
-					
+
 					label1->Text = str;
 
 				}
@@ -858,7 +954,7 @@ check_freespace:
 				//toolStripStatusLabel1->Text="Topfield not connected.";
 				return items; 
 			}
-
+			absorb_late_packets(2,50);
 			char* str2 = (char*)(void*)Marshal::StringToHGlobalAnsi(path);
 
 			send_cmd_hdd_dir(this->fd,str2);
@@ -936,6 +1032,7 @@ check_freespace:
 
 			//bool hdd_size_successful = false;
 			//unsigned int totalk, freek;
+			absorb_late_packets(2,50);
 			int r;
 			tf_packet reply;
 			TopfieldFreeSpace v;
@@ -983,6 +1080,7 @@ check_freespace:
 			if (this->InvokeRequired)
 			{
 				TopfieldSummaryCallback^ d = gcnew TopfieldSummaryCallback(this, &Form1::updateTopfieldSummary);
+
 				this->Invoke(d);
 			}
 			else
@@ -991,8 +1089,12 @@ check_freespace:
 				TopfieldFreeSpace v = getTopfieldFreeSpace();
 
 				if (v.valid)
-				   this->label2->Text = " Topfield device  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " total";
-
+				{
+					String^ str=" Topfield device";
+				
+					if (this->pid==0x1100) str="Topfield second device";
+					this->label2->Text = str+"  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " total";
+				}
 			}
 
 		}
@@ -1016,7 +1118,7 @@ check_freespace:
 				return -EPROTO; 
 			}
 
-            this->updateTopfieldSummary();
+			this->updateTopfieldSummary();
 
 			///// Actually load the directory
 			items = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);     //TODO: handle errors in directory load
@@ -1117,7 +1219,7 @@ check_freespace:
 
 
 	public: libusb_device_handle *fd;
-	        int dircount;
+			int dircount;
 			System::Windows::Forms::ColumnHeader^ topfieldNameHeader;
 			System::Windows::Forms::ColumnHeader^ topfieldSizeHeader;
 			System::Windows::Forms::ColumnHeader^ topfieldTypeHeader;
@@ -1162,7 +1264,9 @@ check_freespace:
 			long long bytes_sent_since_last_freek;
 
 			static double topfield_minimum_free_megs = 150.0; // Antares won't let the free space get lower than this.
-		    static double worst_case_fill_rate = 4.5;  // Worst case MB/sec rate that we can imagine the topfield HD being filled up
+			static double worst_case_fill_rate = 4.5;  // Worst case MB/sec rate that we can imagine the topfield HD being filled up
+
+			int pid;
 
 
 
@@ -1216,7 +1320,11 @@ check_freespace:
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton11;
 	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator3;
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton12;
-private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
+	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
+	private: System::Windows::Forms::NotifyIcon^  notifyIcon1;
+
+
+
 
 
 
@@ -1262,6 +1370,7 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 			this->toolStripButton10 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripSeparator2 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->toolStripButton11 = (gcnew System::Windows::Forms::ToolStripButton());
+			this->toolStripSeparator4 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->listView1 = (gcnew System::Windows::Forms::ListView());
 			this->panel2 = (gcnew System::Windows::Forms::Panel());
 			this->button2 = (gcnew System::Windows::Forms::Button());
@@ -1280,7 +1389,7 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 			this->listView2 = (gcnew System::Windows::Forms::ListView());
 			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->basicIconsSmall = (gcnew System::Windows::Forms::ImageList(this->components));
-			this->toolStripSeparator4 = (gcnew System::Windows::Forms::ToolStripSeparator());
+			this->notifyIcon1 = (gcnew System::Windows::Forms::NotifyIcon(this->components));
 			this->statusStrip1->SuspendLayout();
 			this->panel1->SuspendLayout();
 			this->panel3->SuspendLayout();
@@ -1512,6 +1621,11 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 			this->toolStripButton11->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
 			this->toolStripButton11->ToolTipText = L"Show program info";
 			this->toolStripButton11->Click += gcnew System::EventHandler(this, &Form1::Info_Click);
+			// 
+			// toolStripSeparator4
+			// 
+			this->toolStripSeparator4->Name = L"toolStripSeparator4";
+			this->toolStripSeparator4->Size = System::Drawing::Size(6, 38);
 			// 
 			// listView1
 			// 
@@ -1767,10 +1881,10 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 			this->basicIconsSmall->Images->SetKeyName(1, L"document.bmp");
 			this->basicIconsSmall->Images->SetKeyName(2, L"rec_file.bmp");
 			// 
-			// toolStripSeparator4
+			// notifyIcon1
 			// 
-			this->toolStripSeparator4->Name = L"toolStripSeparator4";
-			this->toolStripSeparator4->Size = System::Drawing::Size(6, 38);
+			this->notifyIcon1->Text = L"notifyIcon1";
+			this->notifyIcon1->Visible = true;
 			// 
 			// Form1
 			// 
@@ -1783,7 +1897,7 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.7";
+			this->Text = L"Antares  0.7.test";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -1831,9 +1945,11 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 	private: System::Void timer1_Tick(System::Object^  sender, System::EventArgs^  e) {
 
 
+
 				 //printf("Timer tick.\n");
 				 if (!this->transfer_in_progress)
 				 {
+					if (this->fd==NULL)
 					 this->CheckConnection();
 				 }
 				 // int conf,r,bus,address;
@@ -2140,10 +2256,10 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 					 {
 						 if (File::Exists(dest_filename[i]) && !Directory::Exists(dest_filename[i]))
 						 {
-							
+
 							 //MessageBox::Show(this,"The folder "+dest_filename[ind]+" could not be created because a file of that name already exists. Aborting transfer.","Error",MessageBoxButtons::OK);
-                             copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
-                             goto end_copy_to_pc;                         
+							 copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
+							 goto end_copy_to_pc;                         
 							 //return;					
 						 }
 						 if (!Directory::Exists(dest_filename[i]))
@@ -2153,12 +2269,12 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 							 }
 							 catch (...)
 							 {
-								 
+
 								 //MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
-                                 copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error";
-                                 
+								 copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error";
+
 								 goto end_copy_to_pc;
-								 
+
 							 }
 						 }
 						 continue;
@@ -2258,7 +2374,7 @@ restart_copy_to_pc:
 					 {
 						 //MessageBox::Show(this,"Antares cannot save the file to the location you chose. Please select another location and try again.","Write permission denied",MessageBoxButtons::OK);
 						 copydialog->file_error = "Antares cannot save the file to the location you chose. Please select another location and try again.";
-						 
+
 						 goto end_copy_to_pc;				
 					 }
 
@@ -2309,8 +2425,20 @@ restart_copy_to_pc:
 					 while(1)
 					 {
 
-						 r = get_tf_packet(fd, &reply);
-						 update = (update+1)%4;
+						 update = update+1;
+
+						 //Thread::Sleep(20);
+						 //if (update>=100)
+						 //	 send_success(this->fd);
+
+						 //if (update<100)
+						 r = get_tf_packet2(fd, &reply, TF_PROTOCOL_TIMEOUT, 0);
+						 //else
+						 //	 r = get_tf_packet2(fd, &reply, TF_PROTOCOL_TIMEOUT, 1);
+
+
+
+
 						 if (r<=0)
 						 {
 							 copydialog->usb_error=true;
@@ -2366,6 +2494,8 @@ restart_copy_to_pc:
 									 goto out;
 								 }
 
+								 //send_success(this->fd);
+
 								 array <unsigned char>^ buffer = gcnew array<unsigned char>(dataLen);
 								 //System::Byte buffer[] = gcnew System::Byte[dataLen];
 								 Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , buffer, 0,(int) dataLen);
@@ -2393,12 +2523,12 @@ restart_copy_to_pc:
 
 								 }
 								 try{
-								 dest_file->Write(buffer, 0, dataLen);        //TODO:  Catch full-disk errors  (Sytem::IO:IOException)
+									 dest_file->Write(buffer, 0, dataLen);        //TODO:  Catch full-disk errors  (Sytem::IO:IOException)
 								 }
 								 catch(...)
 								 {
-									  io_error=true;
-									  goto out;
+									 io_error=true;
+									 goto out;
 								 }
 								 topfield_file_offset+=dataLen;
 								 probable_minimum_received_offset=topfield_file_offset;
@@ -2418,7 +2548,7 @@ restart_copy_to_pc:
 
 								 copydialog->current_bytes_received = bytes_received;
 								 copydialog->total_bytes_received = total_bytes_received;
-								 if (update==0)
+								 if (update%4==0)
 								 {
 									 //this->Update();
 									 copydialog->update_dialog_threadsafe();
@@ -2549,9 +2679,9 @@ out:
 						 copydialog->reset_rate();
 						 goto restart_copy_to_pc;
 					 }
-                 
+
 					 if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
-                   
+
 
 				 }  // end loop over items to be copied
 
@@ -2758,12 +2888,12 @@ end_copy_to_pc:
 				 for (int i; i<numitems; i++)
 				 {
 					 if (overwrite_action[i] != SKIP)     //TODO: modify if we every have an "auto-rename" option.
-					      space_required += (src_sizes[i] - dest_size[i]);
+						 space_required += (src_sizes[i] - dest_size[i]);
 				 }
 				 //array<long long int>^ freespaceArray = this->computerFreeSpace(this->computerCurrentDirectory);
-                 
-				 
-				  array<long long int>^ freespaceArray = this->computerFreeSpace(this->computerCurrentDirectory);
+
+
+				 array<long long int>^ freespaceArray = this->computerFreeSpace(this->computerCurrentDirectory);
 				 if (space_required > freespaceArray[0])
 				 {
 
@@ -2786,6 +2916,8 @@ end_copy_to_pc:
 
 				 CopyDialog^ copydialog = gcnew CopyDialog();
 				 copydialog->cancelled=false;
+				 copydialog->parent_win = this;
+				 copydialog->parent_form = this;
 				 //copydialog->showCopyDialog();
 				 copydialog->total_start_time = time(NULL);
 				 copydialog->current_start_time = 0 ;
@@ -2886,7 +3018,7 @@ end_copy_to_pc:
 					 String^ full_dest_filename = dest_filename[i];
 					 String^ full_src_filename = item->full_filename;
 
-					 
+
 					 if (  (time(NULL) - this->last_topfield_freek_time) > 60) this->updateTopfieldSummary();
 
 					 if (item->isdir)
@@ -3237,24 +3369,24 @@ restart_copy_to_pvr:
 									 if (update==0)
 									 {
 										 //this->Update();
-                                        
+
 										 copydialog->current_offsets[i] = topfield_file_offset;
 										 copydialog->current_bytes_received = bytes_sent;
 										 copydialog->update_dialog_threadsafe();
 
 									 }
 
-									  double dt = time(NULL)-this->last_topfield_freek_time;
-									  if (dt>30)
-									  {
-										  double worst_free_mb = (double) this->last_topfield_freek / 1024.0;
-										  worst_free_mb -=  (this->bytes_sent_since_last_freek/1024.0/1024.0 + 2.0 * dt);
-										  if (worst_free_mb < this->topfield_minimum_free_megs)
-										  {
-											  copydialog->freespace_check_needed = true;
-											  state=END;
-										  }
-									  }
+									 double dt = time(NULL)-this->last_topfield_freek_time;
+									 if (dt>30)
+									 {
+										 double worst_free_mb = (double) this->last_topfield_freek / 1024.0;
+										 worst_free_mb -=  (this->bytes_sent_since_last_freek/1024.0/1024.0 + 2.0 * dt);
+										 if (worst_free_mb < this->topfield_minimum_free_megs)
+										 {
+											 copydialog->freespace_check_needed = true;
+											 state=END;
+										 }
+									 }
 
 
 									 if (state != END)
@@ -3357,7 +3489,7 @@ out:
 						 this->updateTopfieldSummary();
 						 if (this->last_topfield_freek < 1024.0 * this->topfield_minimum_free_megs )
 						 {
-                             if (this->wait_for_connection(copydialog)<0)
+							 if (this->wait_for_connection(copydialog)<0)
 							 {
 								 goto finish_transfer;
 							 }
@@ -3390,7 +3522,7 @@ out:
 				 }  // (end loop over files to transfer)
 
 finish_transfer:
-				
+
 				 copydialog->close_request_threadsafe();
 				 printf("!!!!!!! Transfer thread ended normally.\n");
 			 }
@@ -3622,11 +3754,11 @@ finish_transfer:
 					 if (overwrite_action[i] != SKIP)     //TODO: modify if we every have an "auto-rename" option.
 						 space_required += (src_sizes[i] - dest_size[i]);
 				 }
-				
 
-				 
-                 TopfieldFreeSpace tfs = this->getTopfieldFreeSpace();
-				 
+
+
+				 TopfieldFreeSpace tfs = this->getTopfieldFreeSpace();
+
 				 long long int freespace = (long long int) tfs.freek * 1024LL;
 				 long long int margin = 1024*1024*3; if (freespace>margin) freespace-=margin;  // You can never seem to use the last couple of MB on topfield
 				 if (tfs.valid)
@@ -3657,6 +3789,8 @@ finish_transfer:
 
 
 				 CopyDialog^ copydialog = gcnew CopyDialog();
+				 copydialog->parent_win = this;
+				 copydialog->parent_form = this;
 				 copydialog->cancelled=false;
 				 //copydialog->showCopyDialog();
 				 //copydialog->total_filesize = totalsize;
@@ -3679,17 +3813,21 @@ finish_transfer:
 				 copydialog->window_title="Copying File(s) ... [PC --> PVR]";
 				 copydialog->current_file="Waiting for PVR...";
 				 copydialog->turbo_mode = this->turbo_mode;
-				 
+
+				 //copydialog->TopLevel = false;this->panel1->Controls->Add(copydialog);copydialog->Show();copydialog->Visible=true;
+				 //copydialog->Dock = DockStyle::Bottom;
+				 //return;
 
 				 this->transfer_in_progress=true;
 				 Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PVR));
 				 thread->Start(copydialog);
+
 				 copydialog->showDialog_thread();
 				 thread->Join();
 				 this->transfer_in_progress=false;
 
 				 if ( copydialog->turbo_request != this->checkBox1->Checked)
-					this->checkBox1->Checked = copydialog->turbo_request;
+					 this->checkBox1->Checked = copydialog->turbo_request;
 
 
 				 if (copydialog->file_error->Length > 0)
@@ -3700,7 +3838,7 @@ finish_transfer:
 				 this->loadTopfieldDir();
 				 this->absorb_late_packets(2,200);
 				 this->set_turbo_mode(0);
-			
+
 
 			 }
 

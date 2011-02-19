@@ -24,26 +24,18 @@
 
 #include <config.h>
 #include <stdio.h>
-#include <inttypes.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 
-#include <libusb/libusb.h>
-
-#if defined(_MSC_VER)
-// On Windows, the libusb library has a dependency on the libraries below.
-// for MinGW/cygwin, make sure you link with -lsetupapi -lole32 -ladvapi32
-#pragma comment( lib, "setupapi.lib" )
-#pragma comment( lib, "ole32.lib" )
-#pragma comment( lib, "advapi32.lib" )
-#endif
+#include "libusb.h"
 
 #ifdef OS_WINDOWS
 #define msleep(msecs) Sleep(msecs)
 #else
 #include <unistd.h>
-#define	msleep(msecs) usleep(1000*msecs)
+#define msleep(msecs) usleep(1000*msecs)
 #endif
 
 #if !defined(_MSC_VER) || _MSC_VER<=1200
@@ -155,14 +147,30 @@ uint16_t VID, PID;
 
 void display_buffer_hex(unsigned char *buffer, unsigned size)
 {
-	unsigned i;
+	unsigned i, j, k;
 
-	for (i=0; i<size; i++) {
-		if (!(i%0x10))
-			printf("\n  ");
-		printf(" %02X", buffer[i]);
+	for (i=0; i<size; i+=16) {
+		printf("\n  %08x  ", i);
+		for(j=0,k=0; k<16; j++,k++) {
+			if (i+j < size) {
+				printf("%02x", buffer[i+j]);
+			} else {
+				printf("  ");
+			}
+			printf(" ");
+		}
+		printf(" ");
+		for(j=0,k=0; k<16; j++,k++) {
+			if (i+j < size) {
+				if ((buffer[i+j] < 32) || (buffer[i+j] > 126)) {
+					printf(".");
+				} else {
+					printf("%c", buffer[i+j]);
+				}
+			}
+		}
 	}
-	printf("\n");
+	printf("\n" );
 }
 
 
@@ -598,6 +606,7 @@ int test_device(uint16_t vid, uint16_t pid)
 {
 	libusb_device_handle *handle;
 	libusb_device *dev;
+	struct libusb_device_topology topology;
 	struct libusb_config_descriptor *conf_desc;
 	const struct libusb_endpoint_descriptor *endpoint;
 	int i, j, k, r;
@@ -621,6 +630,9 @@ int test_device(uint16_t vid, uint16_t pid)
 	}
 
 	dev = libusb_get_device(handle);
+	if (libusb_get_device_topology(dev, &topology) == LIBUSB_SUCCESS) {
+		printf("bus: %d, port: %d, depth: %d\n", topology.bus, topology.port, topology.depth);
+	}
 
 	printf("\nReading device descriptor:\n");
 	CALL_CHECK(libusb_get_device_descriptor(dev, &dev_desc));
@@ -742,6 +754,7 @@ int main(int argc, char** argv)
 	bool show_help = false;
 	bool got_vidpid = false;
 	bool debug_mode = false;
+	const struct libusb_version* version;
 	int j, r;
 	size_t i, arglen;
 	unsigned tmp_vid, tmp_pid;
@@ -856,6 +869,8 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
+	version = libusb_getversion();
+	printf("Using libusb v%d.%d.%d.%d\n\n", version->major, version->minor, version->micro, version->nano);
 	r = libusb_init(NULL);
 	if (r < 0)
 		return r;

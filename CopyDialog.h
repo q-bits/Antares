@@ -70,6 +70,7 @@ namespace Antares {
 			this->rate_bytes = 0;
 			this->rate_milliseconds = 0;
 			this->parent_win = nullptr;
+			this->parent_form = nullptr;
 			
 			this->usb_error=false;
 			this->file_error="";
@@ -78,9 +79,11 @@ namespace Antares {
 			this->copydirection = CopyDirection::UNDEFINED;
 			this->current_error = "";
 			this->freespace_check_needed=false;
+			this->close_requested=false;
 
 		}
 	
+		/*
 		CopyDialog(IWin32Window ^win)
 		{
 			CopyDialog();
@@ -88,6 +91,7 @@ namespace Antares {
 			//this->turbo_mode = form1->turbo_mode;
 
 		}
+		*/
 	
 
 		void new_packet(long long bytes)
@@ -133,11 +137,15 @@ namespace Antares {
 
 		void showDialog_thread(void)
 		{
-			this->Visible=false;
-			if(this->parent_win == nullptr)
-				this->ShowDialog();
-			else
-				this->ShowDialog(this->parent_win);
+			if (this->TopLevel)
+			{
+				this->Visible=false;
+
+				if(this->parent_win == nullptr)
+					this->ShowDialog();
+				else
+					this->ShowDialog(this->parent_win);
+			}
 		}
 
 		void showCopyDialog(void)
@@ -186,6 +194,8 @@ namespace Antares {
 			}
 			else
 			{
+				this->close_requested=true;
+				printf("Actually called close.\n");
 				this->Close();
 			}
 		}
@@ -213,17 +223,21 @@ namespace Antares {
 
 			if (this->InvokeRequired)
 			{
-			UpdateDialogCallback^ d = 
-				gcnew UpdateDialogCallback(this, &CopyDialog::update_dialog);
-			this->BeginInvoke(d, gcnew array<Object^> { });
+				UpdateDialogCallback^ d = 
+					gcnew UpdateDialogCallback(this, &CopyDialog::update_dialog);
+				if (this->TopLevel)
+				this->BeginInvoke(d, gcnew array<Object^> { });
+				else
+					this->parent_form->BeginInvoke(d, gcnew array<Object^> { });
 			}
 			else 
-			   this->update_dialog();
+				this->update_dialog();
 		}
 
 		void update_dialog(void)
 		{
 			if ( ! this->Visible) return;
+			
 			this->Text = this->window_title;
 
 			if (this->current_error->Length >  0)
@@ -284,7 +298,9 @@ namespace Antares {
 			}
 
 			//this->label4->Text =  (offset / 1024).ToString("#,#,#")+"KB / "+(size/1024).ToString("#,#,#")+"KB";
-			this->label4->Text =  (offset / 1024/1024).ToString("#,#,#")+" MB / "+(size/1024/1024).ToString("#,#,#")+" MB";
+			long long int offset_MB = offset / 1024LL/1024LL;
+			int offset_dec_MB = (offset - offset_MB * 1024LL*1024LL)*10/1024/1024;
+			this->label4->Text =  (offset_MB).ToString("#,#,#")+"."+offset_dec_MB.ToString()+" MB / "+(size/1024/1024).ToString("#,#,#")+" MB";
 
 
 			long long total_offset=0;  long long total_size=0;
@@ -296,7 +312,9 @@ namespace Antares {
 
 
 //			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
-			this->label5->Text =  (total_offset / 1024/1024).ToString("#,#,#")+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
+			long long int total_offset_MB = total_offset / 1024LL/1024LL;
+			int total_offset_dec_MB = (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024;
+			this->label5->Text =  (total_offset_MB).ToString("#,#,#")+"."+total_offset_dec_MB.ToString()+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
 
 			if (size>0)
 			{
@@ -418,6 +436,8 @@ namespace Antares {
 		String^ current_error;
 
 		bool freespace_check_needed;
+		bool close_requested;
+		System::Windows::Forms::Form^ parent_form;
   
 
 
@@ -516,9 +536,9 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 				| System::Windows::Forms::AnchorStyles::Right));
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->button1->Location = System::Drawing::Point(270, 229);
+			this->button1->Location = System::Drawing::Point(270, 201);
 			this->button1->Name = L"button1";
-			this->button1->Size = System::Drawing::Size(140, 31);
+			this->button1->Size = System::Drawing::Size(134, 31);
 			this->button1->TabIndex = 4;
 			this->button1->Text = L"Cancel";
 			this->button1->UseVisualStyleBackColor = true;
@@ -563,7 +583,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label6->AutoSize = true;
 			this->label6->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label6->Location = System::Drawing::Point(601, 68);
+			this->label6->Location = System::Drawing::Point(595, 68);
 			this->label6->Margin = System::Windows::Forms::Padding(5, 0, 15, 0);
 			this->label6->Name = L"label6";
 			this->label6->Size = System::Drawing::Size(45, 16);
@@ -576,7 +596,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label7->AutoSize = true;
 			this->label7->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label7->Location = System::Drawing::Point(601, 145);
+			this->label7->Location = System::Drawing::Point(595, 145);
 			this->label7->Margin = System::Windows::Forms::Padding(5, 0, 15, 0);
 			this->label7->Name = L"label7";
 			this->label7->Size = System::Drawing::Size(45, 16);
@@ -598,7 +618,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			// 
 			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->Location = System::Drawing::Point(11, 243);
+			this->checkBox1->Location = System::Drawing::Point(11, 215);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 11;
@@ -610,7 +630,9 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(680, 282);
+			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->ClientSize = System::Drawing::Size(674, 254);
 			this->ControlBox = false;
 			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->label8);
@@ -626,6 +648,8 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->Controls->Add(this->progressBar1);
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
 			this->KeyPreview = true;
+			this->MaximizeBox = false;
+			this->MaximumSize = System::Drawing::Size(680, 282);
 			this->Name = L"CopyDialog";
 			this->Padding = System::Windows::Forms::Padding(5);
 			this->ShowIcon = false;
@@ -636,6 +660,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->TransparencyKey = System::Drawing::Color::Fuchsia;
 			this->Load += gcnew System::EventHandler(this, &CopyDialog::CopyDialog_Load);
 			this->FormClosing += gcnew System::Windows::Forms::FormClosingEventHandler(this, &CopyDialog::CopyDialog_FormClosing);
+			this->Resize += gcnew System::EventHandler(this, &CopyDialog::CopyDialog_Resize);
 			this->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &CopyDialog::CopyDialog_KeyDown);
 			this->ResumeLayout(false);
 			this->PerformLayout();
@@ -667,9 +692,17 @@ private: System::Void CopyDialog_KeyDown(System::Object^  sender, System::Window
 			 }
 		 }
 private: System::Void CopyDialog_FormClosing(System::Object^  sender, System::Windows::Forms::FormClosingEventArgs^  e) {
+			 printf("Form closing, for some reason.\n");
 			 this->button1->Enabled=false;
-			 this->cancelled=true;
+			 //this->cancelled=true;
+			 if (!this->close_requested)
+		    	 e->Cancel = true;
+			
 			 
+		 }
+private: System::Void CopyDialog_Resize(System::Object^  sender, System::EventArgs^  e) {
+			 if (FormWindowState::Minimized == this->WindowState)
+				 this->parent_form->WindowState = FormWindowState::Minimized;
 		 }
 };
 }

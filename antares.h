@@ -1,5 +1,6 @@
 
 #pragma once
+
 extern "C" {
 
 #include <libusb/libusb.h>

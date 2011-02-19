@@ -1,12 +1,25 @@
 m4_define(LIBUSB_MAJOR, [1])
 m4_define(LIBUSB_MINOR, [0])
 m4_define(LIBUSB_MICRO, [8])
+m4_define(LIBUSB_NANO, [10328])
 
 AC_INIT([libusb], LIBUSB_MAJOR.LIBUSB_MINOR.LIBUSB_MICRO, [libusb-devel@lists.sourceforge.net], [libusb], [http://www.libusb.org/])
 
 AC_SUBST([LIBUSB_VERSION_MAJOR], [LIBUSB_MAJOR])
 AC_SUBST([LIBUSB_VERSION_MINOR], [LIBUSB_MINOR])
 AC_SUBST([LIBUSB_VERSION_MICRO], [LIBUSB_MICRO])
+AC_SUBST([LIBUSB_VERSION_NANO], [LIBUSB_NANO])
+
+# Library versioning
+# These numbers should be tweaked on every release. Read carefully:
+# http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+# http://sourceware.org/autobook/autobook/autobook_91.html
+lt_current="1"
+lt_revision="0"
+lt_age="1"
+AC_SUBST(lt_current)
+AC_SUBST(lt_revision)
+AC_SUBST(lt_age)
 
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([libusb/core.c])
@@ -24,28 +37,33 @@ AC_DEFINE([_GNU_SOURCE], [], [Use GNU extensions])
 AM_MAINTAINER_MODE
 
 AC_MSG_CHECKING([operating system])
+PC_LIBS_PRIVATE=
 case $host in
 *-linux*)
 	AC_DEFINE(OS_LINUX, [], [Linux backend])
 	AC_SUBST(OS_LINUX)
+	AC_DEFINE([THREADS_POSIX], [], [Use Posix Threads])
 	AC_MSG_RESULT([Linux])
 	backend="linux"
-	AC_DEFINE([POSIX_THREADS], [], [Posix Threads])
+	AC_CHECK_LIB(rt, clock_gettime, PC_LIBS_PRIVATE="-lrt")
+	LIBS="${LIBS} ${PC_LIBS_PRIVATE}"
 	threads="posix"
-	AC_CHECK_LIB(rt, clock_gettime)
-	AM_CFLAGS="-Wshadow"
+	THREAD_CFLAGS="-pthread"
+	PC_LIBS_PRIVATE="${PC_LIBS_PRIVATE} -pthread"
+	AM_CFLAGS="-std=gnu99"
 	AM_LDFLAGS=""
 	;;
 *-darwin*)
 	AC_DEFINE(OS_DARWIN, [], [Darwin backend])
 	AC_SUBST(OS_DARWIN)
-	AC_DEFINE(USBI_OS_HANDLES_TIMEOUT, [], [Backend handles timeout])
+	AC_DEFINE([THREADS_POSIX], [], [Use Posix Threads])
 	AC_MSG_RESULT([Darwin/MacOS X])
 	backend="darwin"
-	AC_DEFINE([POSIX_THREADS], [], [Posix Threads])
 	threads="posix"
-	AM_CFLAGS="-Wshadow"
-	AM_LDFLAGS="-Wl,-framework -Wl,IOKit -Wl,-framework -Wl,CoreFoundation -Wl,-prebind -no-undefined"
+	THREAD_CFLAGS="-pthread"
+	AM_CFLAGS="-std=gnu99"
+	PC_LIBS_PRIVATE="-Wl,-framework,IOKit -Wl,-framework,CoreFoundation -Wl,-prebind -no-undefined -pthread"
+	AM_LDFLAGS=${PC_LIBS_PRIVATE}
 	;;
 *-mingw*)
 	AC_DEFINE(OS_WINDOWS, [], [Windows backend])
@@ -53,31 +71,36 @@ case $host in
 	AC_MSG_RESULT([Windows])
 	backend="windows"
 	threads="windows"
-	LIBS="-lsetupapi -lole32 -ladvapi32"
-	AM_CFLAGS="-Wshadow"
-	AM_LDFLAGS="-no-undefined -avoid-version"
+	create_import_lib="yes"
+	LIBS="${LIBS} ${PC_LIBS_PRIVATE}"
+	# -avoid-version to avoid a naming scheme such as libusb-0.dll
+	AM_LDFLAGS="-no-undefined -avoid-version -Wl,--add-stdcall-alias"
+	AM_CFLAGS="-std=c99"
 	AC_CHECK_TOOL(RC, windres, no)
+	AC_CHECK_TOOL(DLLTOOL, dlltool, false)
 	;;
 *-cygwin*)
 	AC_DEFINE(OS_WINDOWS, [], [Windows backend])
 	AC_SUBST(OS_WINDOWS)
+	AC_DEFINE([THREADS_POSIX], [], [Use Posix Threads])
 	AC_MSG_RESULT([Windows])
 	backend="windows"
-	AC_DEFINE([POSIX_THREADS], [], [Posix Threads])
 	threads="posix"
-	LIBS="-lsetupapi -lole32 -ladvapi32"
-	AM_CFLAGS=""
+	LIBS="${LIBS} ${PC_LIBS_PRIVATE}"
+	AM_CFLAGS="-std=gnu99"
 	AM_LDFLAGS="-no-undefined -avoid-version"
 	AC_CHECK_TOOL(RC, windres, no)
 	;;
 *)
 	AC_MSG_ERROR([unsupported operating system])
 esac
+AC_SUBST(PC_LIBS_PRIVATE)
 
-AM_CONDITIONAL([OS_LINUX], [test "x$backend" == "xlinux"])
-AM_CONDITIONAL([OS_DARWIN], [test "x$backend" == "xdarwin"])
-AM_CONDITIONAL([OS_WINDOWS], [test "x$backend" == "xwindows"])
-AM_CONDITIONAL([POSIX_THREADS], [test "x$threads" == "xposix"])
+AM_CONDITIONAL([OS_LINUX], [test "x$backend" = "xlinux"])
+AM_CONDITIONAL([OS_DARWIN], [test "x$backend" = "xdarwin"])
+AM_CONDITIONAL([OS_WINDOWS], [test "x$backend" = "xwindows"])
+AM_CONDITIONAL([THREADS_POSIX], [test "x$threads" = "xposix"])
+AM_CONDITIONAL([CREATE_IMPORT_LIB], [test "x$create_import_lib" = "xyes"]) 
 
 # timerfd
 AC_CHECK_HEADER([sys/timerfd.h], [timerfd_h=1], [timerfd_h=0])
@@ -118,7 +141,7 @@ if test "x$log_enabled" != "xno"; then
 fi
 
 AC_ARG_ENABLE([debug-log], [AS_HELP_STRING([--enable-debug-log],
-	[force all logging, including debug (default n)])],
+	[enable debug logging (default n)])],
 	[debug_log_enabled=$enableval],
 	[debug_log_enabled='no'])
 
@@ -128,7 +151,7 @@ AC_ARG_ENABLE([toggable-debug], [AS_HELP_STRING([--enable-toggable-debug],
 	[toggable_debug='no'])
 
 if test "x$debug_log_enabled" != "xno"; then
-	AC_DEFINE([ENABLE_DEBUG_LOGGING], 1, [Debug message logging (forced)])
+	AC_DEFINE([ENABLE_DEBUG_LOGGING], 1, [Debug message logging])
 else
 	if test "x$toggable_debug" != "xno"; then
 		AC_DEFINE([INCLUDE_DEBUG_LOGGING], 1, [Debug message logging (toggable)])
@@ -154,9 +177,9 @@ saved_cflags="$CFLAGS"
 CFLAGS="$CFLAGS -Werror -fvisibility=hidden"
 AC_COMPILE_IFELSE(AC_LANG_PROGRAM([]),
 	[VISIBILITY_CFLAGS="-fvisibility=hidden"
-	 AC_DEFINE([API_EXPORTED], [__attribute__((visibility("default")))], [Default visibility]) ],
+	 AC_DEFINE([DEFAULT_VISIBILITY], [__attribute__((visibility("default")))], [Default visibility]) ],
 	[ VISIBILITY_CFLAGS=""
-	 AC_DEFINE([API_EXPORTED], [], [Default visibility]) ],
+	 AC_DEFINE([DEFAULT_VISIBILITY], [], [Default visibility]) ],
 	])
 CFLAGS="$saved_cflags"
 
@@ -167,23 +190,21 @@ AC_COMPILE_IFELSE(AC_LANG_PROGRAM([]),
 	nopointersign_cflags="-Wno-pointer-sign", nopointersign_cflags="")
 CFLAGS="$saved_cflags"
 
-# check if -pthread is supported (some environments like cygwin don't support it)
-AC_MSG_CHECKING([whether compiler supports the -pthread option])
-if $CC -pthread 2>&1 | grep -q 'unrecognized option.*pthread'; then
-	AC_MSG_RESULT([no])
-	THREAD_CFLAGS=""
-else
-	AC_MSG_RESULT([yes])
-	THREAD_CFLAGS="-pthread"
-fi
+# sigaction not available on MinGW
+AC_CHECK_FUNC([sigaction], [have_sigaction=yes], [have_sigaction=no])
+AM_CONDITIONAL([HAVE_SIGACTION], [test "x$have_sigaction" = "xyes"])
+
+# headers not available on all platforms but required on others
+AC_CHECK_HEADERS([sys/time.h])
+
 AC_SUBST([THREAD_CFLAGS])
 
-AM_CFLAGS="$AM_CFLAGS -std=gnu99 $inline_cflags -Wall -Wundef -Wunused -Wstrict-prototypes -Werror-implicit-function-declaration $nopointersign_cflags"
+AM_CFLAGS="$AM_CFLAGS $inline_cflags -Wall -Wundef -Wunused -Wstrict-prototypes -Werror-implicit-function-declaration $nopointersign_cflags -Wshadow"
 
 AC_SUBST(VISIBILITY_CFLAGS)
 AC_SUBST(AM_CFLAGS)
 AC_SUBST(AM_LDFLAGS)
 
-AC_CONFIG_FILES([libusb-1.0.pc] [Makefile] [libusb/Makefile] [libusb/libusb-1.0.rc] [examples/Makefile] [doc/Makefile] [doc/doxygen.cfg])
+AC_CONFIG_FILES([libusb-1.0.pc] [Makefile] [libusb/Makefile] [libusb/libusb_version.h] [examples/Makefile] [doc/Makefile] [doc/doxygen.cfg])
 AC_OUTPUT
 

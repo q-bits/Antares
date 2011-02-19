@@ -6,10 +6,11 @@
 #endif
 
 /* Default visibility */
-#define API_EXPORTED /**/
+#define DEFAULT_VISIBILITY /**/
 
 /* Debug message logging (forced) */
-//#define ENABLE_DEBUG_LOGGING 1
+
+#define ENABLE_DEBUG_LOGGING 1
 
 /* Debug message logging (toggable) */
 #define INCLUDE_DEBUG_LOGGING 1

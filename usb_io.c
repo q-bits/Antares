@@ -63,21 +63,32 @@ Adapted by Henry Haselgrove, for use in Antares
 int packet_trace = 0;
 int verbose = 0;
 
+struct husb_device_handle;
+int husb_bulk_write(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout);
+int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout);
+
 
  int usb_bulk_write(libusb_device_handle *dev, int ep, char *bytes, int size,
                      int timeout)
   {
 	  int r;
+	  struct husb_device_handle *fd;
 	  if (dev==NULL) return(LIBUSB_ERROR_NO_DEVICE);
-	  libusb_bulk_transfer(dev,(unsigned char) ep,bytes,size,&r,timeout);
+	  //libusb_bulk_transfer(dev,(unsigned char) ep,bytes,size,&r,timeout);
+	  
+	  fd = (struct husb_device_handle *) (void*) dev;
+      r=husb_bulk_write( fd,  ep,  bytes,   size,  timeout);
 	  return(r);
   }
   int usb_bulk_read(libusb_device_handle *dev, int ep, char *bytes, int size,
                     int timeout)
   {
       int r;
+	  struct husb_device_handle *fd;
 	  if (dev==NULL) return(LIBUSB_ERROR_NO_DEVICE);
-	  libusb_bulk_transfer(dev,(unsigned char) ep,bytes,size,&r,timeout);
+	  fd = (struct husb_device_handle *) (void*) dev;
+	  //libusb_bulk_transfer(dev,(unsigned char) ep,bytes,size,&r,timeout);
+	  r=husb_bulk_read( fd,  ep,  bytes,   size,  timeout);
 	  return(r);
   }
 
@@ -393,16 +404,16 @@ int send_tf_packet(libusb_device_handle* fd, struct tf_packet *packet)
 }
 
 
-/* Like get_tf_packet2, but using default timeout */
+/* Like get_tf_packet2, but using default timeout and default no_replay */
 int get_tf_packet(libusb_device_handle* fd, struct tf_packet * packet)
 {
-    return get_tf_packet2(fd, packet, TF_PROTOCOL_TIMEOUT);
+    return get_tf_packet2(fd, packet, TF_PROTOCOL_TIMEOUT, 0);
 }
 
 /* Receive a Topfield protocol packet.
  * Returns a negative number if the packet read failed for some reason.
  */
-int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int timeout)
+int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int timeout, int no_reply)
 {
     __u8 *buf = (__u8 *) packet;
     int r;
@@ -424,7 +435,7 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
     }
 
     /* Send SUCCESS as soon as we see a data transfer packet */
-    if(DATA_HDD_FILE_DATA == get_u32_raw(&packet->cmd))
+    if(!no_reply && DATA_HDD_FILE_DATA == get_u32_raw(&packet->cmd))
     {
         send_success(fd);
     }

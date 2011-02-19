@@ -279,7 +279,7 @@ int main(array<System::String ^> ^args)
 	else
 	{
 #ifndef _DEBUG
-		      FreeConsole();
+	    FreeConsole();
 #endif
 	}
 

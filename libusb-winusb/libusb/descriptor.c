@@ -19,6 +19,7 @@
  */
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -38,12 +39,12 @@
 
 /* set host_endian if the w values are already in host endian format,
  * as opposed to bus endian. */
-int usbi_parse_descriptor(unsigned char *source, char *descriptor, void *dest,
-	int host_endian)
+int usbi_parse_descriptor(unsigned char *source, const char *descriptor,
+	void *dest, int host_endian)
 {
 	unsigned char *sp = source, *dp = dest;
 	uint16_t w;
-	char *cp;
+	const char *cp;
 
 	for (cp = descriptor; *cp; cp++) {
 		switch (*cp) {
@@ -65,7 +66,7 @@ int usbi_parse_descriptor(unsigned char *source, char *descriptor, void *dest,
 		}
 	}
 
-	return (int)(sp - source);
+	return (int) (sp - source);
 }
 
 static void clear_endpoint(struct libusb_endpoint_descriptor *endpoint)
@@ -429,7 +430,7 @@ err:
  * \param desc output location for the descriptor data
  * \returns 0 on success or a LIBUSB_ERROR code on failure
  */
-API_EXPORTED int LIBUSB_API libusb_get_device_descriptor(libusb_device *dev,
+int API_EXPORTED libusb_get_device_descriptor(libusb_device *dev,
 	struct libusb_device_descriptor *desc)
 {
 	unsigned char raw_desc[DEVICE_DESC_LENGTH];
@@ -465,7 +466,7 @@ API_EXPORTED int LIBUSB_API libusb_get_device_descriptor(libusb_device *dev,
  * \returns another LIBUSB_ERROR code on error
  * \see libusb_get_config_descriptor
  */
-API_EXPORTED int LIBUSB_API libusb_get_active_config_descriptor(libusb_device *dev,
+int API_EXPORTED libusb_get_active_config_descriptor(libusb_device *dev,
 	struct libusb_config_descriptor **config)
 {
 	struct libusb_config_descriptor *_config = malloc(sizeof(*_config));
@@ -530,7 +531,7 @@ err:
  * \see libusb_get_active_config_descriptor()
  * \see libusb_get_config_descriptor_by_value()
  */
-API_EXPORTED int LIBUSB_API libusb_get_config_descriptor(libusb_device *dev,
+int API_EXPORTED libusb_get_config_descriptor(libusb_device *dev,
 	uint8_t config_index, struct libusb_config_descriptor **config)
 {
 	struct libusb_config_descriptor *_config;
@@ -629,7 +630,7 @@ int usbi_get_config_index_by_value(struct libusb_device *dev,
  * \see libusb_get_active_config_descriptor()
  * \see libusb_get_config_descriptor()
  */
-API_EXPORTED int LIBUSB_API libusb_get_config_descriptor_by_value(libusb_device *dev,
+int API_EXPORTED libusb_get_config_descriptor_by_value(libusb_device *dev,
 	uint8_t bConfigurationValue, struct libusb_config_descriptor **config)
 {
 	int idx;
@@ -639,7 +640,7 @@ API_EXPORTED int LIBUSB_API libusb_get_config_descriptor_by_value(libusb_device 
 	else if (idx == -1)
 		return LIBUSB_ERROR_NOT_FOUND;
 	else
-		return libusb_get_config_descriptor(dev, (uint8_t)idx, config);
+		return libusb_get_config_descriptor(dev, (uint8_t) idx, config);
 }
 
 /** \ingroup desc
@@ -650,7 +651,7 @@ API_EXPORTED int LIBUSB_API libusb_get_config_descriptor_by_value(libusb_device 
  *
  * \param config the configuration descriptor to free
  */
-API_EXPORTED void LIBUSB_API libusb_free_config_descriptor(
+void API_EXPORTED libusb_free_config_descriptor(
 	struct libusb_config_descriptor *config)
 {
 	if (!config)
@@ -672,7 +673,7 @@ API_EXPORTED void LIBUSB_API libusb_free_config_descriptor(
  * \param length size of data buffer
  * \returns number of bytes returned in data, or LIBUSB_ERROR code on failure
  */
-API_EXPORTED int LIBUSB_API libusb_get_string_descriptor_ascii(libusb_device_handle *dev,
+int API_EXPORTED libusb_get_string_descriptor_ascii(libusb_device_handle *dev,
 	uint8_t desc_index, unsigned char *data, int length)
 {
 	unsigned char tbuf[255]; /* Some devices choke on size > 255 */
@@ -680,10 +681,17 @@ API_EXPORTED int LIBUSB_API libusb_get_string_descriptor_ascii(libusb_device_han
 	uint16_t langid;
 
 	/* Asking for the zero'th index is special - it returns a string
-	 * descriptor that contains all the language IDs supported by the device.
-	 * Typically there aren't many - often only one. The language IDs are 16
-	 * bit numbers, and they start at the third byte in the descriptor. See
-	 * USB 2.0 specification section 9.6.7 for more information. */
+	 * descriptor that contains all the language IDs supported by the
+	 * device. Typically there aren't many - often only one. Language
+	 * IDs are 16 bit numbers, and they start at the third byte in the
+	 * descriptor. There's also no point in trying to read descriptor 0
+	 * with this function. See USB 2.0 specification section 9.6.7 for
+	 * more information.
+	 */
+
+	if (desc_index == 0)
+		return LIBUSB_ERROR_INVALID_PARAM;
+
 	r = libusb_get_string_descriptor(dev, 0, 0, tbuf, sizeof(tbuf));
 	if (r < 0)
 		return r;

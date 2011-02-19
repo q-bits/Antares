@@ -13,7 +13,7 @@
 // Returns
 // - dh : if successfully connected returns the USB device handle used by all other functions in this program.
 //      : if failed, just returns NULL
-libusb_device_handle* connect_device2(int * reason)
+libusb_device_handle* connect_device2__(int * reason)
 {
 	libusb_device_handle* dh;
 	int success;
@@ -39,7 +39,7 @@ libusb_device_handle* connect_device2(int * reason)
 		dev=devs[i];
 		r = libusb_get_device_descriptor(dev, &desc);
 
-		if (desc.idVendor==0x11db && desc.idProduct == 0x1000)
+		if (desc.idVendor==0x11db && (desc.idProduct == 0x1000 || desc.idProduct == 0x1100) )
 		{
 			device=dev;
 		}
@@ -156,7 +156,7 @@ libusb_device_handle* connect_device2(int * reason)
 // Returns
 // - dh : if successfully connected returns the USB device handle used by all other functions in this program.
 //      : if failed, just returns NULL
-libusb_device_handle* connect_device()
+libusb_device_handle* connect_device__()
 {
 	libusb_device_handle* dh;
 	int success;
@@ -182,7 +182,7 @@ libusb_device_handle* connect_device()
 		dev=devs[i];
 		r = libusb_get_device_descriptor(dev, &desc);
 
-		if (desc.idVendor==0x11db && desc.idProduct == 0x1000)
+		if (desc.idVendor==0x11db && (desc.idProduct == 0x1000 || desc.idProduct == 0x1100) )
 		{
 			device=dev;
 		}
@@ -312,7 +312,11 @@ int disconnect_device(libusb_device_handle * dh)
 	}
 
 	// Close the device
-	libusb_close(dh);
+	
+	
+	//libusb_close(dh);
+
+
 	//if (libusb_close(dh))
 	//{
 //		success = 0;

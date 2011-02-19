@@ -41,15 +41,6 @@
 #define false FALSE
 #endif
 
-#if !defined(libusb_bus_t)
-#define libusb_bus_t uint8_t
-#define LIBUSB_BUS_MAX UINT8_MAX
-#endif
-#if !defined(libusb_devaddr_t)
-#define libusb_devaddr_t uint8_t
-#define LIBUSB_DEVADDR_MAX UINT8_MAX
-#endif
-
 // Missing from MSVC6 setupapi.h
 #if !defined(SPDRP_ADDRESS)
 #define SPDRP_ADDRESS	28
@@ -65,23 +56,24 @@ extern char *_strdup(const char *strSource);
 // _beginthreadex is MSVCRT => unavailable for cygwin. Fallback to using CreateThread
 #define _beginthreadex(a, b, c, d, e, f) CreateThread(a, b, (LPTHREAD_START_ROUTINE)c, d, e, f)
 #endif
-#define safe_free(p) do {if (p != NULL) {free(p); p = NULL;}} while(0)
+#define safe_free(p) do {if (p != NULL) {free((void*)p); p = NULL;}} while(0)
 #define safe_closehandle(h) do {if (h != INVALID_HANDLE_VALUE) {CloseHandle(h); h = INVALID_HANDLE_VALUE;}} while(0)
-#define safe_strncpy(dst, dst_max, src, count) strncpy(dst, src, min(count, dst_max - 1))
-#define safe_strcpy(dst, dst_max, src) safe_strncpy(dst, dst_max, src, strlen(src)+1)
-#define safe_strncat(dst, dst_max, src, count) strncat(dst, src, min(count, dst_max - strlen(dst) - 1))
-#define safe_strcat(dst, dst_max, src) safe_strncat(dst, dst_max, src, strlen(src)+1)
+#define safe_min(a, b) min((size_t)(a), (size_t)(b))
+#define safe_strcp(dst, dst_max, src, count) do {memcpy(dst, src, safe_min(count, dst_max)); \
+	((char*)dst)[safe_min(count, dst_max)-1] = 0;} while(0)
+#define safe_strcpy(dst, dst_max, src) safe_strcp(dst, dst_max, src, safe_strlen(src)+1)
+#define safe_strncat(dst, dst_max, src, count) strncat(dst, src, safe_min(count, dst_max - safe_strlen(dst) - 1))
+#define safe_strcat(dst, dst_max, src) safe_strncat(dst, dst_max, src, safe_strlen(src)+1)
 #define safe_strcmp(str1, str2) strcmp(((str1==NULL)?"<NULL>":str1), ((str2==NULL)?"<NULL>":str2))
 #define safe_strncmp(str1, str2, count) strncmp(((str1==NULL)?"<NULL>":str1), ((str2==NULL)?"<NULL>":str2), count)
 #define safe_strlen(str) ((str==NULL)?0:strlen(str))
-#define safe_strdup _strdup
 #define safe_sprintf _snprintf
 #define safe_unref_device(dev) do {if (dev != NULL) {libusb_unref_device(dev); dev = NULL;}} while(0)
 #define wchar_to_utf8_ms(wstr, str, strlen) WideCharToMultiByte(CP_UTF8, 0, wstr, -1, str, strlen, NULL, NULL)
 inline void upperize(char* str) {
 	size_t i;
 	if (str == NULL) return;
-	for (i=0; i<strlen(str); i++)
+	for (i=0; i<safe_strlen(str); i++)
 		str[i] = (char)toupper((int)str[i]);
 }
 
@@ -94,40 +86,49 @@ inline void upperize(char* str) {
 #define MAX_PATH_LENGTH             128
 #define MAX_KEY_LENGTH              256
 #define MAX_TIMER_SEMAPHORES        128
-#define TIMER_REQUEST_RETRY_MS		100
+#define TIMER_REQUEST_RETRY_MS      100
 #define ERR_BUFFER_SIZE             256
+#define LIST_SEPARATOR              ';'
+#define HTAB_SIZE                   1021
 
 // Handle code for HID interface that have been claimed ("dibs")
 #define INTERFACE_CLAIMED           ((HANDLE)(intptr_t)0xD1B5)
 // Additional return code for HID operations that completed synchronously
 #define LIBUSB_COMPLETED            (LIBUSB_SUCCESS + 1)
 
-// http://msdn.microsoft.com/en-us/library/bb663109.aspx
-// http://msdn.microsoft.com/en-us/library/bb663093.aspx
+// http://msdn.microsoft.com/en-us/library/ff545978.aspx
+// http://msdn.microsoft.com/en-us/library/ff545972.aspx
+// http://msdn.microsoft.com/en-us/library/ff545982.aspx
 #if !defined(GUID_DEVINTERFACE_USB_HOST_CONTROLLER)
 const GUID GUID_DEVINTERFACE_USB_HOST_CONTROLLER = { 0x3ABF6F2D, 0x71C4, 0x462A, {0x8A, 0x92, 0x1E, 0x68, 0x61, 0xE6, 0xAF, 0x27} };
 #endif
 #if !defined(GUID_DEVINTERFACE_USB_DEVICE)
 const GUID GUID_DEVINTERFACE_USB_DEVICE = { 0xA5DCBF10, 0x6530, 0x11D2, {0x90, 0x1F, 0x00, 0xC0, 0x4F, 0xB9, 0x51, 0xED} };
 #endif
+#if !defined(GUID_DEVINTERFACE_USB_HUB)
+const GUID GUID_DEVINTERFACE_USB_HUB = { 0xF18A0E88, 0xC30C, 0x11D0, {0x88, 0x15, 0x00, 0xA0, 0xC9, 0x06, 0xBE, 0xD8} };
+#endif
+const GUID GUID_NULL = { 0x00000000, 0x0000, 0x0000, {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00} };
 
 
 /*
  * Multiple USB API backend support
  */
 #define USB_API_UNSUPPORTED 0
-#define USB_API_COMPOSITE   1
-#define USB_API_WINUSB      2
-#define USB_API_HID         3
-#define USB_API_MAX         4
+#define USB_API_HUB         1
+#define USB_API_COMPOSITE   2
+#define USB_API_WINUSB      3
+#define USB_API_HID         4
+#define USB_API_MAX         5
 
-const GUID CLASS_GUID_UNSUPPORTED   = { 0x00000000, 0x0000, 0x0000, {0x00, 0x00, 0x00, 0x00, 0x00, 0x0F, 0x57, 0xDA} };
+#define CLASS_GUID_UNSUPPORTED      GUID_NULL
 const GUID CLASS_GUID_HID           = { 0x745A17A0, 0x74D3, 0x11D0, {0xB6, 0xFE, 0x00, 0xA0, 0xC9, 0x0F, 0x57, 0xDA} };
 const GUID CLASS_GUID_LIBUSB_WINUSB = { 0x78A1C341, 0x4539, 0x11D3, {0xB8, 0x8D, 0x00, 0xC0, 0x4F, 0xAD, 0x51, 0x71} };
 const GUID CLASS_GUID_COMPOSITE     = { 0x36FC9E60, 0xC465, 0x11cF, {0x80, 0x56, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00} };
 
 struct windows_usb_api_backend {
 	const uint8_t id;
+	const char* designation;
 	const GUID *class_guid;  // The Class GUID (for fallback in case the driver name cannot be read)
 	const char **driver_name_list; // Driver name, without .sys, e.g. "usbccgp"
 	const uint8_t nb_driver_names;
@@ -160,21 +161,6 @@ extern const struct windows_usb_api_backend usb_api_backend[USB_API_MAX];
  * with inline pseudo constructors/destructors
  */
 
-// HCDs
-struct windows_hcd_priv {
-	char *path;
-	struct windows_hcd_priv *next;
-};
-
-static inline void windows_hcd_priv_init(struct windows_hcd_priv* p) {
-	p->path = NULL;
-	p->next = NULL;
-}
-
-static inline void windows_hcd_priv_release(struct windows_hcd_priv* p) {
-	safe_free(p->path);
-}
-
 // TODO (v2+): move hid desc to libusb.h?
 struct libusb_hid_descriptor {
 	uint8_t  bLength;
@@ -196,6 +182,21 @@ struct libusb_hid_descriptor {
 #define LIBUSB_REQ_IN(request_type) ((request_type) & LIBUSB_ENDPOINT_IN)
 #define LIBUSB_REQ_OUT(request_type) (!LIBUSB_REQ_IN(request_type))
 
+// The following are used for HID reports IOCTLs
+#define HID_CTL_CODE(id) \
+  CTL_CODE (FILE_DEVICE_KEYBOARD, (id), METHOD_NEITHER, FILE_ANY_ACCESS)
+#define HID_BUFFER_CTL_CODE(id) \
+  CTL_CODE (FILE_DEVICE_KEYBOARD, (id), METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define HID_IN_CTL_CODE(id) \
+  CTL_CODE (FILE_DEVICE_KEYBOARD, (id), METHOD_IN_DIRECT, FILE_ANY_ACCESS)
+#define HID_OUT_CTL_CODE(id) \
+  CTL_CODE (FILE_DEVICE_KEYBOARD, (id), METHOD_OUT_DIRECT, FILE_ANY_ACCESS)
+
+#define IOCTL_HID_GET_FEATURE                 HID_OUT_CTL_CODE(100)
+#define IOCTL_HID_GET_INPUT_REPORT            HID_OUT_CTL_CODE(104)
+#define IOCTL_HID_SET_FEATURE                 HID_IN_CTL_CODE(100)
+#define IOCTL_HID_SET_OUTPUT_REPORT           HID_IN_CTL_CODE(101)
+
 enum libusb_hid_request_type {
 	HID_REQ_GET_REPORT = 0x01,
 	HID_REQ_GET_IDLE = 0x02,
@@ -215,6 +216,7 @@ struct hid_device_priv {
 	uint16_t vid;
 	uint16_t pid;
 	uint8_t config;
+	uint8_t nb_interfaces;
 	bool uses_report_ids[3];	// input, ouptput, feature
 	uint16_t input_report_size;
 	uint16_t output_report_size;
@@ -225,29 +227,36 @@ struct hid_device_priv {
 
 typedef struct libusb_device_descriptor USB_DEVICE_DESCRIPTOR, *PUSB_DEVICE_DESCRIPTOR;
 struct windows_device_priv {
-	struct libusb_device *parent_dev;   // access to parent is required for usermode ops
-	ULONG connection_index;             // also required for some usermode ops
-	char *path;                         // path used by Windows to reference the USB node
+	uint8_t depth;						// distance to HCD
+	uint8_t port;						// port number on the hub
+	struct libusb_device *parent_dev;	// access to parent is required for usermode ops
+	char *path;							// device interface path
 	struct windows_usb_api_backend const *apib;
 	struct {
-		char *path;                     // each interface needs a Windows device interface path,
+		char *path;						// each interface needs a device interface path,
 		struct windows_usb_api_backend const *apib; // an API backend (multiple drivers support),
-		int8_t nb_endpoints;            // and a set of endpoint addresses (USB_MAXENDPOINTS)
+		int8_t nb_endpoints;			// and a set of endpoint addresses (USB_MAXENDPOINTS)
 		uint8_t *endpoint;
 		bool restricted_functionality;	// indicates if the interface functionality is restricted
 										// by Windows (eg. HID keyboards or mice cannot do R/W)
 	} usb_interface[USB_MAXINTERFACES];
-	uint8_t composite_api_flags;        // HID and composite devices require additional data
+	uint8_t composite_api_flags;		// HID and composite devices require additional data
 	struct hid_device_priv *hid;
 	uint8_t active_config;
 	USB_DEVICE_DESCRIPTOR dev_descriptor;
-	unsigned char **config_descriptor;  // list of pointers to the cached config descriptors
+	unsigned char **config_descriptor;	// list of pointers to the cached config descriptors
 };
 
-static inline void windows_device_priv_init(struct windows_device_priv* p) {
+static inline struct windows_device_priv *__device_priv(struct libusb_device *dev) {
+	return (struct windows_device_priv *)dev->os_priv;
+}
+
+static inline void windows_device_priv_init(libusb_device* dev) {
+	struct windows_device_priv* p = __device_priv(dev);
 	int i;
+	p->depth = 0;
+	p->port = 0;
 	p->parent_dev = NULL;
-	p->connection_index = 0;
 	p->path = NULL;
 	p->apib = &usb_api_backend[USB_API_UNSUPPORTED];
 	p->composite_api_flags = 0;
@@ -264,11 +273,12 @@ static inline void windows_device_priv_init(struct windows_device_priv* p) {
 	}
 }
 
-static inline void windows_device_priv_release(struct windows_device_priv* p, int num_configurations) {
+static inline void windows_device_priv_release(libusb_device* dev) {
+	struct windows_device_priv* p = __device_priv(dev);
 	int i;
 	safe_free(p->path);
-	if ((num_configurations > 0) && (p->config_descriptor != NULL)) {
-		for (i=0; i < num_configurations; i++)
+	if ((dev->num_configurations > 0) && (p->config_descriptor != NULL)) {
+		for (i=0; i < dev->num_configurations; i++)
 			safe_free(p->config_descriptor[i]);
 	}
 	safe_free(p->config_descriptor);
@@ -277,10 +287,6 @@ static inline void windows_device_priv_release(struct windows_device_priv* p, in
 		safe_free(p->usb_interface[i].path);
 		safe_free(p->usb_interface[i].endpoint);
 	}
-}
-
-static inline struct windows_device_priv *__device_priv(struct libusb_device *dev) {
-	return (struct windows_device_priv *)dev->os_priv;
 }
 
 struct interface_handle_t {
@@ -311,32 +317,58 @@ struct windows_transfer_priv {
 	size_t hid_expected_size;
 };
 
+// used to match a device driver (including filter drivers) against a supported API
+struct driver_lookup {
+	char list[MAX_KEY_LENGTH+1];// REG_MULTI_SZ list of services (driver) names
+	const DWORD reg_prop;		// SPDRP registry key to use to retreive list
+	const char* designation;	// internal designation (for debug output)
+};
 
 /*
  * API macros - from libusb-win32 1.x
  */
-#define DLL_DECLARE(api, ret, name, args)                     \
-  typedef ret (api * __dll_##name##_t)args; __dll_##name##_t name
+#define DLL_DECLARE_PREFIXED(api, ret, prefix, name, args)    \
+	typedef ret (api * __dll_##name##_t)args;                 \
+	static __dll_##name##_t prefix##name = NULL
 
-#define DLL_LOAD(dll, name, ret_on_failure)                   \
+#define DLL_LOAD_PREFIXED(dll, prefix, name, ret_on_failure)  \
 	do {                                                      \
-		HMODULE h = GetModuleHandle(#dll);                    \
+		HMODULE h = GetModuleHandleA(#dll);                   \
 	if (!h)                                                   \
-		h = LoadLibrary(#dll);                                \
+		h = LoadLibraryA(#dll);                               \
 	if (!h) {                                                 \
 		if (ret_on_failure) { return LIBUSB_ERROR_NOT_FOUND; }\
 		else { break; }                                       \
 	}                                                         \
-	name = (__dll_##name##_t)GetProcAddress(h, #name);        \
-	if (name) break;                                          \
-	name = (__dll_##name##_t)GetProcAddress(h, #name "A");    \
-	if (name) break;                                          \
-	name = (__dll_##name##_t)GetProcAddress(h, #name "W");    \
-	if (name) break;                                          \
+	prefix##name = (__dll_##name##_t)GetProcAddress(h, #name);\
+	if (prefix##name) break;                                  \
+	prefix##name = (__dll_##name##_t)GetProcAddress(h, #name "A");\
+	if (prefix##name) break;                                  \
+	prefix##name = (__dll_##name##_t)GetProcAddress(h, #name "W");\
+	if (prefix##name) break;                                  \
 	if(ret_on_failure)                                        \
 		return LIBUSB_ERROR_NOT_FOUND;                        \
 	} while(0)
 
+#define DLL_DECLARE(api, ret, name, args)   DLL_DECLARE_PREFIXED(api, ret, , name, args)
+#define DLL_LOAD(dll, name, ret_on_failure) DLL_LOAD_PREFIXED(dll, , name, ret_on_failure)
+
+/* OLE32 dependency */
+DLL_DECLARE_PREFIXED(WINAPI, HRESULT, p, CLSIDFromString, (LPCOLESTR, LPCLSID));
+
+/* SetupAPI dependencies */
+DLL_DECLARE_PREFIXED(WINAPI, HDEVINFO, p, SetupDiGetClassDevsA, (const GUID*, PCSTR, HWND, DWORD));
+DLL_DECLARE_PREFIXED(WINAPI, BOOL, p, SetupDiEnumDeviceInfo, (HDEVINFO, DWORD, PSP_DEVINFO_DATA));
+DLL_DECLARE_PREFIXED(WINAPI, BOOL, p, SetupDiEnumDeviceInterfaces, (HDEVINFO, PSP_DEVINFO_DATA,
+			const GUID*, DWORD, PSP_DEVICE_INTERFACE_DATA));
+DLL_DECLARE_PREFIXED(WINAPI, BOOL, p, SetupDiGetDeviceInterfaceDetailA, (HDEVINFO, PSP_DEVICE_INTERFACE_DATA,
+			PSP_DEVICE_INTERFACE_DETAIL_DATA_A, DWORD, PDWORD, PSP_DEVINFO_DATA));
+DLL_DECLARE_PREFIXED(WINAPI, BOOL, p, SetupDiDestroyDeviceInfoList, (HDEVINFO));
+DLL_DECLARE_PREFIXED(WINAPI, HKEY, p, SetupDiOpenDevRegKey, (HDEVINFO, PSP_DEVINFO_DATA, DWORD, DWORD, DWORD, REGSAM));
+DLL_DECLARE_PREFIXED(WINAPI, BOOL, p, SetupDiGetDeviceRegistryPropertyA, (HDEVINFO,
+			PSP_DEVINFO_DATA, DWORD, PDWORD, PBYTE, DWORD, PDWORD));
+DLL_DECLARE_PREFIXED(WINAPI, LONG, p, RegQueryValueExW, (HKEY, LPCWSTR, LPDWORD, LPDWORD, LPBYTE, LPDWORD));
+DLL_DECLARE_PREFIXED(WINAPI, LONG, p, RegCloseKey, (HKEY));
 
 /*
  * Windows DDK API definitions. Most of it copied from MinGW's includes
@@ -344,7 +376,7 @@ struct windows_transfer_priv {
 typedef DWORD DEVNODE, DEVINST;
 typedef DEVNODE *PDEVNODE, *PDEVINST;
 typedef DWORD RETURN_TYPE;
-typedef RETURN_TYPE	CONFIGRET;
+typedef RETURN_TYPE CONFIGRET;
 
 #define CR_SUCCESS                              0x00000000
 #define CR_NO_SUCH_DEVNODE                      0x0000000D
@@ -367,7 +399,6 @@ typedef RETURN_TYPE	CONFIGRET;
 #define USB_REQUEST_SET_INTERFACE               LIBUSB_REQUEST_SET_INTERFACE
 #define USB_REQUEST_SYNC_FRAME                  LIBUSB_REQUEST_SYNCH_FRAME
 
-#define HCD_GET_ROOT_HUB_NAME                   258
 #define USB_GET_NODE_INFORMATION                258
 #define USB_GET_NODE_CONNECTION_INFORMATION     259
 #define USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION 260
@@ -417,13 +448,6 @@ DLL_DECLARE(WINAPI, CONFIGRET, CM_Get_Parent, (PDEVINST, DEVINST, ULONG));
 DLL_DECLARE(WINAPI, CONFIGRET, CM_Get_Child, (PDEVINST, DEVINST, ULONG));
 DLL_DECLARE(WINAPI, CONFIGRET, CM_Get_Sibling, (PDEVINST, DEVINST, ULONG));
 DLL_DECLARE(WINAPI, CONFIGRET, CM_Get_Device_IDA, (DEVINST, PCHAR, ULONG, ULONG));
-DLL_DECLARE(WINAPI, CONFIGRET, CM_Get_Device_IDW, (DEVINST, PWCHAR, ULONG, ULONG));
-
-#ifdef UNICODE
-#define CM_Get_Device_ID CM_Get_Device_IDW
-#else
-#define CM_Get_Device_ID CM_Get_Device_IDA
-#endif /* UNICODE */
 
 #define IOCTL_USB_GET_HUB_CAPABILITIES_EX \
   CTL_CODE( FILE_DEVICE_USB, USB_GET_HUB_CAPABILITIES_EX, METHOD_BUFFERED, FILE_ANY_ACCESS)
@@ -467,7 +491,7 @@ typedef struct _USB_INTERFACE_DESCRIPTOR {
 typedef struct _USB_CONFIGURATION_DESCRIPTOR {
   UCHAR  bLength;
   UCHAR  bDescriptorType;
-  USHORT  wTotalLength;
+  USHORT wTotalLength;
   UCHAR  bNumInterfaces;
   UCHAR  bConfigurationValue;
   UCHAR  iConfiguration;
@@ -584,17 +608,14 @@ typedef struct _USB_NODE_CONNECTION_INFORMATION {
 //	USB_PIPE_INFO  PipeList[0];
 } USB_NODE_CONNECTION_INFORMATION, *PUSB_NODE_CONNECTION_INFORMATION;
 
-typedef union _USB_HUB_CAP_FLAGS {
-	ULONG ul;
-	struct {
-		ULONG HubIsHighSpeedCapable:1;
-		ULONG HubIsHighSpeed:1;
-		ULONG HubIsMultiTtCapable:1;
-		ULONG HubIsMultiTt:1;
-		ULONG HubIsRoot:1;
-		ULONG HubIsArmedWakeOnConnect:1;
-		ULONG ReservedMBZ:26;
-	};
+typedef struct _USB_HUB_CAP_FLAGS {
+	ULONG HubIsHighSpeedCapable:1;
+	ULONG HubIsHighSpeed:1;
+	ULONG HubIsMultiTtCapable:1;
+	ULONG HubIsMultiTt:1;
+	ULONG HubIsRoot:1;
+	ULONG HubIsArmedWakeOnConnect:1;
+	ULONG ReservedMBZ:26;
 } USB_HUB_CAP_FLAGS, *PUSB_HUB_CAP_FLAGS;
 
 typedef struct _USB_HUB_CAPABILITIES {
@@ -742,7 +763,7 @@ typedef struct _HIDP_VALUE_CAPS {
 		USHORT  DesignatorIndex, Reserved3;
 		USHORT  DataIndex, Reserved4;
 	  } NotRange;
-	};
+	} u;
 } HIDP_VALUE_CAPS, *PHIDP_VALUE_CAPS;
 
 DLL_DECLARE(WINAPI, BOOL, HidD_GetAttributes, (HANDLE, PHIDD_ATTRIBUTES));

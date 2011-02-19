@@ -43,7 +43,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=".\;&quot;.\libusb-winusb\msvc\&quot;;&quot;.\libusb-winusb\&quot;"
+				AdditionalIncludeDirectories=".\;&quot;.\libusb-winusb\msvc\&quot;;&quot;.\libusb-winusb\&quot;;&quot;.\libusb-winusb\libusb\&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CRT_SECURE_NO_WARNINGS"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -519,7 +519,11 @@
 				</File>
 			</File>
 			<File
-				RelativePath="..\libusb\libusb.h"
+				RelativePath=".\libusb-winusb\libusb\libusb.h"
+				>
+			</File>
+			<File
+				RelativePath=".\libusb-winusb\libusb\libusbi.h"
 				>
 			</File>
 			<File

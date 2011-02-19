@@ -67,7 +67,7 @@ int main_old(int argc, char * argv[])
     }
 
 	// Connect to Topfield device
-	fd = connect_device();
+	fd = connect_device__();
 	if (fd == NULL)
 	{
 		printf("ERROR: connecting to Topfield device\n");

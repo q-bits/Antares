@@ -21,11 +21,13 @@
 #include <config.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
-#ifndef OS_WINDOWS
-#include "os/poll_posix.h"
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
 #endif
 
 #ifdef USBI_TIMERFD_AVAILABLE
@@ -580,6 +582,10 @@ while (user_has_not_requested_exit)
  *
  * \section pollmain The more advanced option
  *
+ * \note This functionality is currently only available on Unix-like platforms.
+ * On Windows, libusb_get_pollfds() simply returns NULL. Exposing event sources
+ * on Windows will require some further thought and design.
+ *
  * In more advanced applications, you will already have a main loop which
  * is monitoring other event sources: network sockets, X11 events, mouse
  * movements, etc. Through exposing a set of file descriptors, libusb is
@@ -853,7 +859,7 @@ if (libusb_try_lock_events(ctx) == 0) {
 			goto retry;
 		}
 
-		libusb_wait_for_event(ctx);
+		libusb_wait_for_event(ctx, NULL);
 	}
 	libusb_unlock_event_waiters(ctx);
 }
@@ -1001,7 +1007,7 @@ printf("completed!\n");
 
 int usbi_io_init(struct libusb_context *ctx)
 {
-	int p, r;
+	int r;
 
 	usbi_mutex_init(&ctx->flying_transfers_lock, NULL);
 	usbi_mutex_init(&ctx->pollfds_lock, NULL);
@@ -1013,15 +1019,15 @@ int usbi_io_init(struct libusb_context *ctx)
 	list_init(&ctx->pollfds);
 
 	/* FIXME should use an eventfd on kernels that support it */
-	p = usbi_pipe(ctx->ctrl_pipe);
-	if (p < 0) {
+	r = usbi_pipe(ctx->ctrl_pipe);
+	if (r < 0) {
 		r = LIBUSB_ERROR_OTHER;
 		goto err;
 	}
 
 	r = usbi_add_pollfd(ctx, ctx->ctrl_pipe[0], POLLIN);
 	if (r < 0)
-		goto err;
+		goto err_close_pipe;
 
 #ifdef USBI_TIMERFD_AVAILABLE
 	ctx->timerfd = timerfd_create(usbi_backend->get_timerfd_clockid(),
@@ -1029,8 +1035,11 @@ int usbi_io_init(struct libusb_context *ctx)
 	if (ctx->timerfd >= 0) {
 		usbi_dbg("using timerfd for timeouts");
 		r = usbi_add_pollfd(ctx, ctx->timerfd, POLLIN);
-		if (r < 0)
-			goto err;
+		if (r < 0) {
+			usbi_remove_pollfd(ctx, ctx->ctrl_pipe[0]);
+			close(ctx->timerfd);
+			goto err_close_pipe;
+		}
 	} else {
 		usbi_dbg("timerfd not available (code %d error %d)", ctx->timerfd, errno);
 		ctx->timerfd = -1;
@@ -1039,16 +1048,10 @@ int usbi_io_init(struct libusb_context *ctx)
 
 	return 0;
 
+err_close_pipe:
+	usbi_close(ctx->ctrl_pipe[0]);
+	usbi_close(ctx->ctrl_pipe[1]);
 err:
-#ifdef USBI_TIMERFD_AVAILABLE
-	if (ctx->timerfd != -1)
-		close(ctx->timerfd);
-#endif
-	if (0 == p) {
-		usbi_remove_pollfd(ctx, ctx->ctrl_pipe[0]);
-		usbi_close(ctx->ctrl_pipe[0]);
-		usbi_close(ctx->ctrl_pipe[1]);
-	}
 	usbi_mutex_destroy(&ctx->flying_transfers_lock);
 	usbi_mutex_destroy(&ctx->pollfds_lock);
 	usbi_mutex_destroy(&ctx->pollfd_modify_lock);
@@ -1178,7 +1181,9 @@ out:
  * \param iso_packets number of isochronous packet descriptors to allocate
  * \returns a newly allocated transfer, or NULL on error
  */
-API_EXPORTED struct libusb_transfer* LIBUSB_API libusb_alloc_transfer(int iso_packets)
+DEFAULT_VISIBILITY
+struct libusb_transfer * LIBUSB_CALL libusb_alloc_transfer(
+	int iso_packets)
 {
 	size_t os_alloc_size = usbi_backend->transfer_priv_size
 		+ (usbi_backend->add_iso_packet_size * iso_packets);
@@ -1213,7 +1218,7 @@ API_EXPORTED struct libusb_transfer* LIBUSB_API libusb_alloc_transfer(int iso_pa
  *
  * \param transfer the transfer to free
  */
-API_EXPORTED void LIBUSB_API libusb_free_transfer(struct libusb_transfer *transfer)
+void API_EXPORTED libusb_free_transfer(struct libusb_transfer *transfer)
 {
 	struct usbi_transfer *itransfer;
 	if (!transfer)
@@ -1237,7 +1242,7 @@ API_EXPORTED void LIBUSB_API libusb_free_transfer(struct libusb_transfer *transf
  * \returns LIBUSB_ERROR_BUSY if the transfer has already been submitted.
  * \returns another LIBUSB_ERROR code on other failure
  */
-API_EXPORTED int LIBUSB_API libusb_submit_transfer(struct libusb_transfer *transfer)
+int API_EXPORTED libusb_submit_transfer(struct libusb_transfer *transfer)
 {
 	struct libusb_context *ctx = TRANSFER_CTX(transfer);
 	struct usbi_transfer *itransfer =
@@ -1293,7 +1298,7 @@ out:
  * cancelled.
  * \returns a LIBUSB_ERROR code on failure
  */
-API_EXPORTED int LIBUSB_API libusb_cancel_transfer(struct libusb_transfer *transfer)
+int API_EXPORTED libusb_cancel_transfer(struct libusb_transfer *transfer)
 {
 	struct usbi_transfer *itransfer =
 		__LIBUSB_TRANSFER_TO_USBI_TRANSFER(transfer);
@@ -1465,7 +1470,7 @@ int usbi_handle_transfer_cancellation(struct usbi_transfer *transfer)
  * \returns 1 if the lock was not obtained (i.e. another thread holds the lock)
  * \see \ref mtasync
  */
-API_EXPORTED int LIBUSB_API libusb_try_lock_events(libusb_context *ctx)
+int API_EXPORTED libusb_try_lock_events(libusb_context *ctx)
 {
 	int r;
 	USBI_GET_CONTEXT(ctx);
@@ -1506,7 +1511,7 @@ API_EXPORTED int LIBUSB_API libusb_try_lock_events(libusb_context *ctx)
  * \param ctx the context to operate on, or NULL for the default context
  * \see \ref mtasync
  */
-API_EXPORTED void LIBUSB_API libusb_lock_events(libusb_context *ctx)
+void API_EXPORTED libusb_lock_events(libusb_context *ctx)
 {
 	USBI_GET_CONTEXT(ctx);
 	usbi_mutex_lock(&ctx->events_lock);
@@ -1521,7 +1526,7 @@ API_EXPORTED void LIBUSB_API libusb_lock_events(libusb_context *ctx)
  * \param ctx the context to operate on, or NULL for the default context
  * \see \ref mtasync
  */
-API_EXPORTED void LIBUSB_API libusb_unlock_events(libusb_context *ctx)
+void API_EXPORTED libusb_unlock_events(libusb_context *ctx)
 {
 	USBI_GET_CONTEXT(ctx);
 	ctx->event_handler_active = 0;
@@ -1556,7 +1561,7 @@ API_EXPORTED void LIBUSB_API libusb_unlock_events(libusb_context *ctx)
  * \returns 0 if this thread must give up the events lock
  * \see \ref fullstory "Multi-threaded I/O: the full story"
  */
-API_EXPORTED int LIBUSB_API libusb_event_handling_ok(libusb_context *ctx)
+int API_EXPORTED libusb_event_handling_ok(libusb_context *ctx)
 {
 	int r;
 	USBI_GET_CONTEXT(ctx);
@@ -1584,7 +1589,7 @@ API_EXPORTED int LIBUSB_API libusb_event_handling_ok(libusb_context *ctx)
  * \returns 0 if there are no threads currently handling events
  * \see \ref mtasync
  */
-API_EXPORTED int LIBUSB_API libusb_event_handler_active(libusb_context *ctx)
+int API_EXPORTED libusb_event_handler_active(libusb_context *ctx)
 {
 	int r;
 	USBI_GET_CONTEXT(ctx);
@@ -1621,7 +1626,7 @@ API_EXPORTED int LIBUSB_API libusb_event_handler_active(libusb_context *ctx)
  * \param ctx the context to operate on, or NULL for the default context
  * \see \ref mtasync
  */
-API_EXPORTED void LIBUSB_API libusb_lock_event_waiters(libusb_context *ctx)
+void API_EXPORTED libusb_lock_event_waiters(libusb_context *ctx)
 {
 	USBI_GET_CONTEXT(ctx);
 	usbi_mutex_lock(&ctx->event_waiters_lock);
@@ -1632,7 +1637,7 @@ API_EXPORTED void LIBUSB_API libusb_lock_event_waiters(libusb_context *ctx)
  * \param ctx the context to operate on, or NULL for the default context
  * \see \ref mtasync
  */
-API_EXPORTED void LIBUSB_API libusb_unlock_event_waiters(libusb_context *ctx)
+void API_EXPORTED libusb_unlock_event_waiters(libusb_context *ctx)
 {
 	USBI_GET_CONTEXT(ctx);
 	usbi_mutex_unlock(&ctx->event_waiters_lock);
@@ -1663,7 +1668,7 @@ API_EXPORTED void LIBUSB_API libusb_unlock_event_waiters(libusb_context *ctx)
  * \returns 1 if the timeout expired
  * \see \ref mtasync
  */
-API_EXPORTED int LIBUSB_API libusb_wait_for_event(libusb_context *ctx, struct timeval *tv)
+int API_EXPORTED libusb_wait_for_event(libusb_context *ctx, struct timeval *tv)
 {
 	struct timespec timeout;
 	int r;
@@ -1705,16 +1710,6 @@ static void handle_timeout(struct usbi_transfer *itransfer)
 			"async cancel failed %d errno=%d", r, errno);
 }
 
-#ifdef USBI_OS_HANDLES_TIMEOUT
-static int handle_timeouts_locked(struct libusb_context *ctx)
-{
-	return 0;
-}
-static int handle_timeouts(struct libusb_context *ctx)
-{
-	return 0;
-}
-#else
 static int handle_timeouts_locked(struct libusb_context *ctx)
 {
 	int r;
@@ -1742,7 +1737,7 @@ static int handle_timeouts_locked(struct libusb_context *ctx)
 			return 0;
 
 		/* ignore timeouts we've already handled */
-		if (transfer->flags & USBI_TRANSFER_TIMED_OUT)
+		if (transfer->flags & (USBI_TRANSFER_TIMED_OUT | USBI_TRANSFER_OS_HANDLES_TIMEOUT))
 			continue;
 
 		/* if transfer has non-expired timeout, nothing more to do */
@@ -1766,7 +1761,6 @@ static int handle_timeouts(struct libusb_context *ctx)
 	usbi_mutex_unlock(&ctx->flying_transfers_lock);
 	return r;
 }
-#endif
 
 #ifdef USBI_TIMERFD_AVAILABLE
 static int handle_timerfd_trigger(struct libusb_context *ctx)
@@ -1943,8 +1937,8 @@ static int get_next_timeout(libusb_context *ctx, struct timeval *tv,
  * non-blocking mode
  * \returns 0 on success, or a LIBUSB_ERROR code on failure
  */
-API_EXPORTED int LIBUSB_API libusb_handle_events_timeout(libusb_context *ctx,
-	struct timeval *tv)
+int API_EXPORTED libusb_handle_events_timeout_check(libusb_context *ctx,
+	struct timeval *tv, int *completed)
 {
 	int r;
 	struct timeval poll_timeout;
@@ -1958,26 +1952,32 @@ API_EXPORTED int LIBUSB_API libusb_handle_events_timeout(libusb_context *ctx,
 
 retry:
 	if (libusb_try_lock_events(ctx) == 0) {
-		/* we obtained the event lock: do our own event handling */
-		r = handle_events(ctx, &poll_timeout);
+		r = 0;
+		if (completed == NULL || !*completed) {
+			/* we obtained the event lock: do our own event handling */
+			usbi_dbg("doing our own event handling");
+			r = handle_events(ctx, &poll_timeout);
+		}
 		libusb_unlock_events(ctx);
 		return r;
 	}
 
-	/* another thread is doing event handling. wait for thread events that
+	/* another thread is doing event handling. wait for pthread events that
 	 * notify event completion. */
 	libusb_lock_event_waiters(ctx);
 
-	if (!libusb_event_handler_active(ctx)) {
-		/* we hit a race: whoever was event handling earlier finished in the
-		 * time it took us to reach this point. try the cycle again. */
-		libusb_unlock_event_waiters(ctx);
-		usbi_dbg("event handler was active but went away, retrying");
-		goto retry;
-	}
+	if (completed == NULL || !*completed) {
+		if (!libusb_event_handler_active(ctx)) {
+			/* we hit a race: whoever was event handling earlier finished in the
+			 * time it took us to reach this point. try the cycle again. */
+			libusb_unlock_event_waiters(ctx);
+			usbi_dbg("event handler was active but went away, retrying");
+			goto retry;
+		}
 
-	usbi_dbg("another thread is doing event handling");
-	r = libusb_wait_for_event(ctx, &poll_timeout);
+		usbi_dbg("another thread is doing event handling, wait for notification");
+		r = libusb_wait_for_event(ctx, &poll_timeout);
+	}
 	libusb_unlock_event_waiters(ctx);
 
 	if (r < 0)
@@ -1986,6 +1986,21 @@ retry:
 		return handle_timeouts(ctx);
 	else
 		return 0;
+}
+
+int API_EXPORTED libusb_handle_events_timeout(libusb_context *ctx,
+	struct timeval *tv)
+{
+	return libusb_handle_events_timeout_check(ctx, tv, NULL);
+}
+
+int API_EXPORTED libusb_handle_events_check(libusb_context *ctx,
+	int *completed)
+{
+	struct timeval tv;
+	tv.tv_sec = 60;
+	tv.tv_usec = 0;
+	return libusb_handle_events_timeout_check(ctx, &tv, completed);
 }
 
 /** \ingroup poll
@@ -1997,12 +2012,12 @@ retry:
  * \param ctx the context to operate on, or NULL for the default context
  * \returns 0 on success, or a LIBUSB_ERROR code on failure
  */
-API_EXPORTED int LIBUSB_API libusb_handle_events(libusb_context *ctx)
+int API_EXPORTED libusb_handle_events(libusb_context *ctx)
 {
 	struct timeval tv;
 	tv.tv_sec = 60;
 	tv.tv_usec = 0;
-	return libusb_handle_events_timeout(ctx, &tv);
+	return libusb_handle_events_timeout_check(ctx, &tv, NULL);
 }
 
 /** \ingroup poll
@@ -2022,7 +2037,7 @@ API_EXPORTED int LIBUSB_API libusb_handle_events(libusb_context *ctx)
  * \returns 0 on success, or a LIBUSB_ERROR code on failure
  * \see \ref mtasync
  */
-API_EXPORTED int LIBUSB_API libusb_handle_events_locked(libusb_context *ctx,
+int API_EXPORTED libusb_handle_events_locked(libusb_context *ctx,
 	struct timeval *tv)
 {
 	int r;
@@ -2066,11 +2081,9 @@ API_EXPORTED int LIBUSB_API libusb_handle_events_locked(libusb_context *ctx,
  * or through regular activity on the file descriptors.
  * \see \ref pollmain "Polling libusb file descriptors for event handling"
  */
-API_EXPORTED int LIBUSB_API libusb_pollfds_handle_timeouts(libusb_context *ctx)
+int API_EXPORTED libusb_pollfds_handle_timeouts(libusb_context *ctx)
 {
-#if defined(USBI_OS_HANDLES_TIMEOUT)
-	return 1;
-#elif defined(USBI_TIMERFD_AVAILABLE)
+#if defined(USBI_TIMERFD_AVAILABLE)
 	USBI_GET_CONTEXT(ctx);
 	return usbi_using_timerfd(ctx);
 #else
@@ -2106,10 +2119,9 @@ API_EXPORTED int LIBUSB_API libusb_pollfds_handle_timeouts(libusb_context *ctx)
  * \returns 0 if there are no pending timeouts, 1 if a timeout was returned,
  * or LIBUSB_ERROR_OTHER on failure
  */
-API_EXPORTED int LIBUSB_API libusb_get_next_timeout(libusb_context *ctx,
+int API_EXPORTED libusb_get_next_timeout(libusb_context *ctx,
 	struct timeval *tv)
 {
-#ifndef USBI_OS_HANDLES_TIMEOUT
 	struct usbi_transfer *transfer;
 	struct timespec cur_ts;
 	struct timeval cur_tv;
@@ -2130,10 +2142,11 @@ API_EXPORTED int LIBUSB_API libusb_get_next_timeout(libusb_context *ctx,
 
 	/* find next transfer which hasn't already been processed as timed out */
 	list_for_each_entry(transfer, &ctx->flying_transfers, list, struct usbi_transfer) {
-		if (!(transfer->flags & USBI_TRANSFER_TIMED_OUT)) {
-			found = 1;
-			break;
-		}
+		if (transfer->flags & (USBI_TRANSFER_TIMED_OUT | USBI_TRANSFER_OS_HANDLES_TIMEOUT))
+			continue;
+
+		found = 1;
+		break;
 	}
 	usbi_mutex_unlock(&ctx->flying_transfers_lock);
 
@@ -2166,9 +2179,6 @@ API_EXPORTED int LIBUSB_API libusb_get_next_timeout(libusb_context *ctx,
 	}
 
 	return 1;
-#else
-	return 0;
-#endif
 }
 
 /** \ingroup poll
@@ -2192,7 +2202,7 @@ API_EXPORTED int LIBUSB_API libusb_get_next_timeout(libusb_context *ctx,
  * \param user_data User data to be passed back to callbacks (useful for
  * passing context information)
  */
-API_EXPORTED void LIBUSB_API libusb_set_pollfd_notifiers(libusb_context *ctx,
+void API_EXPORTED libusb_set_pollfd_notifiers(libusb_context *ctx,
 	libusb_pollfd_added_cb added_cb, libusb_pollfd_removed_cb removed_cb,
 	void *user_data)
 {
@@ -2257,11 +2267,16 @@ void usbi_remove_pollfd(struct libusb_context *ctx, int fd)
  * The returned list is NULL-terminated and should be freed with free() when
  * done. The actual list contents must not be touched.
  *
+ * As file descriptors are a Unix-specific concept, this function is not
+ * available on Windows and will always return NULL.
+ *
  * \param ctx the context to operate on, or NULL for the default context
- * \returns a NULL-terminated list of libusb_pollfd structures, or NULL on
- * error
+ * \returns a NULL-terminated list of libusb_pollfd structures
+ * \returns NULL on error
+ * \returns NULL on platforms where the functionality is not available
  */
-API_EXPORTED const struct libusb_pollfd** LIBUSB_API libusb_get_pollfds(
+DEFAULT_VISIBILITY
+const struct libusb_pollfd ** LIBUSB_CALL libusb_get_pollfds(
 	libusb_context *ctx)
 {
 #ifndef OS_WINDOWS
@@ -2287,8 +2302,6 @@ out:
 	usbi_mutex_unlock(&ctx->pollfds_lock);
 	return (const struct libusb_pollfd **) ret;
 #else
-	usbi_err(ctx, "external polling of libusb's internal descriptors "\
-		"is not yet supported on Windows platforms");
 	return NULL;
 #endif
 }
@@ -2335,4 +2348,3 @@ void usbi_handle_disconnect(struct libusb_device_handle *handle)
 	}
 
 }
-

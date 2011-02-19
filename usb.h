@@ -72,10 +72,12 @@
 
 
 /* All standard descriptors have these 2 fields in common */
+/*
 struct usb_descriptor_header {
   unsigned char  bLength;
   unsigned char  bDescriptorType;
 };
+*/
 
 /* String descriptor */
 struct usb_string_descriptor {

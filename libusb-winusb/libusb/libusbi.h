@@ -22,12 +22,22 @@
 #define __LIBUSBI_H__
 
 #include <config.h>
-#if !defined(OS_WINDOWS) || defined(__CYGWIN__)
-#include <poll.h>
-#endif
+
 #include <stddef.h>
+#include <stdint.h>
+#include <time.h>
 
 #include <libusb.h>
+#include "libusb_version.h"
+
+/* Inside the libusb code, mark all public functions as follows:
+ *   return_type API_EXPORTED function_name(params) { ... }
+ * But if the function returns a pointer, mark it as follows:
+ *   DEFAULT_VISIBILITY return_type * LIBUSB_CALL function_name(params) { ... }
+ * In the libusb public header, mark all declarations as:
+ *   return_type LIBUSB_CALL function_name(params);
+ */
+#define API_EXPORTED LIBUSB_CALL DEFAULT_VISIBILITY
 
 #define DEVICE_DESC_LENGTH		18
 
@@ -120,13 +130,13 @@ void usbi_log(struct libusb_context *ctx, enum usbi_log_level level,
 #ifdef ENABLE_LOGGING
 #define _usbi_log(ctx, level, ...) usbi_log(ctx, level, __FUNCTION__, __VA_ARGS__)
 #else
-#define _usbi_log(ctx, level, ...)
+#define _usbi_log(ctx, level, ...) do {} while(0)
 #endif
 
 #if defined(ENABLE_DEBUG_LOGGING) || defined(INCLUDE_DEBUG_LOGGING)
 #define usbi_dbg(...) _usbi_log(NULL, LOG_LEVEL_DEBUG, __VA_ARGS__)
 #else
-#define usbi_dbg(...)
+#define usbi_dbg(...) do {} while(0)
 #endif
 
 #define usbi_info(ctx, ...) _usbi_log(ctx, LOG_LEVEL_INFO, __VA_ARGS__)
@@ -150,14 +160,17 @@ void usbi_log_v(struct libusb_context *ctx, enum usbi_log_level level,
 #define LOG_BODY(ctxt, level) { }
 #endif
 
-void inline usbi_info(struct libusb_context *ctx, const char *format, ...)
+static inline void usbi_info(struct libusb_context *ctx, const char *format,
+	...)
 	LOG_BODY(ctx,LOG_LEVEL_INFO)
-void inline usbi_warn(struct libusb_context *ctx, const char *format, ...)
+static inline void usbi_warn(struct libusb_context *ctx, const char *format,
+	...)
 	LOG_BODY(ctx,LOG_LEVEL_WARNING)
-void inline usbi_err( struct libusb_context *ctx, const char *format, ...)
+static inline void usbi_err( struct libusb_context *ctx, const char *format,
+	...)
 	LOG_BODY(ctx,LOG_LEVEL_ERROR)
 
-void inline usbi_dbg(const char *format, ...)
+static inline void usbi_dbg(const char *format, ...)
 #if defined(ENABLE_DEBUG_LOGGING) || defined(INCLUDE_DEBUG_LOGGING)
 	LOG_BODY(NULL,LOG_LEVEL_DEBUG)
 #else
@@ -173,14 +186,16 @@ void inline usbi_dbg(const char *format, ...)
 #define ITRANSFER_CTX(transfer) \
 	(TRANSFER_CTX(__USBI_TRANSFER_TO_LIBUSB_TRANSFER(transfer)))
 
-/* Internal abstraction for thread synchronization */
-#if defined(OS_LINUX) || defined(OS_DARWIN)
+/* Internal abstractions for thread synchronization and poll */
+#if defined(THREADS_POSIX)
 #include <os/threads_posix.h>
-#elif defined(OS_WINDOWS) && (defined(__CYGWIN__) || defined(USE_PTHREAD))
-#include <os/threads_posix.h>
-#include <os/poll_windows.h>
 #elif defined(OS_WINDOWS)
 #include <os/threads_windows.h>
+#endif
+
+#if defined(OS_LINUX) || defined(OS_DARWIN)
+#include <os/poll_posix.h>
+#elif defined(OS_WINDOWS)
 #include <os/poll_windows.h>
 #endif
 
@@ -274,8 +289,6 @@ struct libusb_device_handle {
 	unsigned char os_priv[0];
 };
 
-#define USBI_TRANSFER_TIMED_OUT	 			(1<<0)
-
 enum {
   USBI_CLOCK_MONOTONIC,
   USBI_CLOCK_REALTIME
@@ -311,16 +324,24 @@ struct usbi_transfer {
 	usbi_mutex_t lock;
 };
 
+enum usbi_transfer_flags {
+	/* The transfer has timed out */
+	USBI_TRANSFER_TIMED_OUT = 1 << 0,
+
+	/* Set by backend submit_transfer() if the OS handles timeout */
+	USBI_TRANSFER_OS_HANDLES_TIMEOUT = 1 << 1
+};
+
 #define __USBI_TRANSFER_TO_LIBUSB_TRANSFER(transfer) \
-	((struct libusb_transfer *)(((char *)(transfer)) \
+	((struct libusb_transfer *)(((unsigned char *)(transfer)) \
 		+ sizeof(struct usbi_transfer)))
 #define __LIBUSB_TRANSFER_TO_USBI_TRANSFER(transfer) \
-	((struct usbi_transfer *)(((char *)(transfer)) \
+	((struct usbi_transfer *)(((unsigned char *)(transfer)) \
 		- sizeof(struct usbi_transfer)))
 
 static inline void *usbi_transfer_get_os_priv(struct usbi_transfer *transfer)
 {
-	return ((char *)transfer) + sizeof(struct usbi_transfer)
+	return ((unsigned char *)transfer) + sizeof(struct usbi_transfer)
 		+ sizeof(struct libusb_transfer)
 		+ (transfer->num_iso_packets
 			* sizeof(struct libusb_iso_packet_descriptor));
@@ -350,8 +371,8 @@ int usbi_handle_transfer_completion(struct usbi_transfer *itransfer,
 	enum libusb_transfer_status status);
 int usbi_handle_transfer_cancellation(struct usbi_transfer *transfer);
 
-int usbi_parse_descriptor(unsigned char *source, char *descriptor, void *dest,
-	int host_endian);
+int usbi_parse_descriptor(unsigned char *source, const char *descriptor,
+	void *dest, int host_endian);
 int usbi_get_config_index_by_value(struct libusb_device *dev,
 	uint8_t bConfigurationValue, int *idx);
 
@@ -739,6 +760,14 @@ struct usbi_os_backend {
 	 */
 	int (*attach_kernel_driver)(struct libusb_device_handle *handle,
 		int interface_number);
+
+	/* Return device topology. Optional.
+	 *
+	 * This function is called to populate a libusb_device_topology structure,
+	 * that allows to uniquely identify the location of a device on the system.
+	 */
+	int (*get_device_topology)(struct libusb_device *dev,
+		struct libusb_device_topology* topology);
 
 	/* Destroy a device. Optional.
 	 *
