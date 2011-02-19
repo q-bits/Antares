@@ -80,6 +80,7 @@ namespace Antares {
 			this->current_error = "";
 			this->freespace_check_needed=false;
 			this->close_requested=false;
+			this->thread  = nullptr;
 
 		}
 	
@@ -438,6 +439,7 @@ namespace Antares {
 		bool freespace_check_needed;
 		bool close_requested;
 		System::Windows::Forms::Form^ parent_form;
+		System::Threading::Thread^ thread;
   
 
 
@@ -489,21 +491,25 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			// 
 			// progressBar1
 			// 
-			this->progressBar1->Location = System::Drawing::Point(12, 87);
+			this->progressBar1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->progressBar1->Location = System::Drawing::Point(12, 75);
 			this->progressBar1->MarqueeAnimationSpeed = 0;
 			this->progressBar1->Maximum = 1000;
 			this->progressBar1->Name = L"progressBar1";
-			this->progressBar1->Size = System::Drawing::Size(656, 30);
+			this->progressBar1->Size = System::Drawing::Size(644, 30);
 			this->progressBar1->Step = 0;
 			this->progressBar1->TabIndex = 0;
 			// 
 			// progressBar2
 			// 
-			this->progressBar2->Location = System::Drawing::Point(12, 164);
+			this->progressBar2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->progressBar2->Location = System::Drawing::Point(12, 141);
 			this->progressBar2->MarqueeAnimationSpeed = 0;
 			this->progressBar2->Maximum = 1000;
 			this->progressBar2->Name = L"progressBar2";
-			this->progressBar2->Size = System::Drawing::Size(656, 30);
+			this->progressBar2->Size = System::Drawing::Size(644, 30);
 			this->progressBar2->TabIndex = 1;
 			// 
 			// label1
@@ -512,7 +518,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label1->BackColor = System::Drawing::SystemColors::Control;
 			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label1->Location = System::Drawing::Point(335, 94);
+			this->label1->Location = System::Drawing::Point(335, 82);
 			this->label1->Name = L"label1";
 			this->label1->Size = System::Drawing::Size(27, 16);
 			this->label1->TabIndex = 2;
@@ -524,7 +530,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label2->BackColor = System::Drawing::SystemColors::Control;
 			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label2->Location = System::Drawing::Point(335, 172);
+			this->label2->Location = System::Drawing::Point(335, 148);
 			this->label2->Name = L"label2";
 			this->label2->Size = System::Drawing::Size(27, 16);
 			this->label2->TabIndex = 3;
@@ -536,9 +542,9 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 				| System::Windows::Forms::AnchorStyles::Right));
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->button1->Location = System::Drawing::Point(270, 201);
+			this->button1->Location = System::Drawing::Point(270, 196);
 			this->button1->Name = L"button1";
-			this->button1->Size = System::Drawing::Size(134, 31);
+			this->button1->Size = System::Drawing::Size(124, 31);
 			this->button1->TabIndex = 4;
 			this->button1->Text = L"Cancel";
 			this->button1->UseVisualStyleBackColor = true;
@@ -549,7 +555,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label3->AutoSize = true;
 			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label3->Location = System::Drawing::Point(17, 32);
+			this->label3->Location = System::Drawing::Point(17, 20);
 			this->label3->Name = L"label3";
 			this->label3->Size = System::Drawing::Size(45, 16);
 			this->label3->TabIndex = 5;
@@ -560,7 +566,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label4->AutoSize = true;
 			this->label4->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label4->Location = System::Drawing::Point(8, 68);
+			this->label4->Location = System::Drawing::Point(9, 56);
 			this->label4->Name = L"label4";
 			this->label4->Size = System::Drawing::Size(45, 16);
 			this->label4->TabIndex = 6;
@@ -571,7 +577,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label5->AutoSize = true;
 			this->label5->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label5->Location = System::Drawing::Point(8, 145);
+			this->label5->Location = System::Drawing::Point(8, 122);
 			this->label5->Name = L"label5";
 			this->label5->Size = System::Drawing::Size(45, 16);
 			this->label5->TabIndex = 7;
@@ -583,7 +589,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label6->AutoSize = true;
 			this->label6->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label6->Location = System::Drawing::Point(595, 68);
+			this->label6->Location = System::Drawing::Point(585, 56);
 			this->label6->Margin = System::Windows::Forms::Padding(5, 0, 15, 0);
 			this->label6->Name = L"label6";
 			this->label6->Size = System::Drawing::Size(45, 16);
@@ -596,7 +602,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label7->AutoSize = true;
 			this->label7->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label7->Location = System::Drawing::Point(595, 145);
+			this->label7->Location = System::Drawing::Point(585, 122);
 			this->label7->Margin = System::Windows::Forms::Padding(5, 0, 15, 0);
 			this->label7->Name = L"label7";
 			this->label7->Size = System::Drawing::Size(45, 16);
@@ -608,7 +614,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->label8->AutoSize = true;
 			this->label8->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label8->Location = System::Drawing::Point(566, 32);
+			this->label8->Location = System::Drawing::Point(566, 20);
 			this->label8->Name = L"label8";
 			this->label8->Size = System::Drawing::Size(45, 16);
 			this->label8->TabIndex = 10;
@@ -618,7 +624,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			// 
 			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->Location = System::Drawing::Point(11, 215);
+			this->checkBox1->Location = System::Drawing::Point(11, 209);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 11;
@@ -632,8 +638,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->ClientSize = System::Drawing::Size(674, 254);
-			this->ControlBox = false;
+			this->ClientSize = System::Drawing::Size(664, 248);
 			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->label8);
 			this->Controls->Add(this->label7);
@@ -646,7 +651,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->Controls->Add(this->label1);
 			this->Controls->Add(this->progressBar2);
 			this->Controls->Add(this->progressBar1);
-			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
+			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::SizableToolWindow;
 			this->KeyPreview = true;
 			this->MaximizeBox = false;
 			this->MaximumSize = System::Drawing::Size(680, 282);
@@ -694,7 +699,7 @@ private: System::Void CopyDialog_KeyDown(System::Object^  sender, System::Window
 private: System::Void CopyDialog_FormClosing(System::Object^  sender, System::Windows::Forms::FormClosingEventArgs^  e) {
 			 printf("Form closing, for some reason.\n");
 			 this->button1->Enabled=false;
-			 //this->cancelled=true;
+			 this->cancelled=true;
 			 if (!this->close_requested)
 		    	 e->Cancel = true;
 			

@@ -71,6 +71,7 @@ namespace Antares {
 	delegate void ListViewSelectionDelegate(void);
 	delegate void TopfieldSummaryCallback(void);
 	delegate void CheckConnectionCallback(void);
+	delegate void TransferEndedCallback(void);
 
 
 	//TODO: put these prototypes somewhere better
@@ -171,6 +172,8 @@ namespace Antares {
 			this->last_topfield_freek = -1;
 			this->last_topfield_freek_time = 0;
 			this->pid=0;
+
+			this->current_copydialog = nullptr;
 
 			icons = gcnew Antares::Icons();
 
@@ -346,7 +349,7 @@ namespace Antares {
 
 					fdtemp  = open_winusb_device(hdev);
 					//bResult = WinUsb_Initialize(deviceHandle, &usbHandle);
-                   
+
 					this->pid=pids[j];
 
 
@@ -675,6 +678,7 @@ check_freespace:
 
 			default:
 				fprintf(stderr, "ERROR: Unhandled packet (in set_turbo_mode) cmd=%d\n",&reply.cmd);
+				this->absorb_late_packets(2,100);
 			}
 			this->absorb_late_packets(2,100);
 			return -EPROTO;
@@ -954,7 +958,7 @@ check_freespace:
 				//toolStripStatusLabel1->Text="Topfield not connected.";
 				return items; 
 			}
-			absorb_late_packets(2,50);
+			absorb_late_packets(1,50);
 			char* str2 = (char*)(void*)Marshal::StringToHGlobalAnsi(path);
 
 			send_cmd_hdd_dir(this->fd,str2);
@@ -998,6 +1002,7 @@ check_freespace:
 					break;
 				default:
 					fprintf(stderr, "ERROR: Unhandled packet\n");
+					this->absorb_late_packets(4,100);
 					return items;
 				}
 
@@ -1068,6 +1073,7 @@ check_freespace:
 
 			default:
 				fprintf(stderr, "ERROR: Unhandled packet in load_topfield_dir/hdd_size\n");
+				this->absorb_late_packets(4,100);
 			}
 			this->last_topfield_freek = v.freek;
 			this->last_topfield_freek_time = time(NULL);
@@ -1091,7 +1097,7 @@ check_freespace:
 				if (v.valid)
 				{
 					String^ str=" Topfield device";
-				
+
 					if (this->pid==0x1100) str="Topfield second device";
 					this->label2->Text = str+"  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " total";
 				}
@@ -1267,6 +1273,8 @@ check_freespace:
 			static double worst_case_fill_rate = 4.5;  // Worst case MB/sec rate that we can imagine the topfield HD being filled up
 
 			int pid;
+
+			CopyDialog^ current_copydialog;
 
 
 
@@ -1897,11 +1905,12 @@ check_freespace:
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.7.test";
+			this->Text = L"Antares  0.7.1";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
 			this->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::Form1_Layout);
+			this->FormClosing += gcnew System::Windows::Forms::FormClosingEventHandler(this, &Form1::Form1_FormClosing);
 			this->Resize += gcnew System::EventHandler(this, &Form1::Form1_Resize);
 			this->ResizeEnd += gcnew System::EventHandler(this, &Form1::Form1_ResizeEnd);
 			this->statusStrip1->ResumeLayout(false);
@@ -1935,7 +1944,7 @@ check_freespace:
 	private: System::Void folderBrowserDialog1_HelpRequest(System::Object^  sender, System::EventArgs^  e) {
 			 }
 	private: System::Void toolStripButton5_Click(System::Object^  sender, System::EventArgs^  e) {
-
+				 if (this->transfer_in_progress) return;
 				 this->topfieldUpDir();
 			 }
 	private: System::Void toolStripStatusLabel1_Click(System::Object^  sender, System::EventArgs^  e) {
@@ -1949,8 +1958,8 @@ check_freespace:
 				 //printf("Timer tick.\n");
 				 if (!this->transfer_in_progress)
 				 {
-					if (this->fd==NULL)
-					 this->CheckConnection();
+					 if (this->fd==NULL)
+						 this->CheckConnection();
 				 }
 				 // int conf,r,bus,address;
 				 // if (this->fd==NULL)
@@ -2194,9 +2203,11 @@ check_freespace:
 
 			 };
 	private: System::Void toolStripButton1_Click_1(System::Object^  sender, System::EventArgs^  e) {
+				 if (this->transfer_in_progress) return;
 				 this->computerUpDir();
 			 }
 	private: System::Void toolStripButton2_Click(System::Object^  sender, System::EventArgs^  e) {
+				 if (this->transfer_in_progress) return;
 				 this->loadComputerDir();
 
 			 }
@@ -2221,478 +2232,561 @@ check_freespace:
 				 }
 			 }
 
-			 /////////////////////////////////////////////////////////////////////////////////
-
-	private: System::Void transfer_to_PC(Object^ input){
-				 // Worker thread for doing the transfer from PVR -> PC
-				 CopyDialog^ copydialog = safe_cast<CopyDialog^>(input);
-				 while(copydialog->loaded==false)
+			 System::Void EnableComponents(bool x)
+			 {
+				 return;
+				 for each (Control^ c in this->Controls)
 				 {
-					 Thread::Sleep(100);
+					
+					 if (!x && c==this->current_copydialog) continue;
+					 c->Enabled = x;
+					 
 				 }
-				 copydialog->copydirection = CopyDirection::PVR_TO_PC;
-				 copydialog->update_dialog_threadsafe();
-				 int numitems = copydialog->numfiles;
+			 }
 
-				 int this_overwrite_action;
-				 long long topfield_file_offset=0;
-				 long long probable_minimum_received_offset=-1;
-				 array<String^>^          dest_filename      = copydialog->dest_filename;
-				 array<bool>^             dest_exists        = copydialog->dest_exists;
-				 array<long long int>^    dest_size          = copydialog->dest_size;
-				 array<int>^              overwrite_action   = copydialog->overwrite_action;
-				 array<long long int>^    current_offsets    = copydialog->current_offsets;
-				 array<long long int>^    src_sizes          = copydialog->filesizes;
-				 array<FileItem^>^        src_items          = copydialog->src_items;
+			 System::Void ShowCopyDialog(CopyDialog^ copydialog)
+			 {
+				 this->current_copydialog = copydialog;
+				 copydialog->TopLevel = false;
+				 //copydialog->Dock= DockStyle::Bottom;
+				 this->EnableComponents(false);
+				 this->Controls->Add(copydialog);copydialog->Show();
+				 copydialog->Location = System::Drawing::Point( (this->Width - copydialog->Width)/2, (this->Height - copydialog->Height)/2);
+				 copydialog->BringToFront();
+				 
+			 }
 
-				 copydialog->maximum_successful_index=-1;
-				 for (int i=0; i<numitems; i++)
+	private: 
+		System::Void TransferEnded(void)
+			 {
+
+				
+				 if (this->InvokeRequired)
 				 {
-					 copydialog->current_index=i;
+					 printf("0. Transfer ended.\n");
+					 TransferEndedCallback^ d = gcnew TransferEndedCallback(this, &Form1::TransferEnded);
+					 this->Invoke(d);
 
-					 TopfieldItem^ item = safe_cast<TopfieldItem^>(src_items[i]);
+				 }
+				 else
+				 {
+					 this->EnableComponents(true);this->Update();
 
-					 if (item->isdir)
+					 printf("1. Enable components\n");
+
+					 CopyDialog^ copydialog = this->current_copydialog;
+					 if (copydialog==nullptr) return;
+					 printf("2. Enable components\n");
+
+
+
+					 this->transfer_in_progress=false;
+
+					 if (this->checkBox1->Checked != copydialog->turbo_request)
+						 this->checkBox1->Checked = copydialog->turbo_request;
+
+					 if (copydialog->file_error->Length > 0)
 					 {
-						 if (File::Exists(dest_filename[i]) && !Directory::Exists(dest_filename[i]))
-						 {
-
-							 //MessageBox::Show(this,"The folder "+dest_filename[ind]+" could not be created because a file of that name already exists. Aborting transfer.","Error",MessageBoxButtons::OK);
-							 copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
-							 goto end_copy_to_pc;                         
-							 //return;					
-						 }
-						 if (!Directory::Exists(dest_filename[i]))
-						 {
-							 try {
-								 Directory::CreateDirectory(dest_filename[i]);
-							 }
-							 catch (...)
-							 {
-
-								 //MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
-								 copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error";
-
-								 goto end_copy_to_pc;
-
-							 }
-						 }
-						 continue;
+						 MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
 					 }
 
-
-					 long long bytecount=0;
-					 String^ full_dest_filename = dest_filename[i];
-					 String^ full_source_filename = item->full_filename; 
-
-
-
-					 /// This section of code adapted from commands.c [wuppy]
-					 int result = -EPROTO;
-
-					 enum
-					 {
-						 START,
-						 DATA,
-						 ABORT
-					 } state;
-					 struct utimbuf mod_utime_buf = { 0, 0 };
-					 FileStream^ dest_file;
-
-					 int this_overwrite_action;
-					 long long topfield_file_offset = 0;
-					 long long probable_minimum_received_offset=-1;
-					 long long bytes_received;
-					 long long total_bytes_received=0;
-
-					 bool has_restarted=false;
-
-					 if(0)
-					 {
-restart_copy_to_pc:
-						 copydialog->usb_error=false;
-						 has_restarted=true;
-						 topfield_file_offset=0;
-						 copydialog->reset_rate();
-
-						 long long newsize = this->FileSize(full_dest_filename);
-						 if (newsize>=0) dest_exists[i]=true;
-						 if (newsize <= 1000000) 
-						 {
-							 printf (" newsize = %lld \n",newsize);
-							 this_overwrite_action = OVERWRITE;
-						 }
-						 else
-						 {
-							 // If the user specified OVERWRITE initially, be careful about changing it to RESUME
-							 // just because an error has occurred.
-							 if (this_overwrite_action==OVERWRITE && dest_exists[i])   
-							 {
-								 if (newsize > 1000000 && newsize <= (probable_minimum_received_offset + 65537))
-								 {
-									 this_overwrite_action=RESUME;
-
-								 }
-							 }
-							 dest_size[i] = newsize;
-						 }
-
-					 }
+					 if (copydialog->copydirection == CopyDirection::PVR_TO_PC)
+						 this->loadComputerDir();
 					 else
-					 {
-						 this_overwrite_action = OVERWRITE;
-						 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
-
-					 }
-					 bool io_error=false;
-
-					 if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
-
-					 tf_packet reply;
-					 int r;
-
-					 array<Byte>^ existing_bytes = gcnew array<Byte>(    2* (int) resume_granularity);
-					 long long existing_bytes_start; long long existing_bytes_count=0;
-
-					 try{
-						 //  TODO: Further exception handling for file open?
-						 if (this_overwrite_action==OVERWRITE)
-							 dest_file = File::Open(full_dest_filename,System::IO::FileMode::Create, System::IO::FileAccess::ReadWrite,System::IO::FileShare::Read);
-						 else if (this_overwrite_action==RESUME)
-						 {
-							 dest_file = File::Open(full_dest_filename,System::IO::FileMode::Open, System::IO::FileAccess::ReadWrite,System::IO::FileShare::Read);
-							 existing_bytes_start = (dest_size[i]/resume_granularity)*resume_granularity - resume_granularity;
-							 existing_bytes_count = dest_size[i]-existing_bytes_start;
-							 dest_file->Seek(existing_bytes_start,SeekOrigin::Begin);
-							 existing_bytes_count = dest_file->Read(existing_bytes, 0,(int) existing_bytes_count);
-							 topfield_file_offset = existing_bytes_start; 
-
-						 }
-
-					 }
-					 catch(System::UnauthorizedAccessException ^)
-					 {
-						 //MessageBox::Show(this,"Antares cannot save the file to the location you chose. Please select another location and try again.","Write permission denied",MessageBoxButtons::OK);
-						 copydialog->file_error = "Antares cannot save the file to the location you chose. Please select another location and try again.";
-
-						 goto end_copy_to_pc;				
-					 }
-
-
-					 dest_file->Seek(topfield_file_offset,SeekOrigin::Begin);
-
-
-
-					 char* srcPath = (char*)(void*)Marshal::StringToHGlobalAnsi(full_source_filename);
-
-					 //bool was_cancelled=false;
-					 bool turbo_changed=false;
-
-
-					 //printf("topfield_file_offset = %ld\n",topfield_file_offset);
-					 if (topfield_file_offset==0) 
-						 r = send_cmd_hdd_file_send(this->fd, GET, srcPath);   
-					 else
-						 r = send_cmd_hdd_file_send_with_offset(this->fd, GET, srcPath,topfield_file_offset);
-
-					 Marshal::FreeHGlobal((System::IntPtr)(void*)srcPath);
-
-					 if(r < 0)
-					 {
-						 copydialog->usb_error=true;
-						 goto out;
-					 }
-
-					 state = START;
-
-					 bytes_received=0;
-					 if (copydialog->current_start_time==0)
-					 {
-						 copydialog->total_start_time=time(NULL);
-						 copydialog->current_start_time=time(NULL);
-					 }
-					 else
-						 copydialog->current_start_time = time(NULL);
-					 copydialog->current_file = full_dest_filename;
-					 copydialog->current_offsets[i]=topfield_file_offset;
-					 copydialog->current_bytes_received=bytes_received;
-					 copydialog->total_bytes_received=total_bytes_received;
-					 //copydialog->current_filesize = item->size;
-					 copydialog->update_dialog_threadsafe();
-
-
-					 int update=0;
-					 while(1)
-					 {
-
-						 update = update+1;
-
-						 //Thread::Sleep(20);
-						 //if (update>=100)
-						 //	 send_success(this->fd);
-
-						 //if (update<100)
-						 r = get_tf_packet2(fd, &reply, TF_PROTOCOL_TIMEOUT, 0);
-						 //else
-						 //	 r = get_tf_packet2(fd, &reply, TF_PROTOCOL_TIMEOUT, 1);
-
-
-
-
-						 if (r<=0)
-						 {
-							 copydialog->usb_error=true;
-							 goto out;
-						 }
-
-
-						 switch (get_u32(&reply.cmd))
-						 {
-						 case DATA_HDD_FILE_START:
-							 if(state == START)
-							 {
-								 struct typefile *tf = (struct typefile *) reply.data;
-
-								 bytecount = get_u64(&tf->size);
-								 mod_utime_buf.actime = mod_utime_buf.modtime =
-									 tfdt_to_time(&tf->stamp);
-
-								 send_success(fd);
-								 state = DATA;
-							 }
-							 else
-							 {
-								 fprintf(stderr,
-									 "ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
-									 state);
-								 send_cancel(fd);
-								 copydialog->usb_error=true;
-								 state = ABORT;
-							 }
-							 break;
-
-						 case DATA_HDD_FILE_DATA:
-							 if(state == DATA)
-							 {
-								 __u64 offset = get_u64(reply.data);
-								 __u16 dataLen =
-									 get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
-
-
-								 // if( !quiet)
-								 // {
-								 //progressStats(bytecount, offset + dataLen, startTime);
-								 // }
-
-								 if(r < get_u16(&reply.length))
-								 {
-									 fprintf(stderr,
-										 "ERROR: Short packet %d instead of %d\n", r,
-										 get_u16(&reply.length));
-
-									 copydialog->usb_error=true;
-									 goto out;
-								 }
-
-								 //send_success(this->fd);
-
-								 array <unsigned char>^ buffer = gcnew array<unsigned char>(dataLen);
-								 //System::Byte buffer[] = gcnew System::Byte[dataLen];
-								 Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , buffer, 0,(int) dataLen);
-								 if (topfield_file_offset == existing_bytes_start && existing_bytes_count>0)
-								 {
-									 int overlap_size = (int) ( dataLen < existing_bytes_count ? dataLen : existing_bytes_count );
-									 bool failed=false;
-									 //printf("Overlap_size=%d\n",overlap_size);
-									 for (int j=0; j<overlap_size; j++)
-									 {
-
-										 //printf("(%02x %02x) ",buffer[j],existing_bytes[j]);
-										 if (buffer[j] != existing_bytes[j]) {failed=true; break; };
-									 }
-									 if (failed==true || overlap_size<10)
-									 {
-										 printf("Warning: resume failed. Starting again.\n");     //TODO: Handle this case better
-										 topfield_file_offset = 0;
-										 this_overwrite_action=OVERWRITE;
-										 dest_file->Close();
-										 send_cancel(this->fd);
-										 absorb_late_packets(4,400);
-										 goto restart_copy_to_pc;
-									 }
-
-								 }
-								 try{
-									 dest_file->Write(buffer, 0, dataLen);        //TODO:  Catch full-disk errors  (Sytem::IO:IOException)
-								 }
-								 catch(...)
-								 {
-									 io_error=true;
-									 goto out;
-								 }
-								 topfield_file_offset+=dataLen;
-								 probable_minimum_received_offset=topfield_file_offset;
-								 copydialog->new_packet(dataLen);
-								 if (topfield_file_offset != offset)
-								 {
-									 //printf("Warning: offset mismatch! %lu %lu \n",topfield_file_offset,offset);
-									 // TODO: Handle this type of error
-								 }
-
-								 bytes_received += dataLen;
-								 total_bytes_received +=dataLen;
-								 if (topfield_file_offset>item->size) printf("Warning: topfield_file_offset>item->size\n");else
-									 //copydialog->total_offset = total_bytes_received;
-									 copydialog->current_offsets[i] = topfield_file_offset;//bytes_received;
-
-
-								 copydialog->current_bytes_received = bytes_received;
-								 copydialog->total_bytes_received = total_bytes_received;
-								 if (update%4==0)
-								 {
-									 //this->Update();
-									 copydialog->update_dialog_threadsafe();
-								 }
-								 //if(w < dataLen)
-								 //{
-								 //	 /* Can't write data - abort transfer */
-								 //	 fprintf(stderr, "ERROR: Can not write data: %s\n",
-								 //		 strerror(errno));
-								 //	 send_cancel(fd);
-								 //	 state = ABORT;
-								 //}
-
-
-
-								 if (copydialog->cancelled == true)
-								 {
-									 printf("CANCELLING\n");
-									 send_cancel(fd);
-									 //was_cancelled=true;
-									 state = ABORT;
-									 goto out;
-
-								 }
-
-								 if (copydialog->turbo_request != *this->turbo_mode)
-								 {
-									 turbo_changed=true;
-
-									 send_cancel(fd);
-									 state=ABORT;
-									 goto out;
-								 }
-
-
-
-							 }
-							 else
-							 {
-								 fprintf(stderr,
-									 "ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
-									 state);
-								 send_cancel(fd);
-								 copydialog->usb_error=true;
-								 state = ABORT;
-							 }
-							 break;
-
-						 case DATA_HDD_FILE_END:
-							 send_success(fd);
-							 //item->Selected = false;
-							 //printf("DATA_HDD_FILE_END\n");
-							 result = 0;
-							 goto out;
-							 break;
-
-						 case FAIL:
-							 fprintf(stderr, "ERROR: Device reports %s in transfer_to_PC\n",
-								 decode_error(&reply));
-							 send_cancel(fd);
-							 state = ABORT;
-							 copydialog->usb_error=true;
-							 break;
-
-						 case SUCCESS:
-							 //printf("SUCCESS\n");
-							 goto out;
-							 break;
-
-						 default:
-							 fprintf(stderr, "ERROR: Unhandled packet (cmd 0x%x)\n",
-								 get_u32(&reply.cmd));
-							 send_cancel(fd);
-							 copydialog->usb_error=true;
-							 goto out;
-						 }
-
-
-
-
-					 }
-
-out:
-					 //_close(dst);
-					 try
-					 {
-						 dest_file->Close();
-						 File::SetCreationTime(full_dest_filename, item->datetime);
-						 File::SetLastWriteTime(full_dest_filename, item->datetime);
-					 }
-					 catch(...)
-					 {
-
-					 }
-
-					 if (copydialog->cancelled==true) break;
-
-					 if (copydialog->usb_error)
-					 {
-						 if (this->wait_for_connection(copydialog) < 0) 
-							 goto end_copy_to_pc;
-						 else
-							 goto restart_copy_to_pc;
-					 }
-
-					 if (io_error)
-					 {
-						 send_cancel(fd);
-						 this->absorb_late_packets(2,100);
-						 switch(this->wait_for_space_on_pc(copydialog,dest_filename[i]))
-						 {
-						 case -1:
-							 goto end_copy_to_pc;
-							 break;
-						 case 0:
-							 goto restart_copy_to_pc;
-							 break;
-						 case -2:
-							 copydialog->file_error = "An error occurred writing the file to your computer";
-							 goto end_copy_to_pc;
-						 }
-					 }
-
-					 if (turbo_changed || copydialog->turbo_request != *this->turbo_mode )
-					 {
-						 this->absorb_late_packets(4,100);
-						 this->set_turbo_mode(copydialog->turbo_request);
-						 copydialog->reset_rate();
-						 goto restart_copy_to_pc;
-					 }
-
-					 if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
-
-
-				 }  // end loop over items to be copied
-
-end_copy_to_pc:
-
-				 copydialog->close_request_threadsafe();
+						 this->loadTopfieldDir();
+
+					 this->absorb_late_packets(2,200);
+					 this->set_turbo_mode(0);
+					 if (!copydialog->is_closed)
+						 copydialog->close_request_threadsafe();
+
+					 this->current_copydialog = nullptr;
+				 }
 
 			 }
 
+
+
+
+			 /////////////////////////////////////////////////////////////////////////////////
+
+	private: 
+		System::Void transfer_to_PC(Object^ input){
+			// Worker thread for doing the transfer from PVR -> PC
+			CopyDialog^ copydialog = safe_cast<CopyDialog^>(input);
+			while(copydialog->loaded==false)
+			{
+				Thread::Sleep(100);
+			}
+			copydialog->copydirection = CopyDirection::PVR_TO_PC;
+			copydialog->update_dialog_threadsafe();
+			int numitems = copydialog->numfiles;
+
+			int this_overwrite_action;
+			long long topfield_file_offset=0;
+			long long probable_minimum_received_offset=-1;
+			array<String^>^          dest_filename      = copydialog->dest_filename;
+			array<bool>^             dest_exists        = copydialog->dest_exists;
+			array<long long int>^    dest_size          = copydialog->dest_size;
+			array<int>^              overwrite_action   = copydialog->overwrite_action;
+			array<long long int>^    current_offsets    = copydialog->current_offsets;
+			array<long long int>^    src_sizes          = copydialog->filesizes;
+			array<FileItem^>^        src_items          = copydialog->src_items;
+
+			copydialog->maximum_successful_index=-1;
+			for (int i=0; i<numitems; i++)
+			{
+				copydialog->current_index=i;
+
+				TopfieldItem^ item = safe_cast<TopfieldItem^>(src_items[i]);
+
+				if (item->isdir)
+				{
+					if (File::Exists(dest_filename[i]) && !Directory::Exists(dest_filename[i]))
+					{
+
+						//MessageBox::Show(this,"The folder "+dest_filename[ind]+" could not be created because a file of that name already exists. Aborting transfer.","Error",MessageBoxButtons::OK);
+						copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
+						goto end_copy_to_pc;                         
+								
+					}
+					if (!Directory::Exists(dest_filename[i]))
+					{
+						try {
+							Directory::CreateDirectory(dest_filename[i]);
+						}
+						catch (...)
+						{
+
+							//MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
+							copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error";
+
+							goto end_copy_to_pc;
+
+						}
+					}
+					continue;
+				}
+
+
+				long long bytecount=0;
+				String^ full_dest_filename = dest_filename[i];
+				String^ full_source_filename = item->full_filename; 
+
+
+
+				/// This section of code adapted from commands.c [wuppy]
+				int result = -EPROTO;
+
+				enum
+				{
+					START,
+					DATA,
+					ABORT
+				} state;
+				struct utimbuf mod_utime_buf = { 0, 0 };
+				FileStream^ dest_file;
+
+				int this_overwrite_action;
+				long long topfield_file_offset = 0;
+				long long probable_minimum_received_offset=-1;
+				long long bytes_received;
+				long long total_bytes_received=0;
+
+				bool has_restarted=false;
+
+				if(0)
+				{
+restart_copy_to_pc:
+					copydialog->usb_error=false;
+					has_restarted=true;
+					topfield_file_offset=0;
+					copydialog->reset_rate();
+
+					long long newsize = this->FileSize(full_dest_filename);
+					if (newsize>=0) dest_exists[i]=true;
+					if (newsize <= 1000000) 
+					{
+						printf (" newsize = %lld \n",newsize);
+						this_overwrite_action = OVERWRITE;
+					}
+					else
+					{
+						// If the user specified OVERWRITE initially, be careful about changing it to RESUME
+						// just because an error has occurred.
+						if (this_overwrite_action==OVERWRITE && dest_exists[i])   
+						{
+							if (newsize > 1000000 && newsize <= (probable_minimum_received_offset + 65537))
+							{
+								this_overwrite_action=RESUME;
+
+							}
+						}
+						dest_size[i] = newsize;
+					}
+
+				}
+				else
+				{
+					this_overwrite_action = OVERWRITE;
+					if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
+
+				}
+				bool io_error=false;
+
+				if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
+
+				tf_packet reply;
+				int r;
+
+				array<Byte>^ existing_bytes = gcnew array<Byte>(    2* (int) resume_granularity);
+				long long existing_bytes_start; long long existing_bytes_count=0;
+
+				try{
+					//  TODO: Further exception handling for file open?
+					if (this_overwrite_action==OVERWRITE)
+						dest_file = File::Open(full_dest_filename,System::IO::FileMode::Create, System::IO::FileAccess::ReadWrite,System::IO::FileShare::Read);
+					else if (this_overwrite_action==RESUME)
+					{
+						dest_file = File::Open(full_dest_filename,System::IO::FileMode::Open, System::IO::FileAccess::ReadWrite,System::IO::FileShare::Read);
+						existing_bytes_start = (dest_size[i]/resume_granularity)*resume_granularity - resume_granularity;
+						existing_bytes_count = dest_size[i]-existing_bytes_start;
+						dest_file->Seek(existing_bytes_start,SeekOrigin::Begin);
+						existing_bytes_count = dest_file->Read(existing_bytes, 0,(int) existing_bytes_count);
+						topfield_file_offset = existing_bytes_start; 
+
+					}
+
+				}
+				catch(System::UnauthorizedAccessException ^)
+				{
+					//MessageBox::Show(this,"Antares cannot save the file to the location you chose. Please select another location and try again.","Write permission denied",MessageBoxButtons::OK);
+					copydialog->file_error = "Antares cannot save the file to the location you chose. Please select another location and try again.";
+
+					goto end_copy_to_pc;				
+				}
+
+
+				dest_file->Seek(topfield_file_offset,SeekOrigin::Begin);
+
+
+
+				char* srcPath = (char*)(void*)Marshal::StringToHGlobalAnsi(full_source_filename);
+
+				//bool was_cancelled=false;
+				bool turbo_changed=false;
+
+
+				//printf("topfield_file_offset = %ld\n",topfield_file_offset);
+				if (topfield_file_offset==0) 
+					r = send_cmd_hdd_file_send(this->fd, GET, srcPath);   
+				else
+					r = send_cmd_hdd_file_send_with_offset(this->fd, GET, srcPath,topfield_file_offset);
+
+				Marshal::FreeHGlobal((System::IntPtr)(void*)srcPath);
+
+				if(r < 0)
+				{
+					copydialog->usb_error=true;
+					goto out;
+				}
+
+				state = START;
+
+				bytes_received=0;
+				if (copydialog->current_start_time==0)
+				{
+					copydialog->total_start_time=time(NULL);
+					copydialog->current_start_time=time(NULL);
+				}
+				else
+					copydialog->current_start_time = time(NULL);
+				copydialog->current_file = full_dest_filename;
+				copydialog->current_offsets[i]=topfield_file_offset;
+				copydialog->current_bytes_received=bytes_received;
+				copydialog->total_bytes_received=total_bytes_received;
+				//copydialog->current_filesize = item->size;
+				copydialog->update_dialog_threadsafe();
+
+
+				int update=0;
+				while(1)
+				{
+
+					update = update+1;
+
+					//Thread::Sleep(20);
+					//if (update>=100)
+					//	 send_success(this->fd);
+
+					//if (update<100)
+					r = get_tf_packet2(fd, &reply, TF_PROTOCOL_TIMEOUT, 0);
+					//else
+					//	 r = get_tf_packet2(fd, &reply, TF_PROTOCOL_TIMEOUT, 1);
+
+
+
+
+					if (r<=0)
+					{
+						copydialog->usb_error=true;
+						goto out;
+					}
+
+
+					switch (get_u32(&reply.cmd))
+					{
+					case DATA_HDD_FILE_START:
+						if(state == START)
+						{
+							struct typefile *tf = (struct typefile *) reply.data;
+
+							bytecount = get_u64(&tf->size);
+							mod_utime_buf.actime = mod_utime_buf.modtime =
+								tfdt_to_time(&tf->stamp);
+
+							send_success(fd);
+							state = DATA;
+						}
+						else
+						{
+							fprintf(stderr,
+								"ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
+								state);
+							send_cancel(fd);
+							copydialog->usb_error=true;
+							state = ABORT;
+						}
+						break;
+
+					case DATA_HDD_FILE_DATA:
+						if(state == DATA)
+						{
+							__u64 offset = get_u64(reply.data);
+							__u16 dataLen =
+								get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
+
+
+							// if( !quiet)
+							// {
+							//progressStats(bytecount, offset + dataLen, startTime);
+							// }
+
+							if(r < get_u16(&reply.length))
+							{
+								fprintf(stderr,
+									"ERROR: Short packet %d instead of %d\n", r,
+									get_u16(&reply.length));
+
+								copydialog->usb_error=true;
+								goto out;
+							}
+
+							//send_success(this->fd);
+
+							array <unsigned char>^ buffer = gcnew array<unsigned char>(dataLen);
+							//System::Byte buffer[] = gcnew System::Byte[dataLen];
+							Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , buffer, 0,(int) dataLen);
+							if (topfield_file_offset == existing_bytes_start && existing_bytes_count>0)
+							{
+								int overlap_size = (int) ( dataLen < existing_bytes_count ? dataLen : existing_bytes_count );
+								bool failed=false;
+								//printf("Overlap_size=%d\n",overlap_size);
+								for (int j=0; j<overlap_size; j++)
+								{
+
+									//printf("(%02x %02x) ",buffer[j],existing_bytes[j]);
+									if (buffer[j] != existing_bytes[j]) {failed=true; break; };
+								}
+								if (failed==true || overlap_size<10)
+								{
+									printf("Warning: resume failed. Starting again.\n");     //TODO: Handle this case better
+									topfield_file_offset = 0;
+									this_overwrite_action=OVERWRITE;
+									dest_file->Close();
+									send_cancel(this->fd);
+									absorb_late_packets(4,400);
+									goto restart_copy_to_pc;
+								}
+
+							}
+							try{
+								dest_file->Write(buffer, 0, dataLen);        //TODO:  Catch full-disk errors  (Sytem::IO:IOException)
+							}
+							catch(...)
+							{
+								io_error=true;
+								goto out;
+							}
+							topfield_file_offset+=dataLen;
+							probable_minimum_received_offset=topfield_file_offset;
+							copydialog->new_packet(dataLen);
+							if (topfield_file_offset != offset)
+							{
+								//printf("Warning: offset mismatch! %lu %lu \n",topfield_file_offset,offset);
+								// TODO: Handle this type of error
+							}
+
+							bytes_received += dataLen;
+							total_bytes_received +=dataLen;
+							if (topfield_file_offset>item->size) printf("Warning: topfield_file_offset>item->size\n");else
+								//copydialog->total_offset = total_bytes_received;
+								copydialog->current_offsets[i] = topfield_file_offset;//bytes_received;
+
+
+							copydialog->current_bytes_received = bytes_received;
+							copydialog->total_bytes_received = total_bytes_received;
+							if (update%4==0)
+							{
+								//this->Update();
+								copydialog->update_dialog_threadsafe();
+							}
+							//if(w < dataLen)
+							//{
+							//	 /* Can't write data - abort transfer */
+							//	 fprintf(stderr, "ERROR: Can not write data: %s\n",
+							//		 strerror(errno));
+							//	 send_cancel(fd);
+							//	 state = ABORT;
+							//}
+
+
+
+							if (copydialog->cancelled == true)
+							{
+								printf("CANCELLING\n");
+								send_cancel(fd);
+								//was_cancelled=true;
+								state = ABORT;
+								goto out;
+
+							}
+
+							if (copydialog->turbo_request != *this->turbo_mode)
+							{
+								turbo_changed=true;
+
+								send_cancel(fd);
+								state=ABORT;
+								goto out;
+							}
+
+
+
+						}
+						else
+						{
+							fprintf(stderr,
+								"ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
+								state);
+							send_cancel(fd);
+							copydialog->usb_error=true;
+							state = ABORT;
+						}
+						break;
+
+					case DATA_HDD_FILE_END:
+						send_success(fd);
+						//item->Selected = false;
+						//printf("DATA_HDD_FILE_END\n");
+						result = 0;
+						goto out;
+						break;
+
+					case FAIL:
+						fprintf(stderr, "ERROR: Device reports %s in transfer_to_PC\n",
+							decode_error(&reply));
+						send_cancel(fd);
+						state = ABORT;
+						copydialog->usb_error=true;
+						break;
+
+					case SUCCESS:
+						//printf("SUCCESS\n");
+						goto out;
+						break;
+
+					default:
+						fprintf(stderr, "ERROR: Unhandled packet (cmd 0x%x)\n",
+							get_u32(&reply.cmd));
+						send_cancel(fd);
+						copydialog->usb_error=true;
+						goto out;
+					}
+
+
+
+
+				}
+
+out:
+				//_close(dst);
+				try
+				{
+					dest_file->Close();
+					File::SetCreationTime(full_dest_filename, item->datetime);
+					File::SetLastWriteTime(full_dest_filename, item->datetime);
+				}
+				catch(...)
+				{
+
+				}
+
+				if (copydialog->cancelled==true) break;
+
+				if (copydialog->usb_error)
+				{
+					if (this->wait_for_connection(copydialog) < 0) 
+						goto end_copy_to_pc;
+					else
+						goto restart_copy_to_pc;
+				}
+
+				if (io_error)
+				{
+					send_cancel(fd);
+					this->absorb_late_packets(2,100);
+					switch(this->wait_for_space_on_pc(copydialog,dest_filename[i]))
+					{
+					case -1:
+						goto end_copy_to_pc;
+						break;
+					case 0:
+						goto restart_copy_to_pc;
+						break;
+					case -2:
+						copydialog->file_error = "An error occurred writing the file to your computer";
+						goto end_copy_to_pc;
+					}
+				}
+
+				if (turbo_changed || copydialog->turbo_request != *this->turbo_mode )
+				{
+					this->absorb_late_packets(4,100);
+					this->set_turbo_mode(copydialog->turbo_request);
+					copydialog->reset_rate();
+					goto restart_copy_to_pc;
+				}
+
+				if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
+
+				
+
+			}  // end loop over items to be copied
+
+end_copy_to_pc:
+
+			copydialog->close_request_threadsafe();
+			this->TransferEnded();
+
+		}
+
 	private: System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {    
+				 
+				 
 				 // Copy files from Topfield to computer
+
+				 if (this->transfer_in_progress) return;
 				 const int max_folders = 1000;
 				 // Enumerate selected source items (PVR)
 
@@ -2948,9 +3042,16 @@ end_copy_to_pc:
 				 this->transfer_in_progress=true;
 
 				 Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PC));
+				 copydialog->thread=thread;
 				 thread->Start(copydialog);
-				 copydialog->showDialog_thread();
-				 thread->Join();
+				 //copydialog->showDialog_thread();
+
+                 this->ShowCopyDialog(copydialog);
+
+				
+
+				 /*
+				 //thread->Join();
 				 this->transfer_in_progress=false;
 
 				 if (this->checkBox1->Checked != copydialog->turbo_request)
@@ -2966,6 +3067,7 @@ end_copy_to_pc:
 				 this->set_turbo_mode(0);
 				 if (!copydialog->is_closed)
 					 copydialog->close_request_threadsafe();
+			    */
 
 			 }
 
@@ -3524,13 +3626,17 @@ out:
 finish_transfer:
 
 				 copydialog->close_request_threadsafe();
-				 printf("!!!!!!! Transfer thread ended normally.\n");
+				 this->TransferEnded();
+				 //printf("!!!!!!! Transfer thread ended normally.\n");
 			 }
 
 			 ////////////////////////////////////////////////////////////////////////////////////
 	private: System::Void button1_Click(System::Object^  sender, System::EventArgs^  e) {
 
 				 // Copy files from Computer to Topfield
+
+
+				 if (this->transfer_in_progress) return;
 
 				 const int max_folders = 1000;
 
@@ -3816,12 +3922,19 @@ finish_transfer:
 
 				 //copydialog->TopLevel = false;this->panel1->Controls->Add(copydialog);copydialog->Show();copydialog->Visible=true;
 				 //copydialog->Dock = DockStyle::Bottom;
-				 //return;
-
+				 
+				 
 				 this->transfer_in_progress=true;
 				 Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PVR));
+				 copydialog->thread = thread;
 				 thread->Start(copydialog);
 
+				 
+				 this->ShowCopyDialog(copydialog);
+
+				 //return;
+				 
+				 /*
 				 copydialog->showDialog_thread();
 				 thread->Join();
 				 this->transfer_in_progress=false;
@@ -3838,11 +3951,13 @@ finish_transfer:
 				 this->loadTopfieldDir();
 				 this->absorb_late_packets(2,200);
 				 this->set_turbo_mode(0);
-
+                 */
 
 			 }
 
 	private: System::Void listView1_ItemActivate(System::Object^  sender, System::EventArgs^  e) {
+
+				 if (this->transfer_in_progress) return;
 
 				 ListView^ listview = (ListView^) sender;
 				 Console::WriteLine("Activated (1)");
@@ -3879,6 +3994,7 @@ finish_transfer:
 
 			 }
 	private: System::Void toolStripButton6_Click(System::Object^  sender, System::EventArgs^  e) {
+				 if (this->transfer_in_progress) return;
 				 this->loadTopfieldDir();
 			 }
 
@@ -3934,6 +4050,7 @@ finish_transfer:
 
 				 // Delete files on the Topfield
 
+				 if (this->transfer_in_progress) return;
 				 // Enumerate selected items (PVR)
 				 System::Windows::Forms::DialogResult result;
 				 DeleteConfirmation^ confirmation = gcnew Antares::DeleteConfirmation();
@@ -4112,6 +4229,10 @@ finish_transfer:
 			 }
 
 	private: System::Void listView_KeyDown(System::Object^  sender, System::Windows::Forms::KeyEventArgs^  e) {
+
+
+				 if (this->transfer_in_progress) return;
+
 				 ListView^ listview = safe_cast<ListView^>(sender);
 				 //Console::WriteLine(listview->DoubleBuffered);
 				 ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
@@ -4174,6 +4295,7 @@ finish_transfer:
 			 }
 			 int newTopfieldFolder(String^ dir)
 			 {
+				 if (this->transfer_in_progress) return 0;
 				 int r;
 				 char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
 				 r = do_hdd_mkdir(this->fd,path);
@@ -4184,6 +4306,7 @@ finish_transfer:
 	private: System::Void toolStripButton8_Click(System::Object^  sender, System::EventArgs^  e) {
 
 				 // Clicked "New Folder", Topfield.
+				 if (this->transfer_in_progress) return;
 				 if (this->fd==NULL)
 				 {
 					 //this->toolStripStatusLabel1->Text="Topfield not connected.";
@@ -4376,6 +4499,7 @@ finish_transfer:
 	private: System::Void toolStripButton9_Click(System::Object^  sender, System::EventArgs^  e) {
 				 // "Cut" button pressed on the topfield side.
 				 // Change colour of cut items, and record the filenames on the clipboard.   
+				 if (this->transfer_in_progress) return;
 				 ListView^ listview = this->listView1;
 				 ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
 				 int num = selected->Count;
@@ -4412,6 +4536,7 @@ finish_transfer:
 			 }
 	private: System::Void toolStripButton10_Click(System::Object^  sender, System::EventArgs^  e) {
 				 //Someone pressed the "Paste" button (Topfield)
+				 if (this->transfer_in_progress) return;
 				 int numc = this->TopfieldClipboard->Length;
 				 if (numc==0) return;
 				 // Need to check and avoid the following:   1) pasting to same location as source  2) pasting inside a directory being moved
@@ -4561,13 +4686,18 @@ finish_transfer:
 
 	private: System::Void Info_Click(System::Object^  sender, System::EventArgs^  e) {
 				 // Someone clicked "info" on either PVR or PC side
+				 
 				 ListView^ listview;
 
 				 if (sender == this->toolStripButton11)
+				 {
+					 if (this->transfer_in_progress) return;
 					 listview = this->listView1;
+				 }
 				 else
 					 listview = this->listView2;
 
+				 
 
 				 this->ViewInfo(listview);
 			 }
@@ -4855,6 +4985,17 @@ finish_transfer:
 
 			 }
 
-	};    // class form1
+	private: System::Void Form1_FormClosing(System::Object^  sender, System::Windows::Forms::FormClosingEventArgs^  e) {
+				 if (this->transfer_in_progress)
+				 {
+					 CopyDialog^ copydialog = this->current_copydialog;
+					 copydialog->cancelled = true;
+
+					 //if (copydialog->thread != nullptr)
+					//	 copydialog->thread->Join();
+
+				 }
+			 }
+};    // class form1
 };    // namespace antares
 
