@@ -1187,6 +1187,7 @@ check_freespace:
 				if (q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
 			}
 
+			this->Arrange2();
 			return 0;
 		}
 
@@ -2665,6 +2666,7 @@ restart_copy_to_pc:
 							if (copydialog->turbo_request != *this->turbo_mode)
 							{
 								turbo_changed=true;
+								copydialog->update_dialog_threadsafe();
 
 								send_cancel(fd);
 								state=ABORT;
@@ -3034,6 +3036,7 @@ end_copy_to_pc:
 				 copydialog->overwrite_action = overwrite_action;
 				 copydialog->numfiles=numitems;
 				 copydialog->current_index=0;
+				 copydialog->parent_checkbox = this->checkBox1;
 
 
 				 //long long bytecount;
@@ -3441,6 +3444,7 @@ restart_copy_to_pvr:
 
 									 if (copydialog->turbo_request != *this->turbo_mode)
 									 {
+										 copydialog->update_dialog_threadsafe();
 										 turbo_changed=true;
 										 state=END;
 									 }
@@ -3601,6 +3605,7 @@ out:
 
 					 if (turbo_changed)
 					 {
+						 copydialog->update_dialog_threadsafe();
 						 this->absorb_late_packets(2,100);
 						 this->set_turbo_mode(copydialog->turbo_request);
 						 copydialog->reset_rate();
@@ -3610,6 +3615,7 @@ out:
 
 					 if (copydialog->turbo_request != *this->turbo_mode)
 					 {
+						 copydialog->update_dialog_threadsafe();
 						 this->set_turbo_mode( copydialog->turbo_request ? 1:0);
 						 copydialog->reset_rate();
 
@@ -3919,6 +3925,7 @@ finish_transfer:
 				 copydialog->window_title="Copying File(s) ... [PC --> PVR]";
 				 copydialog->current_file="Waiting for PVR...";
 				 copydialog->turbo_mode = this->turbo_mode;
+				 copydialog->parent_checkbox = this->checkBox1;
 
 				 //copydialog->TopLevel = false;this->panel1->Controls->Add(copydialog);copydialog->Show();copydialog->Visible=true;
 				 //copydialog->Dock = DockStyle::Bottom;
@@ -4364,6 +4371,8 @@ finish_transfer:
 					 settings->changeSetting("TurboMode","on");
 				 else
 					 settings->changeSetting("TurboMode","off");
+				 if (this->current_copydialog != nullptr)
+					 this->current_copydialog->checkBox1->Checked = this->checkBox1->Checked;
 			 }
 
 	private: System::Void listView2_SelectionChanged_Finally(void)

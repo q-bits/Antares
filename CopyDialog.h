@@ -81,6 +81,7 @@ namespace Antares {
 			this->freespace_check_needed=false;
 			this->close_requested=false;
 			this->thread  = nullptr;
+			this->parent_checkbox = nullptr;
 
 		}
 	
@@ -440,6 +441,7 @@ namespace Antares {
 		bool close_requested;
 		System::Windows::Forms::Form^ parent_form;
 		System::Threading::Thread^ thread;
+		System::Windows::Forms::CheckBox^ parent_checkbox;
   
 
 
@@ -457,7 +459,9 @@ namespace Antares {
 	private: System::Windows::Forms::Label^  label6;
 	private: System::Windows::Forms::Label^  label7;
 private: System::Windows::Forms::Label^  label8;
-private: System::Windows::Forms::CheckBox^  checkBox1;
+public: System::Windows::Forms::CheckBox^  checkBox1;
+private: 
+
 
 	protected: 
 
@@ -682,6 +686,8 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 
 private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 this->turbo_request  = this->checkBox1->Checked;
+			 if (this->parent_checkbox != nullptr)
+				 this->parent_checkbox->Checked = this->checkBox1->Checked;
 			
 		 }
 private: System::Void CopyDialog_Load(System::Object^  sender, System::EventArgs^  e) {
