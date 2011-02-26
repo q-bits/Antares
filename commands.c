@@ -154,12 +154,12 @@ int do_cancel(libusb_device_handle* fd)
             break;
 
         case FAIL:
-            fprintf(stderr, "ERROR: Device reports %s\n",
+            printf("ERROR: Device reports %s\n",
                     decode_error(&reply));
             break;
 
         default:
-            fprintf(stderr, "ERROR: Unhandled packet\n");
+            printf("ERROR: Unhandled packet\n");
     }
     return -EPROTO;
 }
@@ -196,7 +196,7 @@ int do_hdd_size(libusb_device_handle* fd)
         }
 
         case FAIL:
-            fprintf(stderr, "ERROR: Device reports %s\n",
+            printf("ERROR: Device reports %s\n",
                     decode_error(&reply));
             break;
 

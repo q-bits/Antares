@@ -324,7 +324,7 @@ extern "C" {
                      int timeout)
  ;
   int usb_bulk_read(libusb_device_handle *dev, int ep, char *bytes, int size,
-                    int timeout)
+                    int timeout, int noreply)
  ;
   int usb_interrupt_write(usb_dev_handle *dev, int ep, char *bytes, int size,
                           int timeout);

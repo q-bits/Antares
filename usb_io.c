@@ -63,9 +63,16 @@ Adapted by Henry Haselgrove, for use in Antares
 int packet_trace = 0;
 int verbose = 0;
 
+time_t last_successful_communication = 0;
+
+
+
+
 struct husb_device_handle;
 int husb_bulk_write(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout);
-int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout);
+int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout, int no_reply);
+
+
 
 
  int usb_bulk_write(libusb_device_handle *dev, int ep, char *bytes, int size,
@@ -81,14 +88,14 @@ int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int s
 	  return(r);
   }
   int usb_bulk_read(libusb_device_handle *dev, int ep, char *bytes, int size,
-                    int timeout)
+                    int timeout, int no_reply)
   {
       int r;
 	  struct husb_device_handle *fd;
 	  if (dev==NULL) return(LIBUSB_ERROR_NO_DEVICE);
 	  fd = (struct husb_device_handle *) (void*) dev;
 	  //libusb_bulk_transfer(dev,(unsigned char) ep,bytes,size,&r,timeout);
-	  r=husb_bulk_read( fd,  ep,  bytes,   size,  timeout);
+	  r=husb_bulk_read( fd,  ep,  bytes,   size,  timeout, no_reply);
 	  return(r);
   }
 
@@ -142,13 +149,15 @@ static __u8 success_packet[8] = {
 int send_cancel(libusb_device_handle* fd)
 {
 	trace(3, fprintf(stderr,"send_cancel\n"));
-    return usb_bulk_write(fd, 0x01, cancel_packet, 8, TF_PROTOCOL_TIMEOUT);
+    return usb_bulk_write(fd, 0x01, cancel_packet, 8, default_timeout());
+
+
 }
 
 int send_success(libusb_device_handle* fd)
 {
 	trace(3, fprintf(stderr,"send_success\n"));
-    return usb_bulk_write(fd, 0x01, success_packet, 8, TF_PROTOCOL_TIMEOUT);
+    return usb_bulk_write(fd, 0x01, success_packet, 8, default_timeout());
 }
 
 int send_cmd_ready(libusb_device_handle* fd)
@@ -339,6 +348,7 @@ int send_cmd_hdd_create_dir(libusb_device_handle* fd, char *path)
 void print_packet(struct tf_packet *packet, char *prefix)
 {
     int i;
+#if 0
     __u8 *d = (__u8 *) packet;
     __u16 pl = get_u16(&packet->length);
 
@@ -380,7 +390,22 @@ void print_packet(struct tf_packet *packet, char *prefix)
             fprintf(stderr, "\n");
             break;
     }
+#endif
 }
+
+int default_timeout(void)
+{
+
+	time_t dt;
+	int timeout;
+	dt = time(NULL) - last_successful_communication;
+
+	timeout = TF_PROTOCOL_TIMEOUT;
+	if (dt<100) timeout=2000;
+	return timeout;
+}
+
+
 
 /* Given a Topfield protocol packet, this function will calculate the required
  * CRC and send the packet out over a bulk pipe. */
@@ -394,21 +419,35 @@ int send_tf_packet(libusb_device_handle* fd, struct tf_packet *packet)
     size_t byte_count = (pl + 1) & ~1;
 
     put_u16(&packet->crc, get_crc(packet));
-    print_packet(packet, "OUT>");
+    //print_packet(packet, "OUT>");
     swap_out_packet(packet);
-	if (fd!=0)
+	if (fd==0)  return -1;
+
     return usb_bulk_write(fd, 0x01, (__u8 *) packet, byte_count,
-                          TF_PROTOCOL_TIMEOUT);
-	else 
-		return -1;
+                          default_timeout());
+	
 }
 
 
-/* Like get_tf_packet2, but using default timeout and default no_replay */
+/* Like get_tf_packet2, but using default timeout and noreply */
+
 int get_tf_packet(libusb_device_handle* fd, struct tf_packet * packet)
 {
-    return get_tf_packet2(fd, packet, TF_PROTOCOL_TIMEOUT, 0);
+
+ 
+	return get_tf_packet1(fd, packet, 1);
+
 }
+
+
+/* Like get_tf_packet2, but using default timeout */
+int get_tf_packet1(libusb_device_handle* fd, struct tf_packet * packet, int noreply)
+{
+
+	return get_tf_packet2(fd, packet,default_timeout(), noreply);
+
+}
+
 
 /* Receive a Topfield protocol packet.
  * Returns a negative number if the packet read failed for some reason.
@@ -421,7 +460,7 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
     trace(3, fprintf(stderr, "get_tf_packet\n"));
 
     r = usb_bulk_read(fd, 0x82, buf, MAXIMUM_PACKET_SIZE,
-                      timeout);
+                      timeout, no_reply);
     if(r < 0)
     {
         fprintf(stderr, "USB read error: %s\n", strerror(errno));
@@ -435,12 +474,15 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
     }
 
     /* Send SUCCESS as soon as we see a data transfer packet */
-    if(!no_reply && DATA_HDD_FILE_DATA == get_u32_raw(&packet->cmd))
+    /*
+	if(!no_reply && DATA_HDD_FILE_DATA == get_u32_raw(&packet->cmd))
     {
         send_success(fd);
     }
+	*/
 
     swap_in_packet(packet);
+
 
     {
         __u16 crc;
@@ -453,8 +495,10 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
             return -1;
         }
 
-        crc = get_u16(&packet->crc);
-        calc_crc = get_crc(packet);
+
+
+        //crc = get_u16(&packet->crc);
+        //calc_crc = get_crc(packet);
 
         /* Complain about CRC mismatch */
         //if(crc != calc_crc)
@@ -464,7 +508,8 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
         //}
     }
 
-    print_packet(packet, " IN<");
+	if (r>4) last_successful_communication=time(NULL);
+    //print_packet(packet, " IN<");
     return r;
 }
 

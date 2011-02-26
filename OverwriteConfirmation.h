@@ -385,6 +385,7 @@ namespace Antares {
 			this->skip3->AutoSize = true;
 			this->skip3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->skip3->Checked = true;
 			this->skip3->Dock = System::Windows::Forms::DockStyle::Right;
 			this->skip3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->skip3->ForeColor = System::Drawing::Color::DarkGreen;
@@ -392,6 +393,7 @@ namespace Antares {
 			this->skip3->Name = L"skip3";
 			this->skip3->Size = System::Drawing::Size(53, 27);
 			this->skip3->TabIndex = 5;
+			this->skip3->TabStop = true;
 			this->skip3->Text = L"Skip";
 			this->skip3->UseVisualStyleBackColor = false;
 			// 
@@ -400,7 +402,6 @@ namespace Antares {
 			this->overwrite3->AutoSize = true;
 			this->overwrite3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->overwrite3->Checked = true;
 			this->overwrite3->Dock = System::Windows::Forms::DockStyle::Right;
 			this->overwrite3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->overwrite3->ForeColor = System::Drawing::Color::DarkGreen;
@@ -408,7 +409,6 @@ namespace Antares {
 			this->overwrite3->Name = L"overwrite3";
 			this->overwrite3->Size = System::Drawing::Size(86, 27);
 			this->overwrite3->TabIndex = 4;
-			this->overwrite3->TabStop = true;
 			this->overwrite3->Text = L"Overwrite";
 			this->overwrite3->UseVisualStyleBackColor = false;
 			// 

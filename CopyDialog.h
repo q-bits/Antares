@@ -277,7 +277,12 @@ namespace Antares {
 			//	total_rate=0;
             
 			if (this->has_initialised==false) {
-				this->checkBox1->Checked = *this->turbo_mode;this->has_initialised=true;
+				if (this->parent_checkbox !=nullptr)
+					this->checkBox1->Checked = this->parent_checkbox->Checked;
+				else
+				this->checkBox1->Checked = *this->turbo_mode;
+				
+				this->has_initialised=true;
 
 				if (this->numfiles<=1)
 				{
@@ -302,7 +307,8 @@ namespace Antares {
 			//this->label4->Text =  (offset / 1024).ToString("#,#,#")+"KB / "+(size/1024).ToString("#,#,#")+"KB";
 			long long int offset_MB = offset / 1024LL/1024LL;
 			int offset_dec_MB = (offset - offset_MB * 1024LL*1024LL)*10/1024/1024;
-			this->label4->Text =  (offset_MB).ToString("#,#,#")+"."+offset_dec_MB.ToString()+" MB / "+(size/1024/1024).ToString("#,#,#")+" MB";
+			String^ offset_int_MB =  (offset_MB).ToString("#,#,#"); if (offset_int_MB->Length==0) offset_int_MB="0";
+			this->label4->Text = offset_int_MB+"."+offset_dec_MB.ToString()+" MB / "+(size/1024/1024).ToString("#,#,#")+" MB";
 
 
 			long long total_offset=0;  long long total_size=0;

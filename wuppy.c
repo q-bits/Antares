@@ -54,6 +54,7 @@ __u8 sendDirection = GET;
 #define E_GLOBAL_LOCK 8
 #define E_RESET_DEVICE 9
 
+#if 0
 
 int main_old(int argc, char * argv[])
 {
@@ -132,6 +133,7 @@ int main_old(int argc, char * argv[])
 	// Exit
 	return 0;
 }
+
 
 
 void usage(char *myName)
@@ -303,3 +305,6 @@ int parseArgs(int argc, char *argv[])
 
     return 0;
 }
+
+
+#endif

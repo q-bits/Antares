@@ -122,7 +122,11 @@ int send_cmd_hdd_create_dir(libusb_device_handle* fd, char *path);
 
 void print_packet(struct tf_packet *packet, char *prefix);
 
+int default_timeout(void);
+
 int get_tf_packet(libusb_device_handle* fd, struct tf_packet *packet);
+
+int get_tf_packet1(libusb_device_handle* fd, struct tf_packet * packet, int noreply);
 
 int get_tf_packet2(libusb_device_handle* fd, struct tf_packet *packet, int timeout, int no_reply);
 

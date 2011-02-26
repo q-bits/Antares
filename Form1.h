@@ -20,6 +20,7 @@ extern "C" {
 #include <time.h>
 #include "FBLib_rec.h"
 
+
 	struct husb_device_handle;
 	int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int max_length_paths);
 	struct husb_device_handle* open_winusb_device(HANDLE hdev);
@@ -27,6 +28,7 @@ extern "C" {
 	void husb_free(struct husb_device_handle *fd);
 
 }
+
 
 #using <mscorlib.dll>
 
@@ -350,8 +352,13 @@ namespace Antares {
 					fdtemp  = open_winusb_device(hdev);
 					//bResult = WinUsb_Initialize(deviceHandle, &usbHandle);
 
-					this->pid=pids[j];
+					if (fdtemp!=NULL)
 
+					{
+					this->pid=pids[j];
+					break;
+					}
+                    
 
 
 				}
@@ -1278,8 +1285,6 @@ check_freespace:
 			CopyDialog^ current_copydialog;
 
 
-
-
 	private: System::Windows::Forms::StatusStrip^  statusStrip1;
 	private: System::Windows::Forms::Panel^  panel1;
 	private: System::Windows::Forms::Panel^  panel3;
@@ -1509,7 +1514,7 @@ check_freespace:
 			this->label2->Padding = System::Windows::Forms::Padding(5, 0, 0, 0);
 			this->label2->Size = System::Drawing::Size(495, 24);
 			this->label2->TabIndex = 5;
-			this->label2->Text = L"label2";
+			this->label2->Text = L"PVR: Device not connected";
 			this->label2->TextAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			// 
 			// toolStrip2
@@ -2129,7 +2134,8 @@ check_freespace:
 
 	private: System::Void Form1_Resize(System::Object^  sender, System::EventArgs^  e) {
 
-
+				 if (this->WindowState != FormWindowState::Minimized)
+					 this->Arrange2();
 				 //this->Arrange();
 
 			 }
@@ -2204,7 +2210,7 @@ check_freespace:
 
 			 };
 	private: System::Void toolStripButton1_Click_1(System::Object^  sender, System::EventArgs^  e) {
-				 if (this->transfer_in_progress) return;
+				 //if (this->transfer_in_progress) return;
 				 this->computerUpDir();
 			 }
 	private: System::Void toolStripButton2_Click(System::Object^  sender, System::EventArgs^  e) {
@@ -2435,7 +2441,7 @@ restart_copy_to_pc:
 				}
 				bool io_error=false;
 
-				if (this_overwrite_action==SKIP) {item->Selected=false;continue;}  
+				if (this_overwrite_action==SKIP) continue; //{item->Selected=false;continue;}  
 
 				tf_packet reply;
 				int r;
@@ -2516,14 +2522,8 @@ restart_copy_to_pc:
 
 					update = update+1;
 
-					//Thread::Sleep(20);
-					//if (update>=100)
-					//	 send_success(this->fd);
 
-					//if (update<100)
-					r = get_tf_packet2(fd, &reply, TF_PROTOCOL_TIMEOUT, 0);
-					//else
-					//	 r = get_tf_packet2(fd, &reply, TF_PROTOCOL_TIMEOUT, 1);
+					r = get_tf_packet1(fd, &reply,  0);
 
 
 
@@ -2575,8 +2575,7 @@ restart_copy_to_pc:
 
 							if(r < get_u16(&reply.length))
 							{
-								fprintf(stderr,
-									"ERROR: Short packet %d instead of %d\n", r,
+								printf("ERROR: Short packet %d instead of %d\n", r,
 									get_u16(&reply.length));
 
 								copydialog->usb_error=true;
@@ -2678,7 +2677,7 @@ restart_copy_to_pc:
 						}
 						else
 						{
-							fprintf(stderr,
+							printf(
 								"ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
 								state);
 							send_cancel(fd);
@@ -2696,7 +2695,7 @@ restart_copy_to_pc:
 						break;
 
 					case FAIL:
-						fprintf(stderr, "ERROR: Device reports %s in transfer_to_PC\n",
+						printf("ERROR: Device reports %s in transfer_to_PC\n",
 							decode_error(&reply));
 						send_cancel(fd);
 						state = ABORT;
@@ -2709,7 +2708,7 @@ restart_copy_to_pc:
 						break;
 
 					default:
-						fprintf(stderr, "ERROR: Unhandled packet (cmd 0x%x)\n",
+						printf("ERROR: Unhandled packet (cmd 0x%x)\n",
 							get_u32(&reply.cmd));
 						send_cancel(fd);
 						copydialog->usb_error=true;
@@ -3225,8 +3224,8 @@ restart_copy_to_pvr:
 					 long long fileSize = src_file_info->Length;
 					 if(fileSize == 0)   //TODO: shouldn't we still create 0-byte files?
 					 {
-						 printf("ERROR: Source file is empty - not transfering.\n");
-						 continue;
+						 //printf("ERROR: Source file is empty - not transfering.\n");
+						 //continue;
 					 }
 					 char* dstPath = (char *) (void*) Marshal::StringToHGlobalAnsi(full_dest_filename);
 
@@ -3456,7 +3455,7 @@ restart_copy_to_pvr:
 										 state = END;
 									 }
 
-									 if(w > 0)
+									 if(w > 0 || true)
 									 {
 										 trace(3,
 											 fprintf(stderr, "%s: DATA_HDD_FILE_DATA\n",
@@ -3464,7 +3463,7 @@ restart_copy_to_pvr:
 										 r = send_tf_packet(this->fd, &packet);
 										 if(r < w)
 										 {
-											 fprintf(stderr, "ERROR: Incomplete send.\n");
+											 printf("ERROR: Incomplete send.\n");
 											 copydialog->usb_error=true;
 											 state=END;break;  // This line an experiment, 26/1/11
 											 goto out;
@@ -3536,7 +3535,7 @@ restart_copy_to_pvr:
 								 r = send_tf_packet(fd, &packet);
 								 if(r < 0)
 								 {
-									 fprintf(stderr, "ERROR: Incomplete send.\n");
+									 printf("ERROR: Incomplete send.\n");
 									 copydialog->usb_error=true;
 									 goto out;
 								 }
@@ -3643,6 +3642,7 @@ finish_transfer:
 
 
 				 if (this->transfer_in_progress) return;
+				 if (this->fd==NULL) return;
 
 				 const int max_folders = 1000;
 
@@ -4302,7 +4302,7 @@ finish_transfer:
 			 }
 			 int newTopfieldFolder(String^ dir)
 			 {
-				 if (this->transfer_in_progress) return 0;
+				 
 				 int r;
 				 char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
 				 r = do_hdd_mkdir(this->fd,path);

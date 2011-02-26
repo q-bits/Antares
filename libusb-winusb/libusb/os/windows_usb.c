@@ -237,6 +237,13 @@ set_pipe_timeout(struct husb_device_handle *fd, int ep, ULONG timeout)
 		PIPE_TRANSFER_TIMEOUT,
 		sizeof(ULONG),
 		&timeout );
+	printf("Set_pipe_timeout  %x :  %d\n",ep,timeout);
+
+	if (ep==fd->bulkInPipe)
+		fd->read_timeout = timeout;
+	else if (ep==fd->bulkOutPipe)
+		fd->write_timeout = timeout;
+		
 
 }
 
@@ -245,7 +252,7 @@ int husb_bulk_write(struct husb_device_handle *fd,  int ep,  char *bytes,   int 
 
 	bool r;
     ULONG bytes_written;
-	if (fd->write_timeout != timeout) set_pipe_timeout(fd, fd->bulkInPipe, timeout);
+	if (fd->write_timeout != timeout) set_pipe_timeout(fd, fd->bulkOutPipe, timeout);
     r = WinUsb_WritePipe(fd->usbHandle,
                              fd->bulkOutPipe,
                              bytes,
@@ -255,17 +262,18 @@ int husb_bulk_write(struct husb_device_handle *fd,  int ep,  char *bytes,   int 
 	if (!r)
 	{
 		printf("WinUsb_WritePipe, %s.  bytes_written=%d.\n",windows_error_str(0),bytes_written);
-		return -GetLastError();
+		return -( (int) GetLastError());
 	}
     return bytes_written;
 }
 
 
-int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout)
+int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout, int no_reply)
 {
 
 	bool r;
-    ULONG bytes_read;
+    ULONG bytes_read, bytes_written_reply;
+	static unsigned char success_packet[8] = {0x08, 0x00, 0x81, 0xc1, 0x00, 0x00, 0x02, 0x00};
 	if (fd->read_timeout != timeout) set_pipe_timeout(fd, fd->bulkInPipe, timeout);
 
     r = WinUsb_ReadPipe(fd->usbHandle,
@@ -276,9 +284,30 @@ int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int s
                              NULL);
 	if (!r)
 	{
-		printf("WinUsb_ReadPipe, %s.  bytes_read=%d.\n",windows_error_str(0),bytes_read);
-		return -GetLastError();
+		//printf("WinUsb_ReadPipe, %s.  bytes_read=%d.\n",windows_error_str(0),bytes_read);
+		return - ((int) GetLastError());
 	}
+
+	//printf("no_reply=%d  stuff=%x\n",no_reply,* ( (uint32_t *) (bytes+4)));
+	if (!no_reply)
+	{
+		if (bytes_read>=8)
+		{
+
+			if ( * ( (uint32_t *) (bytes+4 )) == 0x100a0000L)
+			{
+
+				 r = WinUsb_WritePipe(fd->usbHandle,
+                             fd->bulkOutPipe,
+                             success_packet,
+                             8,
+                             &bytes_written_reply,
+                             NULL);
+
+			}
+		}
+	}
+
     return bytes_read;
 }
 
@@ -408,7 +437,7 @@ int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_le
 		if (nfound + 1 > max_paths) break;
 
 		if (vid!=0x11db) continue;
-		if (pid!=0x1000 && vid != 0x1100) continue;
+		if (pid!=0x1000 && pid != 0x1100) continue;
 
 		//if (pid != 0x1100) continue;
 
