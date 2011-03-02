@@ -192,7 +192,12 @@ namespace Antares {
 			if (this->InvokeRequired)
 			{
 				CloseRequestCallback^ d = gcnew CloseRequestCallback(this, &CopyDialog::close_request_threadsafe);
-				this->Invoke(d);//, gcnew array<Object^> { });
+				try{
+					this->Invoke(d);
+				}
+				catch (...)     // (in case the window has been closed)
+				{
+				}
 			}
 			else
 			{

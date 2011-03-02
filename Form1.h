@@ -1336,6 +1336,8 @@ check_freespace:
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton12;
 	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 	private: System::Windows::Forms::NotifyIcon^  notifyIcon1;
+private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
+
 
 
 
@@ -1399,6 +1401,7 @@ check_freespace:
 			this->toolStripButton3 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton4 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripSeparator3 = (gcnew System::Windows::Forms::ToolStripSeparator());
+			this->toolStripButton13 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton12 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->listView2 = (gcnew System::Windows::Forms::ListView());
 			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
@@ -1492,7 +1495,7 @@ check_freespace:
 			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F));
-			this->checkBox1->Location = System::Drawing::Point(410, 11);
+			this->checkBox1->Location = System::Drawing::Point(409, 12);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 7;
@@ -1775,8 +1778,8 @@ check_freespace:
 			// 
 			this->toolStrip1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->toolStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(6) {this->toolStripButton1, 
-				this->toolStripButton2, this->toolStripButton3, this->toolStripButton4, this->toolStripSeparator3, this->toolStripButton12});
+			this->toolStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(7) {this->toolStripButton1, 
+				this->toolStripButton2, this->toolStripButton3, this->toolStripButton4, this->toolStripSeparator3, this->toolStripButton13, this->toolStripButton12});
 			this->toolStrip1->Location = System::Drawing::Point(0, 0);
 			this->toolStrip1->Name = L"toolStrip1";
 			this->toolStrip1->Padding = System::Windows::Forms::Padding(0, 0, 4, 0);
@@ -1842,6 +1845,20 @@ check_freespace:
 			// 
 			this->toolStripSeparator3->Name = L"toolStripSeparator3";
 			this->toolStripSeparator3->Size = System::Drawing::Size(6, 38);
+			// 
+			// toolStripButton13
+			// 
+			this->toolStripButton13->Alignment = System::Windows::Forms::ToolStripItemAlignment::Right;
+			this->toolStripButton13->Font = (gcnew System::Drawing::Font(L"Segoe UI", 8.25F));
+			this->toolStripButton13->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton13.Image")));
+			this->toolStripButton13->ImageTransparentColor = System::Drawing::Color::Magenta;
+			this->toolStripButton13->Margin = System::Windows::Forms::Padding(2, 1, 2, 2);
+			this->toolStripButton13->Name = L"toolStripButton13";
+			this->toolStripButton13->Size = System::Drawing::Size(53, 35);
+			this->toolStripButton13->Text = L"Settings";
+			this->toolStripButton13->TextImageRelation = System::Windows::Forms::TextImageRelation::ImageAboveText;
+			this->toolStripButton13->ToolTipText = L"Change Antares\' settings";
+			this->toolStripButton13->Click += gcnew System::EventHandler(this, &Form1::toolStripButton13_Click);
 			// 
 			// toolStripButton12
 			// 
@@ -2214,7 +2231,7 @@ check_freespace:
 				 this->computerUpDir();
 			 }
 	private: System::Void toolStripButton2_Click(System::Object^  sender, System::EventArgs^  e) {
-				 if (this->transfer_in_progress) return;
+				 //if (this->transfer_in_progress) return;
 				 this->loadComputerDir();
 
 			 }
@@ -2947,7 +2964,7 @@ end_copy_to_pc:
 					 {
 						 oc->panel3->Visible = false;oc->files3->Visible=false;
 					 }
-					 if (num_cat[2]>1) oc->label3->Text = "These existing files are oversized:"; else oc->label3->Text = "This existing file is oversized:";
+					 if (num_cat[2]>1) oc->label3->Text = "These existing files are larger!"; else oc->label3->Text = "This existing file is larger!";
 
 					 if (::DialogResult::Cancel == oc->ShowDialog() ) return;
 
@@ -3831,7 +3848,7 @@ finish_transfer:
 					 {
 						 oc->panel3->Visible = false;oc->files3->Visible=false;
 					 }
-					 if (num_cat[2]>1) oc->label3->Text = "These existing files are oversized:"; else oc->label3->Text = "This existing file is oversized:";
+					 if (num_cat[2]>1) oc->label3->Text = "These exising files are larger!!"; else oc->label3->Text = "This existing file is larger!!";
 
 					 if (::DialogResult::Cancel == oc->ShowDialog() ) return;
 
@@ -5005,6 +5022,9 @@ finish_transfer:
 
 				 }
 			 }
+private: System::Void toolStripButton13_Click(System::Object^  sender, System::EventArgs^  e) {
+
+		 }
 };    // class form1
 };    // namespace antares
 

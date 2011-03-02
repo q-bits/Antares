@@ -384,6 +384,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\SettingsDialog.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
@@ -566,6 +570,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\SettingsDialog.h"
+				FileType="3"
+				>
+				<File
+					RelativePath=".\SettingsDialog.resx"
+					>
+				</File>
+			</File>
+			<File
 				RelativePath=".\stdafx.h"
 				>
 			</File>
@@ -629,6 +642,10 @@
 			</File>
 			<File
 				RelativePath=".\Play.ico"
+				>
+			</File>
+			<File
+				RelativePath=".\preferences.ico"
 				>
 			</File>
 			<File
