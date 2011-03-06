@@ -165,6 +165,10 @@ namespace Antares {
 		System::String^ datestring;
 		System::String^ full_filename;
 		System::String^ recursion_offset;
+
+		System::String^ channel;
+		System::String^ description;
+
 		System::DateTime datetime;
 		char type;
 		long long int size;
@@ -198,6 +202,8 @@ namespace Antares {
             this->full_filename = namestring;
 			this->recursion_offset="";
 			this->isdrive = true;
+			this->channel="";
+			this->description="";
 
 		}
 
@@ -211,6 +217,8 @@ namespace Antares {
 			String^ typestring;
 			String^ sizestring="";
 			this->recursion_offset="";
+			this->channel="";
+			this->description="";
 			this->directory = dir;
 			if ( (attr & FileAttributes::Directory) == FileAttributes::Directory)
 			{
@@ -241,6 +249,8 @@ namespace Antares {
 			this->SubItems->Add( sizestring );
 			this->SubItems->Add(typestring);
 			this->SubItems->Add(this->datestring);
+			this->SubItems->Add(this->channel);
+			this->SubItems->Add(this->description);
 			this->safe_filename = Antares::safeString(filename);
 
 		}
@@ -311,6 +321,8 @@ namespace Antares {
 			//dt->AddSeconds((double) timestamp);
 
 
+			this->channel="";
+			this->description="";
 
 			//newtime = localtime(&timestamp);
 			this->datetime = Time_T2DateTime(timestamp);
@@ -331,6 +343,8 @@ namespace Antares {
 			this->SubItems->Add( sizestring );
 			this->SubItems->Add(typestring);
 			this->SubItems->Add(this->datestring);
+			this->SubItems->Add(this->channel);
+			this->SubItems->Add(this->description);
 
 
 		}

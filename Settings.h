@@ -25,7 +25,9 @@ namespace Antares {
 		{
 			dic = gcnew Dictionary<String^,String^>();
 
+			//////////////////////////
 			// Apply default settings
+			///////////////////////////
 			dic->Add("ComputerDir","C:\\");
 			dic->Add("TopfieldDir","\\DataFiles");
 			dic->Add("PC_SortOrder","Ascending");
@@ -33,6 +35,22 @@ namespace Antares {
 			dic->Add("TurboMode","on");
 			dic->Add("PVR_SortOrder","Ascending");
 			dic->Add("PVR_SortColumn","0");
+
+			dic->Add("PVR_Column0Visible","1"); // Name
+			dic->Add("PVR_Column1Visible","1"); // Size 
+			dic->Add("PVR_Column2Visible","0"); // Type
+			dic->Add("PVR_Column3Visible","1"); // Date
+			dic->Add("PVR_Column4Visible","0"); // Channel
+			dic->Add("PVR_Column5Visible","0"); // Description
+
+			dic->Add("PC_Column0Visible","1"); // Name
+			dic->Add("PC_Column1Visible","1"); // Size 
+			dic->Add("PC_Column2Visible","0"); // Type
+			dic->Add("PC_Column3Visible","1"); // Date
+			dic->Add("PC_Column4Visible","0"); // Channel
+			dic->Add("PC_Column5Visible","0"); // Description
+
+
 
 			String ^folder = Path::Combine(Environment::GetFolderPath(Environment::SpecialFolder::ApplicationData) , "Antares\\");
 			
@@ -48,11 +66,11 @@ namespace Antares {
 				}
 			}
 
-			filename = Path::Combine(folder, "antares.setttings.xml");
+			filename = Path::Combine(folder, "antares.setttings.xml");   // Yes, I can see the typo, but I may as well stick with it now!
 
 			//Console::WriteLine("----------------" + filename + "---------------");
 
-			loadOldSettings();
+			//loadOldSettings();
 			readXmlSettings();
 
 		}

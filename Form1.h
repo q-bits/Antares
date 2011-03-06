@@ -45,6 +45,7 @@ extern FILE* hf;
 #include "LowSpaceAlert.h"
 #include "ProgInfo.h"
 #include "Settings.h"
+#include "SettingsDialog.h"
 
 //ref class CopyDialog ;
 
@@ -206,12 +207,21 @@ namespace Antares {
 			this->topfieldSizeHeader = this->listView1->Columns->Add("Size",70,HorizontalAlignment::Right);
 			this->topfieldTypeHeader = this->listView1->Columns->Add("Type",60,HorizontalAlignment::Left);
 			this->topfieldDateHeader = this->listView1->Columns->Add("Date",120,HorizontalAlignment::Left);
+			this->topfieldChannelHeader = this->listView1->Columns->Add("Channel",120,HorizontalAlignment::Left);
+			this->topfieldDescriptionHeader = this->listView1->Columns->Add("Description",120,HorizontalAlignment::Left);
 
+			this->topfieldHeaders = gcnew array<ColumnHeader^>
+			{topfieldNameHeader, topfieldSizeHeader, topfieldTypeHeader, topfieldDateHeader, topfieldChannelHeader, topfieldDescriptionHeader};
 
 			this->computerNameHeader = this->listView2->Columns->Add("Name",140,HorizontalAlignment::Left);
 			this->computerSizeHeader = this->listView2->Columns->Add("Size",70,HorizontalAlignment::Right);
 			this->computerTypeHeader = this->listView2->Columns->Add("Type",60,HorizontalAlignment::Left);
 			this->computerDateHeader = this->listView2->Columns->Add("Date",120,HorizontalAlignment::Left);
+			this->computerChannelHeader = this->listView2->Columns->Add("Channel",120,HorizontalAlignment::Left);
+			this->computerDescriptionHeader = this->listView2->Columns->Add("Description",120,HorizontalAlignment::Left);
+
+			this->computerHeaders = gcnew array<ColumnHeader^>
+			{computerNameHeader, computerSizeHeader, computerTypeHeader, computerDateHeader, computerChannelHeader, computerDescriptionHeader};
 
 
 			//this->basicIconsSmall = gcnew ImageList();
@@ -355,10 +365,10 @@ namespace Antares {
 					if (fdtemp!=NULL)
 
 					{
-					this->pid=pids[j];
-					break;
+						this->pid=pids[j];
+						break;
 					}
-                    
+
 
 
 				}
@@ -1106,7 +1116,7 @@ check_freespace:
 					String^ str=" Topfield device";
 
 					if (this->pid==0x1100) str="Topfield second device";
-					this->label2->Text = str+"  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " total";
+					this->label2->Text = str+"  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" Free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " Total";
 				}
 			}
 
@@ -1238,10 +1248,21 @@ check_freespace:
 			System::Windows::Forms::ColumnHeader^ topfieldSizeHeader;
 			System::Windows::Forms::ColumnHeader^ topfieldTypeHeader;
 			System::Windows::Forms::ColumnHeader^ topfieldDateHeader;
+			System::Windows::Forms::ColumnHeader^ topfieldChannelHeader;
+			System::Windows::Forms::ColumnHeader^ topfieldDescriptionHeader;
+
+			array<System::Windows::Forms::ColumnHeader^>^ topfieldHeaders;
+
 			System::Windows::Forms::ColumnHeader^ computerNameHeader;
 			System::Windows::Forms::ColumnHeader^ computerSizeHeader;
 			System::Windows::Forms::ColumnHeader^ computerTypeHeader;
 			System::Windows::Forms::ColumnHeader^ computerDateHeader;
+			System::Windows::Forms::ColumnHeader^ computerChannelHeader;
+			System::Windows::Forms::ColumnHeader^ computerDescriptionHeader;
+
+			array<System::Windows::Forms::ColumnHeader^>^ computerHeaders;
+
+
 			int finished_constructing;
 			System::String^ topfieldCurrentDirectory;
 			System::String^ computerCurrentDirectory;
@@ -1336,7 +1357,7 @@ check_freespace:
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton12;
 	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
 	private: System::Windows::Forms::NotifyIcon^  notifyIcon1;
-private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
+	private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
 
 
 
@@ -1928,7 +1949,7 @@ private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.7.1";
+			this->Text = L"Antares  0.7.2";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2042,11 +2063,92 @@ private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
 				   Arrange_Buttons();
 				   //panel4->Refresh();
 			   }
+	private: System::Void Arrange2a(array<ColumnHeader^>^ cols, String^ type, int client_width)
+			 {
+
+				 double widths0[] = {140, 60, 60, 120,60,140};
+				 double mwidths[] = {0,  70, 70, 130, 60, 0};
+
+				 bool something_visible = false;
+				 int ncols = cols->Length;
+				 for (int j=0; j<ncols; j++)
+				 {
+					 String^ setting_name = type+"_Column"+j.ToString()+"Visible";
+					 if (this->settings[setting_name] != "1") 
+					 {
+						 widths0[j]=0; mwidths[j]=0;
+					 }
+					 else
+						 something_visible=true;
+				 }
+
+				 if (!something_visible) {widths0[0]=140;};
+
+
+				 double tot0 = widths0[0]+widths0[1]+widths0[2]+widths0[3]+widths0[4]+widths0[5];
+				 double tot0_ = widths0[1]+widths0[2]+widths0[3]+widths0[4];
+				 double tot0m = mwidths[1]+mwidths[2]+mwidths[3]+mwidths[4];
+				 //double tot1 = listView1->ClientSize.Width;
+				 //double tot2 = listView2->ClientSize.Width;
+				 //
+				 //double tot1_ = listView1->Width;
+				 //tot1 = tot1_<tot1 ? tot1_ : tot1;
+
+				 double tot1 = client_width;
+
+				 if (tot0_ / tot0 * tot1  > tot0m)
+				 {
+
+					 cols[1]->Width = (int) mwidths[1];
+					 cols[2]->Width = (int) mwidths[2];
+					 cols[3]->Width = (int) mwidths[3];
+					 cols[4]->Width = (int) mwidths[4];
+
+					 double tmp = widths0[0]+widths0[5];
+
+					 cols[0]->Width = (int) (tot1 - tot0m-5)*widths0[0]/tmp;
+
+					 cols[5]->Width = (int) (tot1 - tot0m-5)*widths0[5]/tmp;
+
+				 }
+				 else
+				 {
+					 cols[0]->Width =  (int) (widths0[0]/tot0 * tot1);
+					 cols[1]->Width =  (int) (widths0[1]/tot0 * tot1);
+					 cols[2]->Width =  (int) (widths0[2]/tot0 * tot1);
+					 cols[3]->Width =  (int) (widths0[3]/tot0 * tot1);
+					 cols[4]->Width =  (int) (widths0[4]/tot0 * tot1);
+					 cols[5]->Width =  (int) (widths0[5]/tot0 * tot1);
+
+				 }
+
+
+
+			 }
 
 	private: System::Void Arrange2(void)
 			 {
 				 if (this->finished_constructing ==1)
 				 {
+
+					 double cw1,cw2;
+
+					 cw1 = listView1->Width;
+					 cw2 = listView1->ClientSize.Width;
+					 cw1 = cw1 < cw2 ? cw1 : cw2;
+
+					 this->Arrange2a( this->topfieldHeaders, "PVR", cw1);
+
+
+					 cw1 = listView2->Width;
+					 cw2 = listView2->ClientSize.Width;
+					 cw1 = cw1 < cw2 ? cw1 : cw2;
+
+					 this->Arrange2a( this->computerHeaders, "PC", cw1);
+
+					 return;
+
+
 					 //static const double widths0[] = {140, 60, 50, 120};
 					 //static const double mwidths[] = {0,  60, 50, 120};
 
@@ -2261,10 +2363,10 @@ private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
 				 return;
 				 for each (Control^ c in this->Controls)
 				 {
-					
+
 					 if (!x && c==this->current_copydialog) continue;
 					 c->Enabled = x;
-					 
+
 				 }
 			 }
 
@@ -2277,62 +2379,62 @@ private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
 				 this->Controls->Add(copydialog);copydialog->Show();
 				 copydialog->Location = System::Drawing::Point( (this->Width - copydialog->Width)/2, (this->Height - copydialog->Height)/2);
 				 copydialog->BringToFront();
-				 
+
 			 }
 
 	private: 
 		System::Void TransferEnded(void)
-			 {
-
-				
-				 if (this->InvokeRequired)
-				 {
-					 printf("0. Transfer ended.\n");
-					 TransferEndedCallback^ d = gcnew TransferEndedCallback(this, &Form1::TransferEnded);
-					 this->Invoke(d);
-
-				 }
-				 else
-				 {
-					 this->EnableComponents(true);this->Update();
-
-					 printf("1. Enable components\n");
-
-					 CopyDialog^ copydialog = this->current_copydialog;
-					 if (copydialog==nullptr) return;
-					 printf("2. Enable components\n");
+		{
 
 
+			if (this->InvokeRequired)
+			{
+				printf("0. Transfer ended.\n");
+				TransferEndedCallback^ d = gcnew TransferEndedCallback(this, &Form1::TransferEnded);
+				this->Invoke(d);
 
-					 this->transfer_in_progress=false;
+			}
+			else
+			{
+				this->EnableComponents(true);this->Update();
 
-					 if (this->checkBox1->Checked != copydialog->turbo_request)
-						 this->checkBox1->Checked = copydialog->turbo_request;
+				printf("1. Enable components\n");
 
-					 if (copydialog->file_error->Length > 0)
-					 {
-						 MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
-					 }
-
-					 if (copydialog->copydirection == CopyDirection::PVR_TO_PC)
-						 this->loadComputerDir();
-					 else
-						 this->loadTopfieldDir();
-
-					 this->absorb_late_packets(2,200);
-					 this->set_turbo_mode(0);
-					 if (!copydialog->is_closed)
-						 copydialog->close_request_threadsafe();
-
-					 this->current_copydialog = nullptr;
-				 }
-
-			 }
+				CopyDialog^ copydialog = this->current_copydialog;
+				if (copydialog==nullptr) return;
+				printf("2. Enable components\n");
 
 
 
+				this->transfer_in_progress=false;
 
-			 /////////////////////////////////////////////////////////////////////////////////
+				if (this->checkBox1->Checked != copydialog->turbo_request)
+					this->checkBox1->Checked = copydialog->turbo_request;
+
+				if (copydialog->file_error->Length > 0)
+				{
+					MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
+				}
+
+				if (copydialog->copydirection == CopyDirection::PVR_TO_PC)
+					this->loadComputerDir();
+				else
+					this->loadTopfieldDir();
+
+				this->absorb_late_packets(2,200);
+				this->set_turbo_mode(0);
+				if (!copydialog->is_closed)
+					copydialog->close_request_threadsafe();
+
+				this->current_copydialog = nullptr;
+			}
+
+		}
+
+
+
+
+		/////////////////////////////////////////////////////////////////////////////////
 
 	private: 
 		System::Void transfer_to_PC(Object^ input){
@@ -2372,7 +2474,7 @@ private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
 						//MessageBox::Show(this,"The folder "+dest_filename[ind]+" could not be created because a file of that name already exists. Aborting transfer.","Error",MessageBoxButtons::OK);
 						copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
 						goto end_copy_to_pc;                         
-								
+
 					}
 					if (!Directory::Exists(dest_filename[i]))
 					{
@@ -2788,7 +2890,7 @@ out:
 
 				if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
 
-				
+
 
 			}  // end loop over items to be copied
 
@@ -2800,8 +2902,8 @@ end_copy_to_pc:
 		}
 
 	private: System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {    
-				 
-				 
+
+
 				 // Copy files from Topfield to computer
 
 				 if (this->transfer_in_progress) return;
@@ -3065,28 +3167,28 @@ end_copy_to_pc:
 				 thread->Start(copydialog);
 				 //copydialog->showDialog_thread();
 
-                 this->ShowCopyDialog(copydialog);
+				 this->ShowCopyDialog(copydialog);
 
-				
+
 
 				 /*
 				 //thread->Join();
 				 this->transfer_in_progress=false;
 
 				 if (this->checkBox1->Checked != copydialog->turbo_request)
-					 this->checkBox1->Checked = copydialog->turbo_request;
+				 this->checkBox1->Checked = copydialog->turbo_request;
 
 				 if (copydialog->file_error->Length > 0)
 				 {
-					 MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
+				 MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
 				 }
 
 				 this->loadComputerDir();
 				 this->absorb_late_packets(2,200);
 				 this->set_turbo_mode(0);
 				 if (!copydialog->is_closed)
-					 copydialog->close_request_threadsafe();
-			    */
+				 copydialog->close_request_threadsafe();
+				 */
 
 			 }
 
@@ -3946,36 +4048,36 @@ finish_transfer:
 
 				 //copydialog->TopLevel = false;this->panel1->Controls->Add(copydialog);copydialog->Show();copydialog->Visible=true;
 				 //copydialog->Dock = DockStyle::Bottom;
-				 
-				 
+
+
 				 this->transfer_in_progress=true;
 				 Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PVR));
 				 copydialog->thread = thread;
 				 thread->Start(copydialog);
 
-				 
+
 				 this->ShowCopyDialog(copydialog);
 
 				 //return;
-				 
+
 				 /*
 				 copydialog->showDialog_thread();
 				 thread->Join();
 				 this->transfer_in_progress=false;
 
 				 if ( copydialog->turbo_request != this->checkBox1->Checked)
-					 this->checkBox1->Checked = copydialog->turbo_request;
+				 this->checkBox1->Checked = copydialog->turbo_request;
 
 
 				 if (copydialog->file_error->Length > 0)
 				 {
-					 MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
+				 MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
 				 }
 
 				 this->loadTopfieldDir();
 				 this->absorb_late_packets(2,200);
 				 this->set_turbo_mode(0);
-                 */
+				 */
 
 			 }
 
@@ -4319,7 +4421,7 @@ finish_transfer:
 			 }
 			 int newTopfieldFolder(String^ dir)
 			 {
-				 
+
 				 int r;
 				 char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
 				 r = do_hdd_mkdir(this->fd,path);
@@ -4712,7 +4814,7 @@ finish_transfer:
 
 	private: System::Void Info_Click(System::Object^  sender, System::EventArgs^  e) {
 				 // Someone clicked "info" on either PVR or PC side
-				 
+
 				 ListView^ listview;
 
 				 if (sender == this->toolStripButton11)
@@ -4723,7 +4825,7 @@ finish_transfer:
 				 else
 					 listview = this->listView2;
 
-				 
+
 
 				 this->ViewInfo(listview);
 			 }
@@ -5018,13 +5120,15 @@ finish_transfer:
 					 copydialog->cancelled = true;
 
 					 //if (copydialog->thread != nullptr)
-					//	 copydialog->thread->Join();
+					 //	 copydialog->thread->Join();
 
 				 }
 			 }
-private: System::Void toolStripButton13_Click(System::Object^  sender, System::EventArgs^  e) {
-
-		 }
-};    // class form1
+	private: System::Void toolStripButton13_Click(System::Object^  sender, System::EventArgs^  e) {
+				 SettingsDialog^ sd = gcnew SettingsDialog(this->settings);
+				 sd->ShowDialog();
+				 this->Arrange2();
+			 }
+	};    // class form1
 };    // namespace antares
 
