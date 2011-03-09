@@ -1,14 +1,17 @@
 #pragma once
 
+#include "antares.h"
+
 using namespace System;
 using namespace System::ComponentModel;
 using namespace System::Collections;
 using namespace System::Windows::Forms;
 using namespace System::Data;
 using namespace System::Drawing;
-extern "C" {
-#include "FBLib_rec.h"
-}
+//extern "C" {
+//#include "FBLib_rec.h"
+//}
+
 
 namespace Antares {
 

@@ -28,6 +28,7 @@ typedef __u32 dword;
 
   typedef struct
   {
+	  int readsize;  // how many bytes were read from the file before trying to decode the header?
     HEADER_TYPE         HeaderType;
 
     dword               HeaderMagic;

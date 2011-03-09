@@ -14,7 +14,7 @@ extern "C" {
 #include "usb_io.h"
 #include "connect.h"
 #include "commands.h"
-
+#include "FBLib_rec.h"
 #include <time.h>
 
 
@@ -54,6 +54,7 @@ namespace Antares {
 
 
 
+
 	public value class TopfieldFreeSpace
 	{
 	public:
@@ -61,6 +62,10 @@ namespace Antares {
 		int totalk;
 		bool valid;
 	};
+
+
+
+
 
 	public ref class Icons {
 	public:
@@ -85,10 +90,14 @@ namespace Antares {
 		}
 		int GetCachedIconIndex(String ^path, bool istopfield)
 		{
+			//istopfield=true;
 			if (dic->ContainsKey(path))
 				return dic[path];
 			else
 			{
+
+				//if (fast_mode) return -1;
+
 				int ic;
 				if (istopfield)
 					ic=GetApproximateFileIconIndex(path);
@@ -98,7 +107,6 @@ namespace Antares {
 				if (ic>=0) 
 				{
 					dic->Add(path, ic);
-					//Console::WriteLine("In dictionary, "+path+" has index "+ic.ToString());
 				}
 
 				return ic;
@@ -128,7 +136,7 @@ namespace Antares {
 			return shinfo.iIcon;
 
 		}
-			static int GetApproximateFolderIconIndex(String ^ path)
+		static int GetApproximateFolderIconIndex(String ^ path)
 		{
 			SHFILEINFO shinfo;
 			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
@@ -199,7 +207,7 @@ namespace Antares {
 			this->size=0;
 			this->type='f';
 			this->filename=namestring;
-            this->full_filename = namestring;
+			this->full_filename = namestring;
 			this->recursion_offset="";
 			this->isdrive = true;
 			this->channel="";
@@ -213,7 +221,7 @@ namespace Antares {
 			FileInfo^ f = gcnew FileInfo(path);   //Todo: handle exceptions
 			FileAttributes attr = f->Attributes::get();
 			this->filename = Path::GetFileName(path);
-            this->isdrive = false;
+			this->isdrive = false;
 			String^ typestring;
 			String^ sizestring="";
 			this->recursion_offset="";
@@ -354,6 +362,63 @@ namespace Antares {
 	};
 
 
+	public ref class CachedProgramInformation
+	{
+	public:
+		String^ channel;
+		String^ description;
+		CachedProgramInformation(String^ ch, String ^ desc)
+		{
+			this->channel = ch;
+			this->description=desc;
+		}
+
+		void apply_to_item(FileItem^ item)
+		{
+			item->channel = this->channel;
+			item->description = this->description;
+			item->SubItems[4]->Text = item->channel;
+			item->SubItems[5]->Text = item->description;
+		}
+	};
+
+	public ref class ProgramInformationCache
+	{
+	public:
+		Dictionary<String^,  CachedProgramInformation^> ^dic;
+
+		String^ dic_key(FileItem^ item)
+		{
+			return item->full_filename + item->size.ToString();
+		}
+
+		ProgramInformationCache(void)
+		{
+			dic = gcnew Dictionary<String^, CachedProgramInformation^>;
+		}
+		CachedProgramInformation^ query(FileItem^ item)
+		{
+			String^ key = dic_key(item);
+			if (dic->ContainsKey(key))
+				return dic[key];
+
+			return nullptr;
+		}
+
+		void add(FileItem^ item)
+		{
+			String^ key = dic_key(item);
+			CachedProgramInformation^ pi = gcnew CachedProgramInformation(item->channel, item->description);
+			dic[key]=pi;
+
+		}
+
+
+
+	};
+
+
+
 
 	public ref class ListViewItemComparer : System::Collections::IComparer {
 	public:
@@ -400,7 +465,13 @@ namespace Antares {
 			if (this->col == 2) return 0; //(currently only recognise two types)
 
 			// Sort by date
-			return String::Compare(fx->datestring, fy->datestring);
+			if (this->col == 3) return String::Compare(fx->datestring, fy->datestring);
+
+			if (this->col == 4) return String::Compare(fx->channel, fy->channel);
+
+			if (this->col == 5) return String::Compare(fx->description, fy->description);
+
+			return 1;
 
 
 		}

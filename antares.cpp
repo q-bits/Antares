@@ -345,6 +345,7 @@ int main(array<System::String ^> ^args)
 
     
 	Application::Run(form);
+	form->topfield_background_enumerator=nullptr;
 
 
 	settings->writeXmlSettings();

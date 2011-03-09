@@ -75,6 +75,9 @@ namespace Antares {
 	delegate void TopfieldSummaryCallback(void);
 	delegate void CheckConnectionCallback(void);
 	delegate void TransferEndedCallback(void);
+	delegate void ComputerBackgroundCallback(void);
+	delegate void TopfieldBackgroundCallback(void);
+
 
 
 	//TODO: put these prototypes somewhere better
@@ -177,6 +180,10 @@ namespace Antares {
 			this->pid=0;
 
 			this->current_copydialog = nullptr;
+			this->topfield_background_enumerator = nullptr;
+			this->computer_background_enumerator = nullptr;
+
+			this->proginfo_cache = gcnew ProgramInformationCache();
 
 			icons = gcnew Antares::Icons();
 
@@ -385,6 +392,7 @@ namespace Antares {
 				{
 					this->label2->Text = error_str;
 					this->listView1->Items->Clear();
+					this->topfield_background_enumerator=nullptr;
 				}
 			}
 		}
@@ -777,6 +785,83 @@ check_freespace:
 
 
 
+		void computerBackgroundWork(void)
+		{
+
+			try
+			{
+			System::Collections::IEnumerator ^en = this->computer_background_enumerator;
+			if (en==nullptr) return;
+			tRECHeaderInfo ri;
+
+			if (en->MoveNext())
+			{ 
+				ComputerItem^ item = safe_cast<ComputerItem^>(en->Current);
+				//Console::WriteLine(item->full_filename);
+
+				if (this->proginfo_cache->query(item)==nullptr)
+				{
+					this->loadInfo(item,&ri);
+					this->proginfo_cache->add(item);
+				}
+					ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
+				
+					Application::DoEvents();
+					this->BeginInvoke(d);
+				
+
+			}
+			}
+			catch(...)
+			{
+			}
+
+
+		}
+
+
+		void  topfieldBackgroundWork(void)
+		{
+
+			try{
+
+			System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
+			if (en==nullptr) return;
+
+			tRECHeaderInfo ri;
+
+			if (en->MoveNext())
+			{ 
+				TopfieldItem^ item = safe_cast<TopfieldItem^>(en->Current);
+				//Console::WriteLine(item->full_filename);
+
+				if (this->proginfo_cache->query(item)==nullptr)
+				{
+					ri.readsize=0;
+					this->loadInfo(item,&ri);
+					Console::WriteLine(item->full_filename);
+					printf(" item->size = %d,  readsize=%d\n",(int)item->size, (int)ri.readsize);
+					if (!(item->size > 2048 && ri.readsize<2048))
+						this->proginfo_cache->add(item);
+				}
+				TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
+				Application::DoEvents();
+				
+				if (this->transfer_in_progress) return;
+
+				this->BeginInvoke(d);
+
+			}
+
+
+			}
+			catch (...)    //Todo: find out why there is an exception here when you close window while bkgnd work pending.
+			{
+		
+			}
+
+
+		}
 
 
 
@@ -843,15 +928,21 @@ check_freespace:
 				for (j=0; j<items->Length; j++)
 				{
 					item = items[j];
-					int ic = this->icons->GetCachedIconIndex(item->full_filename);
+					int ic = this->icons->GetCachedIconIndex(item->full_filename,false);
 					if (ic >= 0)
 					{
 						item->ImageIndex = ic;
 					}
 					else
 					{
-						item->ImageIndex = this->icons->file_index;
+						if (item->isdir)
+							item->ImageIndex = this->icons->folder_index;
+						else
+							item->ImageIndex = this->icons->file_index;
 					}
+
+					CachedProgramInformation^ pi = this->proginfo_cache->query(item);
+					if (pi!=nullptr) pi->apply_to_item(item);
 
 					if (String::Compare(item->filename, start_rename)==0)
 					{
@@ -882,6 +973,7 @@ check_freespace:
 				{
 					label1->Text = "";
 				}
+				ListView::ListViewItemCollection^ q = this->listView2->Items; 
 				if (do_rename) rename_item->BeginEdit();
 				else if (do_select)
 				{
@@ -891,9 +983,19 @@ check_freespace:
 				}
 				else
 				{
-					ListView::ListViewItemCollection^ q = this->listView2->Items; 
+					
 					if (q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
 				}
+
+				this->computer_background_enumerator = q->GetEnumerator();
+				if (this->settings["PC_Column4Visible"]=="1" || this->settings["PC_Column5Visible"]=="1")
+				{
+					ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
+					this->BeginInvoke(d);
+
+				}
+
+
 
 			}
 
@@ -1167,6 +1269,11 @@ check_freespace:
 					select_item = item; do_select=true;
 				}
 
+
+
+				CachedProgramInformation^ pi = this->proginfo_cache->query(item);
+				if (pi!=nullptr) pi->apply_to_item(item);
+
 				if (String::Compare(this->topfieldCurrentDirectory, this->TopfieldClipboardDirectory)==0)
 				{
 					int numc = this->TopfieldClipboard->Length;
@@ -1191,6 +1298,7 @@ check_freespace:
 			this->listView1->Items->Clear();
 			this->listView1->Items->AddRange(items);
 			this->listView1->EndUpdate();
+			ListView::ListViewItemCollection^ q = this->listView1->Items; 
 			if (do_rename) rename_item->BeginEdit();
 			else if (do_select)
 			{
@@ -1200,9 +1308,18 @@ check_freespace:
 			}
 			else
 			{
-				ListView::ListViewItemCollection^ q = this->listView1->Items; 
+				
 				if (q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
 			}
+
+			this->topfield_background_enumerator = q->GetEnumerator();
+			if (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1")
+			{
+				TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
+				this->BeginInvoke(d);
+
+			}
+
 
 			this->Arrange2();
 			return 0;
@@ -1304,6 +1421,13 @@ check_freespace:
 			int pid;
 
 			CopyDialog^ current_copydialog;
+
+			// used for updating the program details columns in the background;
+			System::Collections::IEnumerator ^topfield_background_enumerator;
+            System::Collections::IEnumerator ^computer_background_enumerator;
+
+			ProgramInformationCache^ proginfo_cache;
+
 
 
 	private: System::Windows::Forms::StatusStrip^  statusStrip1;
@@ -4736,6 +4860,109 @@ finish_transfer:
 
 			 //////////////////////////////
 
+			 bool loadInfo(FileItem^ item,   tRECHeaderInfo *ri)
+			 {
+
+				 ComputerItem ^citem;
+				 TopfieldItem ^titem;
+				 bool ret;
+				 citem = dynamic_cast<ComputerItem^>(item);
+				 if (citem!=nullptr)
+				 {
+					 ret = this->computerLoadInfo(citem, ri);
+				 }
+				 else 
+				 {
+					 titem = dynamic_cast<TopfieldItem^>(item);
+					 if (titem!=nullptr)
+					 {
+						 ret = this->topfieldLoadInfo(titem,ri);
+					 }
+					 else
+						 return false;
+				 }
+				 if (!ret) return false;
+
+				 item->channel = gcnew String(ri->SISvcName);
+				 //String^ title = gcnew String(ri->EventEventName);
+				 item->description = gcnew String(ri->EventEventDescription);
+				 String^ ext = gcnew String(ri->ExtEventText);
+				 if (item->description->Length >0 && ext->Length >0 )
+				 {
+					 item->description = item->description + "  --- ";
+				 }
+				 item->description = item->description + ext;
+
+				 item->SubItems[4]->Text = item->channel;
+				 item->SubItems[5]->Text = item->description;
+
+				 return ret;
+			 }
+
+
+   
+			 bool computerLoadInfo(ComputerItem^ item, tRECHeaderInfo *ri)
+			 {
+
+				 const int readsize = 2048;
+				 char charbuf[readsize]; 
+				 array<Byte>^ buffer = gcnew array<Byte>(readsize);
+				 FileStream^ file;
+				 try{
+					 file = File::Open(item->full_filename,System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
+				 }
+				 catch(...)
+				 {
+
+					 return false;
+				 }
+
+				 int size;
+				 try {
+
+					 size = file->Read(buffer, 0, readsize);
+					 file->Close();
+				 }
+				 catch(...)
+				 {
+					 return false;
+				 }
+
+				 if (size==readsize)
+				 {
+
+					 Marshal::Copy(buffer,0,System::IntPtr( &charbuf[0]),size);
+					 HDD_DecodeRECHeader (charbuf, ri);
+					 ri->readsize=size;
+					 return true;
+				 }
+				 else
+					 return false;
+
+
+			 }
+
+			 bool topfieldLoadInfo(TopfieldItem^ item,  tRECHeaderInfo *ri)
+			 {
+				 const int readsize = 2048;
+				 char charbuf[readsize];
+				 if (this->transfer_in_progress) return false;
+				 this->transfer_in_progress = true;
+				 array<Byte>^ buff = this->read_topfield_file_snippet(item->full_filename, 0);
+				 this->transfer_in_progress=false;
+				 int size = buff->Length;
+				 if (size>=readsize)
+				 {
+					 Marshal::Copy(buff,0,System::IntPtr( &charbuf[0]),readsize);
+					 HDD_DecodeRECHeader (charbuf, ri);
+					 ri->readsize = size;
+					 return true;
+				 }
+				 else return false;
+
+			 }
+
+
 	private:  System::Void ViewInfo(ListView^ listview)
 			  {
 				  int type;
@@ -4744,69 +4971,40 @@ finish_transfer:
 				  System::Collections::IEnumerator^ myEnum = selected->GetEnumerator();
 				  FileItem^ item;
 				  tRECHeaderInfo ri;
-				  const int readsize = 2048;
 
-				  char charbuf[readsize]; 
 				  while ( myEnum->MoveNext() )
 				  {
 
 
 					  item = safe_cast<FileItem^>(myEnum->Current);
 					  if (item->isdir) continue;
-					  String^ fname = item->directory + "\\" + item->filename;
-					  if (type==1)
-					  {
-						  array<Byte>^ buffer = gcnew array<Byte>(readsize);
-						  FileStream^ file;
-						  try{
-							  file = File::Open(fname,System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
-						  }
-						  catch(...)
-						  {
-							  this->loadComputerDir();
-							  return;
-						  }
 
-						  int size = file->Read(buffer, 0, readsize);
-						  file->Close();
-						  if (size==readsize)
-						  {
+					  bool ret =  this->loadInfo(item, &ri);
 
-							  Marshal::Copy(buffer,0,System::IntPtr( &charbuf[0]),size);
-							  HDD_DecodeRECHeader (charbuf, &ri);
+					  if (ret)
+						 {
 
-							  // int j;
-							  // printf("-----------------------\n");
-							  // printf("HeaderSvcNumber = %d\n",ri.HeaderSvcNumber);
-							  // printf("Event Duration = %02d:%02d\n",ri.EventDurationHour,ri.EventDurationMin);
-							  // printf("Header duration = %d \n",ri.HeaderDuration);
-							  // printf("SISvcName = %s\n",ri.SISvcName);
-							  // printf("EventEventName = %s\n",ri.EventEventName);
-							  // printf("EventEventDescription = %s\n",ri.EventEventDescription);
-							  // printf("ExtEventText = %s\n",ri.ExtEventText);
-							  // printf("-----------------------\n");
 
-							  ProgInfo^ pi = gcnew ProgInfo(&ri,"Program Information, "+fname);
+							 // int j;
+							 // printf("-----------------------\n");
+							 // printf("HeaderSvcNumber = %d\n",ri.HeaderSvcNumber);
+							 // printf("Event Duration = %02d:%02d\n",ri.EventDurationHour,ri.EventDurationMin);
+							 // printf("Header duration = %d \n",ri.HeaderDuration);
+							 // printf("SISvcName = %s\n",ri.SISvcName);
+							 // printf("EventEventName = %s\n",ri.EventEventName);
+							 // printf("EventEventDescription = %s\n",ri.EventEventDescription);
+							 // printf("ExtEventText = %s\n",ri.ExtEventText);
+							 // printf("-----------------------\n");
 
-							  pi->ShowDialog(this);
-							  break;
-						  }
+							 //item->description = gcnew String(ri.EventEventDescription);
+							 //item->channel = gcnew String(ri.SISvcName);
+
+							 ProgInfo^ pi = gcnew ProgInfo(&ri,"Program Information, "+item->full_filename);
+
+							 pi->ShowDialog(this);
+							 break;
 					  }
-					  else  //type =0
-					  {
 
-						  array<Byte>^ buff = this->read_topfield_file_snippet(fname, 0);
-						  int size = buff->Length;
-						  if (size>=readsize)
-						  {
-							  Marshal::Copy(buff,0,System::IntPtr( &charbuf[0]),readsize);
-							  HDD_DecodeRECHeader (charbuf, &ri);
-							  ProgInfo^ pi = gcnew ProgInfo(&ri,"Program Information, "+fname);
-
-							  pi->ShowDialog(this);
-							  break;
-						  }
-					  }
 
 				  }
 			  }
@@ -5127,7 +5325,9 @@ finish_transfer:
 	private: System::Void toolStripButton13_Click(System::Object^  sender, System::EventArgs^  e) {
 				 SettingsDialog^ sd = gcnew SettingsDialog(this->settings);
 				 sd->ShowDialog();
-				 this->Arrange2();
+				 this->loadComputerDir();
+				 this->loadTopfieldDir();
+				 //this->Arrange2();
 			 }
 	};    // class form1
 };    // namespace antares
