@@ -5327,7 +5327,7 @@ finish_transfer:
 				 sd->ShowDialog();
 				 this->loadComputerDir();
 				 this->loadTopfieldDir();
-				 //this->Arrange2();
+				 this->Arrange2();
 			 }
 	};    // class form1
 };    // namespace antares
