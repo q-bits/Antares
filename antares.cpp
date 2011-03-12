@@ -343,7 +343,7 @@ int main(array<System::String ^> ^args)
 
     Settings ^settings = form->settings;
 
-    
+    form->Focus();
 	Application::Run(form);
 	form->topfield_background_enumerator=nullptr;
 

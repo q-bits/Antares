@@ -209,6 +209,8 @@ namespace Antares {
 			this->Controls->Add(this->button1);
 			this->Controls->Add(this->groupBox1);
 			this->Name = L"SettingsDialog";
+			this->ShowIcon = false;
+			this->ShowInTaskbar = false;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;
 			this->Text = L"Antares Settings";
 			this->groupBox1->ResumeLayout(false);

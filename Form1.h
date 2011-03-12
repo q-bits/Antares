@@ -1432,16 +1432,16 @@ check_freespace:
 
 	private: System::Windows::Forms::StatusStrip^  statusStrip1;
 	private: System::Windows::Forms::Panel^  panel1;
-	private: System::Windows::Forms::Panel^  panel3;
-	private: System::Windows::Forms::CheckBox^  checkBox1;
 
-	private: System::Windows::Forms::Label^  label2;
-	private: System::Windows::Forms::ToolStrip^  toolStrip2;
-	private: System::Windows::Forms::ToolStripButton^  toolStripButton5;
-	private: System::Windows::Forms::ToolStripButton^  toolStripButton6;
-	private: System::Windows::Forms::ToolStripButton^  toolStripButton7;
-	private: System::Windows::Forms::ToolStripButton^  toolStripButton8;
-	public: System::Windows::Forms::ListView^  listView1;
+
+
+
+
+
+
+
+
+
 	private: 
 
 	private: System::Windows::Forms::Panel^  panel2;
@@ -1465,23 +1465,51 @@ check_freespace:
 
 
 
-	private: System::Windows::Forms::ToolStripButton^  toolStripButton9;
 
-	private: System::Windows::Forms::ToolStripButton^  toolStripButton10;
-	private: System::Windows::Forms::Panel^  panel5;
-	public: System::Windows::Forms::TextBox^  textBox2;
+
+
+
+
 	private: 
 
-	private: System::Windows::Forms::Panel^  panel6;
+
 	private: System::Windows::Forms::TextBox^  textBox1;
-	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator1;
-	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
-	private: System::Windows::Forms::ToolStripButton^  toolStripButton11;
+
+
+
 	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator3;
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton12;
-	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator4;
+
 	private: System::Windows::Forms::NotifyIcon^  notifyIcon1;
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton13;
+
+
+private: System::Windows::Forms::Panel^  panel7;
+private: System::Windows::Forms::RadioButton^  radioButton2;
+private: System::Windows::Forms::RadioButton^  radioButton1;
+private: System::Windows::Forms::Panel^  panel8;
+private: System::Windows::Forms::Panel^  panel3;
+public: System::Windows::Forms::TextBox^  textBox2;
+private: 
+private: System::Windows::Forms::CheckBox^  checkBox1;
+public: 
+private: System::Windows::Forms::Label^  label2;
+private: System::Windows::Forms::ToolStrip^  toolStrip2;
+private: System::Windows::Forms::ToolStripButton^  toolStripButton5;
+private: System::Windows::Forms::ToolStripButton^  toolStripButton6;
+private: System::Windows::Forms::ToolStripButton^  toolStripButton7;
+private: System::Windows::Forms::ToolStripButton^  toolStripButton8;
+private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator1;
+private: System::Windows::Forms::ToolStripButton^  toolStripButton9;
+private: System::Windows::Forms::ToolStripButton^  toolStripButton10;
+private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
+private: System::Windows::Forms::ToolStripButton^  toolStripButton11;
+
+public: System::Windows::Forms::ListView^  listView1;
+private: 
+
+
+
 
 
 
@@ -1517,7 +1545,6 @@ check_freespace:
 			this->toolStripStatusLabel1 = (gcnew System::Windows::Forms::ToolStripStatusLabel());
 			this->panel1 = (gcnew System::Windows::Forms::Panel());
 			this->panel3 = (gcnew System::Windows::Forms::Panel());
-			this->panel5 = (gcnew System::Windows::Forms::Panel());
 			this->textBox2 = (gcnew System::Windows::Forms::TextBox());
 			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
 			this->label2 = (gcnew System::Windows::Forms::Label());
@@ -1531,13 +1558,15 @@ check_freespace:
 			this->toolStripButton10 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripSeparator2 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->toolStripButton11 = (gcnew System::Windows::Forms::ToolStripButton());
-			this->toolStripSeparator4 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->listView1 = (gcnew System::Windows::Forms::ListView());
 			this->panel2 = (gcnew System::Windows::Forms::Panel());
 			this->button2 = (gcnew System::Windows::Forms::Button());
 			this->button1 = (gcnew System::Windows::Forms::Button());
+			this->panel7 = (gcnew System::Windows::Forms::Panel());
+			this->radioButton2 = (gcnew System::Windows::Forms::RadioButton());
+			this->radioButton1 = (gcnew System::Windows::Forms::RadioButton());
+			this->panel8 = (gcnew System::Windows::Forms::Panel());
 			this->panel4 = (gcnew System::Windows::Forms::Panel());
-			this->panel6 = (gcnew System::Windows::Forms::Panel());
 			this->textBox1 = (gcnew System::Windows::Forms::TextBox());
 			this->label1 = (gcnew System::Windows::Forms::Label());
 			this->toolStrip1 = (gcnew System::Windows::Forms::ToolStrip());
@@ -1555,11 +1584,10 @@ check_freespace:
 			this->statusStrip1->SuspendLayout();
 			this->panel1->SuspendLayout();
 			this->panel3->SuspendLayout();
-			this->panel5->SuspendLayout();
 			this->toolStrip2->SuspendLayout();
 			this->panel2->SuspendLayout();
+			this->panel7->SuspendLayout();
 			this->panel4->SuspendLayout();
-			this->panel6->SuspendLayout();
 			this->toolStrip1->SuspendLayout();
 			this->SuspendLayout();
 			// 
@@ -1568,7 +1596,7 @@ check_freespace:
 			this->statusStrip1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->statusStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(1) {this->toolStripStatusLabel1});
-			this->statusStrip1->Location = System::Drawing::Point(0, 638);
+			this->statusStrip1->Location = System::Drawing::Point(0, 567);
 			this->statusStrip1->Name = L"statusStrip1";
 			this->statusStrip1->Size = System::Drawing::Size(880, 22);
 			this->statusStrip1->TabIndex = 9;
@@ -1587,14 +1615,14 @@ check_freespace:
 			this->panel1->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->panel1->Location = System::Drawing::Point(0, 0);
 			this->panel1->Name = L"panel1";
-			this->panel1->Size = System::Drawing::Size(880, 638);
+			this->panel1->Size = System::Drawing::Size(880, 567);
 			this->panel1->TabIndex = 10;
 			// 
 			// panel3
 			// 
 			this->panel3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->panel3->Controls->Add(this->panel5);
+			this->panel3->Controls->Add(this->textBox2);
 			this->panel3->Controls->Add(this->checkBox1);
 			this->panel3->Controls->Add(this->label2);
 			this->panel3->Controls->Add(this->toolStrip2);
@@ -1603,19 +1631,8 @@ check_freespace:
 			this->panel3->Location = System::Drawing::Point(0, 0);
 			this->panel3->Margin = System::Windows::Forms::Padding(0, 3, 0, 3);
 			this->panel3->Name = L"panel3";
-			this->panel3->Size = System::Drawing::Size(495, 638);
+			this->panel3->Size = System::Drawing::Size(495, 567);
 			this->panel3->TabIndex = 8;
-			// 
-			// panel5
-			// 
-			this->panel5->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->panel5->Controls->Add(this->textBox2);
-			this->panel5->Dock = System::Windows::Forms::DockStyle::Top;
-			this->panel5->Location = System::Drawing::Point(0, 62);
-			this->panel5->Name = L"panel5";
-			this->panel5->Size = System::Drawing::Size(495, 32);
-			this->panel5->TabIndex = 8;
 			// 
 			// textBox2
 			// 
@@ -1625,11 +1642,11 @@ check_freespace:
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->textBox2->Font = (gcnew System::Drawing::Font(L"Lucida Console", 10));
 			this->textBox2->ForeColor = System::Drawing::Color::Navy;
-			this->textBox2->Location = System::Drawing::Point(9, 7);
+			this->textBox2->Location = System::Drawing::Point(9, 69);
 			this->textBox2->Margin = System::Windows::Forms::Padding(90);
 			this->textBox2->Multiline = true;
 			this->textBox2->Name = L"textBox2";
-			this->textBox2->Size = System::Drawing::Size(483, 19);
+			this->textBox2->Size = System::Drawing::Size(486, 20);
 			this->textBox2->TabIndex = 7;
 			this->textBox2->Text = L"\\ProgramFiles";
 			// 
@@ -1638,9 +1655,9 @@ check_freespace:
 			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->checkBox1->AutoSize = true;
 			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+				static_cast<System::Int32>(static_cast<System::Byte>(240)));
 			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F));
-			this->checkBox1->Location = System::Drawing::Point(409, 12);
+			this->checkBox1->Location = System::Drawing::Point(407, 42);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 7;
@@ -1650,34 +1667,41 @@ check_freespace:
 			// 
 			// label2
 			// 
+			this->label2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->label2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(240)));
 			this->label2->BorderStyle = System::Windows::Forms::BorderStyle::Fixed3D;
-			this->label2->Dock = System::Windows::Forms::DockStyle::Top;
 			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label2->Location = System::Drawing::Point(0, 38);
+			this->label2->Location = System::Drawing::Point(9, 38);
 			this->label2->Margin = System::Windows::Forms::Padding(5);
 			this->label2->Name = L"label2";
 			this->label2->Padding = System::Windows::Forms::Padding(5, 0, 0, 0);
-			this->label2->Size = System::Drawing::Size(495, 24);
+			this->label2->Size = System::Drawing::Size(486, 24);
 			this->label2->TabIndex = 5;
 			this->label2->Text = L"PVR: Device not connected";
 			this->label2->TextAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			// 
 			// toolStrip2
 			// 
+			this->toolStrip2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->toolStrip2->AutoSize = false;
 			this->toolStrip2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->toolStrip2->Dock = System::Windows::Forms::DockStyle::None;
 			this->toolStrip2->GripMargin = System::Windows::Forms::Padding(1);
-			this->toolStrip2->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(10) {this->toolStripButton5, 
+			this->toolStrip2->GripStyle = System::Windows::Forms::ToolStripGripStyle::Hidden;
+			this->toolStrip2->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(9) {this->toolStripButton5, 
 				this->toolStripButton6, this->toolStripButton7, this->toolStripButton8, this->toolStripSeparator1, this->toolStripButton9, this->toolStripButton10, 
-				this->toolStripSeparator2, this->toolStripButton11, this->toolStripSeparator4});
+				this->toolStripSeparator2, this->toolStripButton11});
 			this->toolStrip2->LayoutStyle = System::Windows::Forms::ToolStripLayoutStyle::HorizontalStackWithOverflow;
-			this->toolStrip2->Location = System::Drawing::Point(0, 0);
+			this->toolStrip2->Location = System::Drawing::Point(9, 0);
 			this->toolStrip2->Name = L"toolStrip2";
 			this->toolStrip2->Padding = System::Windows::Forms::Padding(0, 0, 4, 0);
-			this->toolStrip2->Size = System::Drawing::Size(495, 38);
+			this->toolStrip2->Size = System::Drawing::Size(486, 38);
+			this->toolStrip2->Stretch = true;
 			this->toolStrip2->TabIndex = 4;
 			this->toolStrip2->Text = L"toolStrip2";
 			// 
@@ -1784,11 +1808,6 @@ check_freespace:
 			this->toolStripButton11->ToolTipText = L"Show program info";
 			this->toolStripButton11->Click += gcnew System::EventHandler(this, &Form1::Info_Click);
 			// 
-			// toolStripSeparator4
-			// 
-			this->toolStripSeparator4->Name = L"toolStripSeparator4";
-			this->toolStripSeparator4->Size = System::Drawing::Size(6, 38);
-			// 
 			// listView1
 			// 
 			this->listView1->AllowDrop = true;
@@ -1804,7 +1823,7 @@ check_freespace:
 			this->listView1->Location = System::Drawing::Point(9, 93);
 			this->listView1->Margin = System::Windows::Forms::Padding(0);
 			this->listView1->Name = L"listView1";
-			this->listView1->Size = System::Drawing::Size(483, 545);
+			this->listView1->Size = System::Drawing::Size(486, 474);
 			this->listView1->TabIndex = 0;
 			this->listView1->UseCompatibleStateImageBehavior = false;
 			this->listView1->View = System::Windows::Forms::View::Details;
@@ -1821,10 +1840,12 @@ check_freespace:
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel2->Controls->Add(this->button2);
 			this->panel2->Controls->Add(this->button1);
+			this->panel2->Controls->Add(this->panel7);
+			this->panel2->Controls->Add(this->panel8);
 			this->panel2->Dock = System::Windows::Forms::DockStyle::Right;
 			this->panel2->Location = System::Drawing::Point(495, 0);
 			this->panel2->Name = L"panel2";
-			this->panel2->Size = System::Drawing::Size(47, 638);
+			this->panel2->Size = System::Drawing::Size(47, 567);
 			this->panel2->TabIndex = 7;
 			// 
 			// button2
@@ -1837,7 +1858,7 @@ check_freespace:
 			this->button2->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->button2->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"button2.Image")));
-			this->button2->Location = System::Drawing::Point(6, 342);
+			this->button2->Location = System::Drawing::Point(4, 324);
 			this->button2->Name = L"button2";
 			this->button2->Size = System::Drawing::Size(38, 37);
 			this->button2->TabIndex = 2;
@@ -1854,37 +1875,74 @@ check_freespace:
 			this->button1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->button1->Image = (cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"button1.Image")));
-			this->button1->Location = System::Drawing::Point(6, 268);
+			this->button1->Location = System::Drawing::Point(4, 268);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(38, 37);
 			this->button1->TabIndex = 1;
 			this->button1->UseVisualStyleBackColor = true;
 			this->button1->Click += gcnew System::EventHandler(this, &Form1::button1_Click);
 			// 
+			// panel7
+			// 
+			this->panel7->BackColor = System::Drawing::Color::WhiteSmoke;
+			this->panel7->Controls->Add(this->radioButton2);
+			this->panel7->Controls->Add(this->radioButton1);
+			this->panel7->Location = System::Drawing::Point(5, 170);
+			this->panel7->Name = L"panel7";
+			this->panel7->Size = System::Drawing::Size(36, 77);
+			this->panel7->TabIndex = 5;
+			// 
+			// radioButton2
+			// 
+			this->radioButton2->AutoSize = true;
+			this->radioButton2->BackColor = System::Drawing::Color::WhiteSmoke;
+			this->radioButton2->CheckAlign = System::Drawing::ContentAlignment::TopCenter;
+			this->radioButton2->FlatStyle = System::Windows::Forms::FlatStyle::Popup;
+			this->radioButton2->Location = System::Drawing::Point(-1, 39);
+			this->radioButton2->Name = L"radioButton2";
+			this->radioButton2->Size = System::Drawing::Size(38, 29);
+			this->radioButton2->TabIndex = 6;
+			this->radioButton2->Text = L"Move";
+			this->radioButton2->UseMnemonic = false;
+			this->radioButton2->UseVisualStyleBackColor = false;
+			// 
+			// radioButton1
+			// 
+			this->radioButton1->AutoSize = true;
+			this->radioButton1->BackColor = System::Drawing::Color::WhiteSmoke;
+			this->radioButton1->CheckAlign = System::Drawing::ContentAlignment::TopCenter;
+			this->radioButton1->Checked = true;
+			this->radioButton1->FlatStyle = System::Windows::Forms::FlatStyle::Popup;
+			this->radioButton1->Location = System::Drawing::Point(1, 4);
+			this->radioButton1->Margin = System::Windows::Forms::Padding(3, 7, 3, 7);
+			this->radioButton1->Name = L"radioButton1";
+			this->radioButton1->Size = System::Drawing::Size(35, 29);
+			this->radioButton1->TabIndex = 5;
+			this->radioButton1->Text = L"Copy";
+			this->radioButton1->UseMnemonic = false;
+			this->radioButton1->UseVisualStyleBackColor = false;
+			// 
+			// panel8
+			// 
+			this->panel8->BackColor = System::Drawing::Color::White;
+			this->panel8->Location = System::Drawing::Point(4, 169);
+			this->panel8->Name = L"panel8";
+			this->panel8->Size = System::Drawing::Size(38, 79);
+			this->panel8->TabIndex = 6;
+			// 
 			// panel4
 			// 
 			this->panel4->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->panel4->Controls->Add(this->panel6);
+			this->panel4->Controls->Add(this->textBox1);
 			this->panel4->Controls->Add(this->label1);
 			this->panel4->Controls->Add(this->toolStrip1);
 			this->panel4->Controls->Add(this->listView2);
 			this->panel4->Dock = System::Windows::Forms::DockStyle::Right;
 			this->panel4->Location = System::Drawing::Point(542, 0);
 			this->panel4->Name = L"panel4";
-			this->panel4->Size = System::Drawing::Size(338, 638);
+			this->panel4->Size = System::Drawing::Size(338, 567);
 			this->panel4->TabIndex = 6;
-			// 
-			// panel6
-			// 
-			this->panel6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->panel6->Controls->Add(this->textBox1);
-			this->panel6->Dock = System::Windows::Forms::DockStyle::Top;
-			this->panel6->Location = System::Drawing::Point(0, 62);
-			this->panel6->Name = L"panel6";
-			this->panel6->Size = System::Drawing::Size(338, 32);
-			this->panel6->TabIndex = 6;
 			// 
 			// textBox1
 			// 
@@ -1896,39 +1954,45 @@ check_freespace:
 				static_cast<System::Byte>(0)));
 			this->textBox1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(128)));
-			this->textBox1->Location = System::Drawing::Point(6, 7);
+			this->textBox1->Location = System::Drawing::Point(0, 69);
 			this->textBox1->Name = L"textBox1";
-			this->textBox1->Size = System::Drawing::Size(320, 20);
+			this->textBox1->Size = System::Drawing::Size(326, 20);
 			this->textBox1->TabIndex = 6;
 			this->textBox1->Text = L"c:\\Topfield\\mp3";
 			// 
 			// label1
 			// 
+			this->label1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->label1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(240)));
 			this->label1->BorderStyle = System::Windows::Forms::BorderStyle::Fixed3D;
-			this->label1->Dock = System::Windows::Forms::DockStyle::Top;
 			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label1->Location = System::Drawing::Point(0, 38);
 			this->label1->Margin = System::Windows::Forms::Padding(5);
 			this->label1->Name = L"label1";
 			this->label1->Padding = System::Windows::Forms::Padding(5, 0, 0, 0);
-			this->label1->Size = System::Drawing::Size(338, 24);
+			this->label1->Size = System::Drawing::Size(324, 24);
 			this->label1->TabIndex = 4;
 			this->label1->Text = L"label1";
 			this->label1->TextAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			// 
 			// toolStrip1
 			// 
+			this->toolStrip1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->toolStrip1->AutoSize = false;
 			this->toolStrip1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->toolStrip1->Dock = System::Windows::Forms::DockStyle::None;
+			this->toolStrip1->GripStyle = System::Windows::Forms::ToolStripGripStyle::Hidden;
 			this->toolStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(7) {this->toolStripButton1, 
 				this->toolStripButton2, this->toolStripButton3, this->toolStripButton4, this->toolStripSeparator3, this->toolStripButton13, this->toolStripButton12});
-			this->toolStrip1->Location = System::Drawing::Point(0, 0);
+			this->toolStrip1->Location = System::Drawing::Point(6, 0);
 			this->toolStrip1->Name = L"toolStrip1";
 			this->toolStrip1->Padding = System::Windows::Forms::Padding(0, 0, 4, 0);
-			this->toolStrip1->Size = System::Drawing::Size(338, 38);
+			this->toolStrip1->Size = System::Drawing::Size(323, 38);
 			this->toolStrip1->TabIndex = 3;
 			this->toolStrip1->Text = L"toolStrip1";
 			// 
@@ -2030,9 +2094,9 @@ check_freespace:
 			this->listView2->GridLines = true;
 			this->listView2->HideSelection = false;
 			this->listView2->LabelEdit = true;
-			this->listView2->Location = System::Drawing::Point(6, 93);
+			this->listView2->Location = System::Drawing::Point(0, 93);
 			this->listView2->Name = L"listView2";
-			this->listView2->Size = System::Drawing::Size(320, 545);
+			this->listView2->Size = System::Drawing::Size(326, 474);
 			this->listView2->TabIndex = 2;
 			this->listView2->UseCompatibleStateImageBehavior = false;
 			this->listView2->View = System::Windows::Forms::View::Details;
@@ -2067,13 +2131,13 @@ check_freespace:
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->AutoSize = true;
-			this->ClientSize = System::Drawing::Size(880, 660);
+			this->ClientSize = System::Drawing::Size(880, 589);
 			this->Controls->Add(this->panel1);
 			this->Controls->Add(this->statusStrip1);
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.7.2";
+			this->Text = L"Antares  0.7.3";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2086,15 +2150,13 @@ check_freespace:
 			this->panel1->ResumeLayout(false);
 			this->panel3->ResumeLayout(false);
 			this->panel3->PerformLayout();
-			this->panel5->ResumeLayout(false);
-			this->panel5->PerformLayout();
 			this->toolStrip2->ResumeLayout(false);
 			this->toolStrip2->PerformLayout();
 			this->panel2->ResumeLayout(false);
+			this->panel7->ResumeLayout(false);
+			this->panel7->PerformLayout();
 			this->panel4->ResumeLayout(false);
 			this->panel4->PerformLayout();
-			this->panel6->ResumeLayout(false);
-			this->panel6->PerformLayout();
 			this->toolStrip1->ResumeLayout(false);
 			this->toolStrip1->PerformLayout();
 			this->ResumeLayout(false);
@@ -2169,7 +2231,7 @@ check_freespace:
 			   {
 				   //Console::WriteLine("Layout--");
 
-				   array<Control^>^ arr = {this,panel1,panel2,panel3, panel4,panel5,listView2};
+				   array<Control^>^ arr = {this,panel1,panel2,panel3, panel4,listView2};
 
 				   //				for (int j=0; j<arr->Length; j++) arr[j]->SuspendLayout();
 
@@ -2326,11 +2388,25 @@ check_freespace:
 	private: System::Void Arrange_Buttons(void)
 			 {
 
+				 int d1=12;
+				 int d2=12;
+				 int d3=98;
+
 				 int ph = this->panel2->Height;
 				 int bh = this->button1->Height;
-				 int bp1 = 2*ph/3 - 18 - bh;
-				 int bp2 = 2*ph/3 + 18;
-				 if (bp1>268) {bp1=268; bp2=bp1+36+bh;}
+				 int bp1 = ph/3 - d1 - bh;
+				 //int bp2 = 2*ph/3 + d2;
+				 int bp2;
+				 int pp;
+
+				 //if (bp1>268) {bp1=268;}
+
+				 bp1=268; if (bp1+d1+d2+bh+bh>ph) bp1 = ph-d1-d2-bh-bh;
+
+				 bp2 = bp1 + d1+d2+bh;
+
+				 pp = bp1 - d3;
+
 
 				 Point p1 = this->button1->Location;
 				 p1.Y = bp1;
@@ -2338,8 +2414,28 @@ check_freespace:
 
 				 Point p2 = this->button2->Location;
 				 p2.Y = bp2;
+
+
+				 
+				 Point p3 = this->panel7->Location;
+
+				 Point p4 = this->panel8->Location;
+
+				 pp = (ph-this->panel8->Size.Height + bp2)/2;
+
+				 //pp=93;//38+24+24;
+
+				 pp=bp1-this->panel8->Height - 24;
+				  
+				 p3.Y=pp;
+				 p4.Y=pp-1;
+
+
+
 				 this->button1->Location=p1;
 				 this->button2->Location=p2;
+				 this->panel7->Location=p3;
+				 this->panel8->Location=p4;
 			 }
 
 	private: System::Void Arrange1(void)
