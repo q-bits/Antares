@@ -1,5 +1,7 @@
 #pragma once
 
+#include <antares.h>
+
 using namespace System;
 using namespace System::ComponentModel;
 using namespace System::Collections;
@@ -9,7 +11,10 @@ using namespace System::Drawing;
 
 #include <stdio.h>
 
+
+
 namespace Antares {
+
 
 	/// <summary>
 	/// Summary for OverwriteConfirmation
@@ -103,7 +108,11 @@ namespace Antares {
 	public: System::Windows::Forms::Panel^  panel4;
 	public: System::Windows::Forms::Button^  button2;
 	public: System::Windows::Forms::Button^  button1;
+	public: System::Windows::Forms::CheckBox^  checkBox1;
 
+	public: 
+
+		CopyMode copymode;
 	protected: 
 
 
@@ -177,6 +186,7 @@ namespace Antares {
 			this->panel4 = (gcnew System::Windows::Forms::Panel());
 			this->button2 = (gcnew System::Windows::Forms::Button());
 			this->button1 = (gcnew System::Windows::Forms::Button());
+			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
 			this->panel1->SuspendLayout();
 			this->panel2->SuspendLayout();
 			this->panel3->SuspendLayout();
@@ -231,6 +241,7 @@ namespace Antares {
 			this->skip1->TabStop = true;
 			this->skip1->Text = L"Skip (recommended)";
 			this->skip1->UseVisualStyleBackColor = false;
+			this->skip1->CheckedChanged += gcnew System::EventHandler(this, &OverwriteConfirmation::skip1_CheckedChanged);
 			// 
 			// overwrite1
 			// 
@@ -476,6 +487,22 @@ namespace Antares {
 			this->button1->Text = L"OK";
 			this->button1->UseVisualStyleBackColor = true;
 			// 
+			// checkBox1
+			// 
+			this->checkBox1->AutoSize = true;
+			this->checkBox1->Checked = true;
+			this->checkBox1->CheckState = System::Windows::Forms::CheckState::Checked;
+			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			this->checkBox1->ForeColor = System::Drawing::Color::DarkGreen;
+			this->checkBox1->Location = System::Drawing::Point(371, 89);
+			this->checkBox1->Name = L"checkBox1";
+			this->checkBox1->Size = System::Drawing::Size(129, 19);
+			this->checkBox1->TabIndex = 10;
+			this->checkBox1->Text = L"Delete the PC copy";
+			this->checkBox1->UseVisualStyleBackColor = true;
+			this->checkBox1->Visible = false;
+			// 
 			// OverwriteConfirmation
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
@@ -483,6 +510,7 @@ namespace Antares {
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->ClientSize = System::Drawing::Size(627, 366);
+			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->panel4);
 			this->Controls->Add(this->files3);
 			this->Controls->Add(this->panel3);
@@ -516,5 +544,12 @@ namespace Antares {
 					this->panel4->Height  +  this->title_label->Height + 48;
 			    
 			 }
+private: System::Void skip1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+
+			 if (this->skip1->Checked) 
+				 this->checkBox1->Enabled=true;
+			 else
+				 this->checkBox1->Enabled=false;
+		 }
 };
 }

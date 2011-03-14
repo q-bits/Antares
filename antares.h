@@ -25,6 +25,9 @@ extern "C" {
 
 namespace Antares {
 
+	public enum class CopyDirection {PVR_TO_PC, PC_TO_PVR, UNDEFINED};
+	public enum class CopyMode {COPY, MOVE, UNDEFINED};
+
 
 	using namespace System;
 	using namespace System::ComponentModel;

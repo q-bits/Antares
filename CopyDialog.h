@@ -28,7 +28,7 @@ namespace Antares {
 	delegate void UpdateDialogCallback(void);
 	delegate void CloseRequestCallback(void);
 
-	public enum class CopyDirection {PVR_TO_PC, PC_TO_PVR, UNDEFINED};
+
 
 	/// <summary>
 	/// Summary for CopyDialog
@@ -77,6 +77,7 @@ namespace Antares {
 			this->loaded = false;
 			this->maximum_successful_index=-1;
 			this->copydirection = CopyDirection::UNDEFINED;
+			this->copymode = CopyMode::UNDEFINED;
 			this->current_error = "";
 			this->freespace_check_needed=false;
 			this->close_requested=false;
@@ -446,6 +447,9 @@ namespace Antares {
 		int maximum_successful_index;
 
         CopyDirection copydirection;
+		CopyMode copymode;
+		bool action1_skipdelete;
+
 		String^ current_error;
 
 		bool freespace_check_needed;

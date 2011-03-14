@@ -1506,6 +1506,8 @@ private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator2;
 private: System::Windows::Forms::ToolStripButton^  toolStripButton11;
 
 public: System::Windows::Forms::ListView^  listView1;
+private: System::Windows::Forms::ToolTip^  toolTip1;
+public: 
 private: 
 
 
@@ -1581,6 +1583,7 @@ private:
 			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->basicIconsSmall = (gcnew System::Windows::Forms::ImageList(this->components));
 			this->notifyIcon1 = (gcnew System::Windows::Forms::NotifyIcon(this->components));
+			this->toolTip1 = (gcnew System::Windows::Forms::ToolTip(this->components));
 			this->statusStrip1->SuspendLayout();
 			this->panel1->SuspendLayout();
 			this->panel3->SuspendLayout();
@@ -1622,8 +1625,8 @@ private:
 			// 
 			this->panel3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->panel3->Controls->Add(this->textBox2);
 			this->panel3->Controls->Add(this->checkBox1);
+			this->panel3->Controls->Add(this->textBox2);
 			this->panel3->Controls->Add(this->label2);
 			this->panel3->Controls->Add(this->toolStrip2);
 			this->panel3->Controls->Add(this->listView1);
@@ -1867,6 +1870,7 @@ private:
 			// 
 			// button1
 			// 
+			this->button1->AccessibleName = L"";
 			this->button1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
 			this->button1->AutoSizeMode = System::Windows::Forms::AutoSizeMode::GrowAndShrink;
@@ -1905,6 +1909,7 @@ private:
 			this->radioButton2->Text = L"Move";
 			this->radioButton2->UseMnemonic = false;
 			this->radioButton2->UseVisualStyleBackColor = false;
+			this->radioButton2->CheckedChanged += gcnew System::EventHandler(this, &Form1::radioButton2_CheckedChanged);
 			// 
 			// radioButton1
 			// 
@@ -1918,6 +1923,7 @@ private:
 			this->radioButton1->Name = L"radioButton1";
 			this->radioButton1->Size = System::Drawing::Size(35, 29);
 			this->radioButton1->TabIndex = 5;
+			this->radioButton1->TabStop = true;
 			this->radioButton1->Text = L"Copy";
 			this->radioButton1->UseMnemonic = false;
 			this->radioButton1->UseVisualStyleBackColor = false;
@@ -2636,9 +2642,10 @@ private:
 					MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
 				}
 
-				if (copydialog->copydirection == CopyDirection::PVR_TO_PC)
+				if (copydialog->copydirection == CopyDirection::PVR_TO_PC || copydialog->copymode == CopyMode::MOVE)
 					this->loadComputerDir();
-				else
+				
+				if (copydialog->copydirection == CopyDirection::PC_TO_PVR || copydialog->copymode == CopyMode::MOVE)
 					this->loadTopfieldDir();
 
 				this->absorb_late_packets(2,200);
@@ -3128,6 +3135,11 @@ end_copy_to_pc:
 
 				 if (this->transfer_in_progress) return;
 				 const int max_folders = 1000;
+
+				 CopyMode copymode = CopyMode::COPY;
+				 if (this->radioButton2->Checked) copymode = CopyMode::MOVE;
+
+
 				 // Enumerate selected source items (PVR)
 
 				 ListView^ listview = this->listView1;
@@ -3450,6 +3462,7 @@ end_copy_to_pc:
 				 array<long long int>^    current_offsets    = copydialog->current_offsets;
 				 array<long long int>^    src_sizes          = copydialog->filesizes;
 				 array<FileItem^>^        src_items          = copydialog->src_items;
+				 array<bool>^             source_deleted     = gcnew array<bool>(numitems); for (int i=0; i<numitems; i++) source_deleted[i]=false;
 				 array<array<TopfieldItem^>^>^ topfield_items_by_folder = copydialog->topfield_items_by_folder;
 				 TopfieldItem^ titem;
 				 copydialog->maximum_successful_index=-1;
@@ -3480,6 +3493,36 @@ end_copy_to_pc:
 							 copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
 							 goto finish_transfer;
 						 }
+
+
+						 if (copydialog->copymode==CopyMode::MOVE)
+						 {
+							 // Try deleting this directory at the source, and any directories which might now be empty
+
+							 for (int j=i; j>=0; j--)  // NB: loop in reverse order to sweep up recursive directories with no files
+							 {
+								 ComputerItem^ item2 = safe_cast<ComputerItem^>(src_items[j]);
+								 if (item2->isdir && !source_deleted[j])
+								 {
+									 if (item->full_filename->StartsWith(item2->full_filename))
+									 {
+										 try
+									  {
+										  Directory::Delete(item2->full_filename);
+										  source_deleted[j]=true;
+									  }
+										 catch(...)
+									  {
+
+									  }
+									 }
+								 }
+							 }
+						 }
+
+
+
+
 						 continue;
 					 }
 
@@ -3538,7 +3581,29 @@ restart_copy_to_pvr:
 						 if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
 					 }
 
-					 if (this_overwrite_action==SKIP) {printf("Skipping.\n");continue;} //{item->Selected=false;continue;}  
+					 if (this_overwrite_action==SKIP) {
+						 printf("Skipping.\n");
+
+						 if (copydialog->copymode == CopyMode::MOVE && copydialog->action1_skipdelete)
+						 {
+							 if (dest_size[i]==src_sizes[i])
+							 {
+								 try 
+								 {
+									 File::Delete(item->full_filename);
+									 source_deleted[i]=true;
+								 }
+								 catch(...)
+								 {
+
+								 }
+
+							 }
+
+						 }
+
+						 continue;
+					 }  
 
 					 if (this_overwrite_action==RESUME && dest_size[i]>=src_sizes[i]) {printf("Not resuming.\n");continue;} // TODO: Handle this case better
 
@@ -3965,6 +4030,48 @@ out:
 						 //copydialog->close_request_threadsafe();
 						 break;
 					 }
+
+
+					 if (copydialog->copymode==CopyMode::MOVE  && topfield_file_offset == src_sizes[i])
+					 {
+						 try{
+							 File::Delete(item->full_filename);
+							 source_deleted[i]=true;
+						 }
+						 catch(...)
+						 {
+
+						 }
+
+
+
+						 // Try deleting any directories that this file might have been in which might now be empty
+					
+						 for (int j=i-1; j>=0; j--)  // NB: loop in reverse order to sweep up recursive directories with no files
+						 {
+							 ComputerItem^ item2 = safe_cast<ComputerItem^>(src_items[j]);
+							 if (item2->isdir && !source_deleted[j])
+							 {
+								 if (item->full_filename->StartsWith(item2->full_filename))
+								 {
+                                      try
+									  {
+										  Directory::Delete(item2->full_filename);
+										  source_deleted[j]=true;
+									  }
+									  catch(...)
+									  {
+
+									  }
+								 }
+							 }
+						 }
+
+					 }
+
+
+
+
 				 }  // (end loop over files to transfer)
 
 finish_transfer:
@@ -3984,6 +4091,9 @@ finish_transfer:
 				 if (this->fd==NULL) return;
 
 				 const int max_folders = 1000;
+
+				 CopyMode copymode = CopyMode::COPY;
+				 if (this->radioButton2->Checked) copymode = CopyMode::MOVE;
 
 				 //time_t startTime = time(NULL);
 
@@ -4147,16 +4257,31 @@ finish_transfer:
 
 
 				 int num_skip=0;
+				 bool action1_skipdelete=true;
 				 if (num_exist>0)
 				 {
 					 printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 					 OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1], files_cat[2]);
+					 oc->copymode=copymode;
 					 if (num_exist==1) oc->title_label->Text="A file with this name already exists                                                   ";
 					 else oc->title_label->Text = "Files with these names already exist                                                              ";
 
 					 if (num_cat[0]==0)
 					 {
 						 oc->panel1->Visible = false;oc->files1->Visible=false;
+						
+					 }
+					 if (num_cat[0]==0 || copymode!=CopyMode::MOVE)
+					 {
+						  oc->checkBox1->Visible=false;
+					 }
+					 else
+					 {
+						 oc->checkBox1->Visible=true;
+						 if (num_cat[0]==1)
+						     oc->Text = "Delete the PC copy";
+						 else
+							 oc->Text = "Delete the PC copies";
 					 }
 					 if (num_cat[0]>1) oc->label1->Text = "Files have correct size"; else oc->label1->Text = "File has correct size"; 
 
@@ -4178,6 +4303,8 @@ finish_transfer:
 					 int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
 					 int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
 
+					 action1_skipdelete = oc->checkBox1->Checked;
+
 					 for (int i=0; i<numitems; i++)
 					 {
 						 item=src_items[i];
@@ -4196,7 +4323,7 @@ finish_transfer:
 								 if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 					 }
 				 }
-				 if (num_skip==numitems) return;
+				 if (num_skip==numitems && copymode == CopyMode::COPY) return;
 
 
 				 long long space_required=0;
@@ -4265,6 +4392,8 @@ finish_transfer:
 				 copydialog->current_file="Waiting for PVR...";
 				 copydialog->turbo_mode = this->turbo_mode;
 				 copydialog->parent_checkbox = this->checkBox1;
+				 copydialog->copymode=copymode;
+				 copydialog->action1_skipdelete = action1_skipdelete;
 
 				 //copydialog->TopLevel = false;this->panel1->Controls->Add(copydialog);copydialog->Show();copydialog->Visible=true;
 				 //copydialog->Dock = DockStyle::Bottom;
@@ -4278,26 +4407,7 @@ finish_transfer:
 
 				 this->ShowCopyDialog(copydialog);
 
-				 //return;
-
-				 /*
-				 copydialog->showDialog_thread();
-				 thread->Join();
-				 this->transfer_in_progress=false;
-
-				 if ( copydialog->turbo_request != this->checkBox1->Checked)
-				 this->checkBox1->Checked = copydialog->turbo_request;
-
-
-				 if (copydialog->file_error->Length > 0)
-				 {
-				 MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
-				 }
-
-				 this->loadTopfieldDir();
-				 this->absorb_late_packets(2,200);
-				 this->set_turbo_mode(0);
-				 */
+			
 
 			 }
 
@@ -5425,6 +5535,9 @@ finish_transfer:
 				 this->loadTopfieldDir();
 				 this->Arrange2();
 			 }
-	};    // class form1
+	private: System::Void radioButton2_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+
+			 }
+};    // class form1
 };    // namespace antares
 
