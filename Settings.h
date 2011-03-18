@@ -18,6 +18,8 @@ namespace Antares {
 
 		String^ filename;
 
+		static int maximum_history_length = 12;
+
         System::Configuration::Configuration^ config;
 		System::Configuration::KeyValueConfigurationCollection^ settings;
 
@@ -189,6 +191,12 @@ namespace Antares {
 		   //Console::WriteLine("Key = "+key+", val = "+val);
 		}
 
+		void clearSetting(String^ key)
+		{
+			if (dic->ContainsKey(key))
+				dic->Remove(key);
+		}
+
 		String^ getSetting(String^ key)
 		{
 			if (dic->ContainsKey(key))
@@ -196,6 +204,17 @@ namespace Antares {
 			else
 				return gcnew String("");
 		}
+
+
+	    String^ getSettingOrNull(String^ key)
+		{
+			if (dic->ContainsKey(key))
+				return dic[key];
+			else
+				return nullptr;
+		}
+
+
 
         String^ operator[] (String^ key)   //not to be used for assignment
 		{

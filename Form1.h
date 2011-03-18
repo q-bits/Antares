@@ -268,6 +268,30 @@ namespace Antares {
 				this->listView2->Sorting = SortOrder::Descending;
 			}
 
+
+			int hist_len = this->settings->maximum_history_length;
+			for (int j=0; j<hist_len; j++)
+			{
+				String^ key = "ComputerHistory"+j.ToString();
+				String^ str = this->settings->getSettingOrNull(key);
+				if (str==nullptr) break;
+			    this->textBox1->Items->Add(str);
+			}
+			this->add_path_to_history(this->textBox1, this->computerCurrentDirectory);
+			for (int j=0; j<hist_len; j++)
+			{
+				String^ key = "TopfieldHistory"+j.ToString();
+				String^ str = this->settings->getSettingOrNull(key);
+				if (str==nullptr) break;
+			    this->textBox2->Items->Add(str);
+			}
+			this->textBox2->Select(0,0);
+	
+
+
+			
+
+
 			this->listView2->ListViewItemSorter = gcnew ListViewItemComparer(this->listView2SortColumn,this->listView2->Sorting);
 			this->listView1->ListViewItemSorter = gcnew ListViewItemComparer(this->listView1SortColumn,this->listView1->Sorting);
 
@@ -294,6 +318,11 @@ namespace Antares {
 			// Set double-buffering and image list on the ListViews
 			this->setListViewStyle(listView1);
 			this->setListViewStyle(listView2);
+
+
+			this->Focus();
+			this->listView2->Focus();
+	
 
 		}
 
@@ -955,10 +984,13 @@ check_freespace:
 					}
 
 				}
-				this->listView2->BeginUpdate();
+				
+				//this->listView2->BeginUpdate();
 				this->listView2->Items->Clear();
+				
 				this->listView2->Items->AddRange(items);
-				this->listView2->EndUpdate();
+				this->textBox1->Select(0,0);
+				//this->listView2->EndUpdate();
 				settings->changeSetting("ComputerDir",dir);
 				// Add a drive summary to label1:
 				array<long long int>^ freespaceArray = this->computerFreeSpace(dir);
@@ -994,7 +1026,7 @@ check_freespace:
 					this->BeginInvoke(d);
 
 				}
-				
+
 
 
 
@@ -1055,6 +1087,7 @@ check_freespace:
 			this->setTopfieldDir(parts[0]);
 
 			this->loadTopfieldDir("",parts[1]);
+			this->add_path_to_history(this->textBox2, this->topfieldCurrentDirectory);
 		}
 
 
@@ -1296,10 +1329,11 @@ check_freespace:
 			//if (items->Length > 0)  
 			settings->changeSetting("TopfieldDir",this->topfieldCurrentDirectory);//TODO: don't do this when error in directory load
 
-			this->listView1->BeginUpdate();
+			//this->listView1->BeginUpdate();
 			this->listView1->Items->Clear();
 			this->listView1->Items->AddRange(items);
-			this->listView1->EndUpdate();
+			//this->listView1->EndUpdate();
+			this->textBox2->Select(0,0);
 			ListView::ListViewItemCollection^ q = this->listView1->Items; 
 			if (do_rename) rename_item->BeginEdit();
 			else if (do_select)
@@ -1509,8 +1543,11 @@ check_freespace:
 
 	public: System::Windows::Forms::ListView^  listView1;
 	private: System::Windows::Forms::ToolTip^  toolTip1;
-	private: System::Windows::Forms::ComboBox^  textBox2;
-	private: System::Windows::Forms::ComboBox^  textBox1;
+public: System::Windows::Forms::ComboBox^  textBox2;
+private: 
+public: System::Windows::Forms::ComboBox^  textBox1;
+
+
 	public: 
 	private: 
 
@@ -1645,15 +1682,16 @@ check_freespace:
 			// 
 			this->textBox2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
-			this->textBox2->FlatStyle = System::Windows::Forms::FlatStyle::Popup;
+			this->textBox2->FlatStyle = System::Windows::Forms::FlatStyle::System;
 			this->textBox2->Font = (gcnew System::Drawing::Font(L"Lucida Console", 10));
 			this->textBox2->ForeColor = System::Drawing::Color::Navy;
 			this->textBox2->FormattingEnabled = true;
 			this->textBox2->Location = System::Drawing::Point(9, 68);
 			this->textBox2->Name = L"textBox2";
 			this->textBox2->Size = System::Drawing::Size(486, 21);
-			this->textBox2->TabIndex = 8;
+			this->textBox2->TabIndex = 4;
 			this->textBox2->Text = L"\\ProgramFiles";
+			this->textBox2->SelectionChangeCommitted += gcnew System::EventHandler(this, &Form1::textBox2_SelectionChangeCommitted);
 			// 
 			// checkBox1
 			// 
@@ -1890,6 +1928,8 @@ check_freespace:
 			// 
 			// panel7
 			// 
+			this->panel7->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->panel7->BackColor = System::Drawing::Color::WhiteSmoke;
 			this->panel7->Controls->Add(this->radioButton2);
 			this->panel7->Controls->Add(this->radioButton1);
@@ -1900,6 +1940,8 @@ check_freespace:
 			// 
 			// radioButton2
 			// 
+			this->radioButton2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->radioButton2->AutoSize = true;
 			this->radioButton2->BackColor = System::Drawing::Color::WhiteSmoke;
 			this->radioButton2->CheckAlign = System::Drawing::ContentAlignment::TopCenter;
@@ -1915,6 +1957,8 @@ check_freespace:
 			// 
 			// radioButton1
 			// 
+			this->radioButton1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->radioButton1->AutoSize = true;
 			this->radioButton1->BackColor = System::Drawing::Color::WhiteSmoke;
 			this->radioButton1->CheckAlign = System::Drawing::ContentAlignment::TopCenter;
@@ -1956,7 +2000,7 @@ check_freespace:
 			// 
 			this->textBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
-			this->textBox1->FlatStyle = System::Windows::Forms::FlatStyle::Popup;
+			this->textBox1->FlatStyle = System::Windows::Forms::FlatStyle::System;
 			this->textBox1->Font = (gcnew System::Drawing::Font(L"Lucida Console", 10));
 			this->textBox1->ForeColor = System::Drawing::Color::Navy;
 			this->textBox1->FormattingEnabled = true;
@@ -1964,8 +2008,7 @@ check_freespace:
 			this->textBox1->MaxDropDownItems = 12;
 			this->textBox1->Name = L"textBox1";
 			this->textBox1->Size = System::Drawing::Size(326, 21);
-			this->textBox1->TabIndex = 9;
-			this->textBox1->Text = L"c:\\topfield\\";
+			this->textBox1->TabIndex = 4;
 			this->textBox1->SelectionChangeCommitted += gcnew System::EventHandler(this, &Form1::textBox1_SelectedIndexChanged);
 			// 
 			// label1
@@ -2252,8 +2295,11 @@ check_freespace:
 				   //panel4->Width=panel3->Width;
 				   Form::OnLayout(levent);
 				   for (int j=0; j<arr->Length; j++) this->ResumeDrawing(arr[j]);
+				   this->textBox1->Select(0,0);
+				   this->textBox2->Select(0,0);
 				   this->Refresh();
 				   Arrange_Buttons();
+				   
 				   //panel4->Refresh();
 			   }
 	private:
@@ -2565,7 +2611,7 @@ check_freespace:
 		System::Void toolStripButton2_Click(System::Object^  sender, System::EventArgs^  e) {
 			// Refresh
 			this->loadComputerDir();
-			this->add_path_to_history(this->textBox1, this->computerCurrentDirectory);
+			//this->add_path_to_history(this->textBox1, this->computerCurrentDirectory);
 
 		}
 
@@ -4444,6 +4490,7 @@ finish_transfer:
 				String^ dir = this->topfieldCurrentDirectory+"\\"+item->Text;
 				this->setTopfieldDir(dir);
 				this->loadTopfieldDir();
+				this->add_path_to_history(this->textBox2, this->topfieldCurrentDirectory);
 
 			}
 			else
@@ -5551,15 +5598,48 @@ finish_transfer:
 			cb->Items->Remove(path);
 			cb->Items->Insert(0,path);
 			cb->Text=path;
+			cb->Select(0,0);
+
+
+			String ^ str = "ComputerHistory";
+			if (cb == this->textBox2) str = "TopfieldHistory";
+
+			// update settings.
+			int hist_len = this->settings->maximum_history_length;
+			int num = cb->Items->Count;  
+		    String^ key;
+			for (int j=0; j<hist_len; j++)
+			{
+				key=str+j.ToString();
+				 
+				if (j<num)
+					this->settings->changeSetting(key, safe_cast<String^>(cb->Items[j]));
+				else
+					this->settings->clearSetting(key);					
+			}
+
+
 		}
 
 
-	private: System::Void textBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
-				 ComboBox^ cb = this->textBox1;
-				 this->computerCurrentDirectory= safe_cast<String^>(cb->SelectedItem);
-				 this->loadComputerDir();
 
-			 }
+		// An item in the computer path history was selected
+		System::Void textBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+			ComboBox^ cb = this->textBox1;
+			this->setComputerDir( safe_cast<String^>(cb->SelectedItem));
+			this->loadComputerDir();
+			this->add_path_to_history(cb,this->computerCurrentDirectory);  
+		}
+
+		// An item in the topfield path history was selected
+		System::Void textBox2_SelectionChangeCommitted(System::Object^  sender, System::EventArgs^  e) {
+			ComboBox^ cb = this->textBox2;
+			this->setTopfieldDir(safe_cast<String^>(cb->SelectedItem));
+			this->loadTopfieldDir();
+
+			this->add_path_to_history(this->textBox2, this->topfieldCurrentDirectory);
+		}
+
 };    // class form1
 };    // namespace antares
 
