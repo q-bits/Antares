@@ -49,6 +49,13 @@ namespace Antares {
 				 this->checkedListBox2->SetItemChecked(j,str=="1");
 
 			 }
+
+			 if (this->settings["TurboMode"] == "on")
+				 this->checkBox1->Checked=true;
+			 else
+				 this->checkBox1->Checked=false;
+
+
 		}
 
 	protected:
@@ -77,6 +84,7 @@ namespace Antares {
 	private: System::Windows::Forms::Label^  label1;
 	private: System::Windows::Forms::Label^  label2;
 	private: System::Windows::Forms::GroupBox^  groupBox1;
+	private: System::Windows::Forms::CheckBox^  checkBox1;
 	protected: 
 
 	protected: 
@@ -102,6 +110,7 @@ namespace Antares {
 			this->label1 = (gcnew System::Windows::Forms::Label());
 			this->label2 = (gcnew System::Windows::Forms::Label());
 			this->groupBox1 = (gcnew System::Windows::Forms::GroupBox());
+			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
 			this->groupBox1->SuspendLayout();
 			this->SuspendLayout();
 			// 
@@ -198,6 +207,16 @@ namespace Antares {
 			this->groupBox1->TabStop = false;
 			this->groupBox1->Text = L"Choose Columns";
 			// 
+			// checkBox1
+			// 
+			this->checkBox1->AutoSize = true;
+			this->checkBox1->Location = System::Drawing::Point(12, 231);
+			this->checkBox1->Name = L"checkBox1";
+			this->checkBox1->Size = System::Drawing::Size(83, 17);
+			this->checkBox1->TabIndex = 4;
+			this->checkBox1->Text = L"Turbo mode";
+			this->checkBox1->UseVisualStyleBackColor = true;
+			// 
 			// SettingsDialog
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
@@ -205,6 +224,7 @@ namespace Antares {
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->ClientSize = System::Drawing::Size(770, 381);
+			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->button2);
 			this->Controls->Add(this->button1);
 			this->Controls->Add(this->groupBox1);
@@ -216,6 +236,7 @@ namespace Antares {
 			this->groupBox1->ResumeLayout(false);
 			this->groupBox1->PerformLayout();
 			this->ResumeLayout(false);
+			this->PerformLayout();
 
 		}
 #pragma endregion
@@ -236,6 +257,11 @@ namespace Antares {
 
 
 				 }
+
+				 if (this->checkBox1->Checked)
+					 this->settings->changeSetting("TurboMode","on");
+				 else
+					  this->settings->changeSetting("TurboMode","off");
 
 
 

@@ -237,7 +237,7 @@ set_pipe_timeout(struct husb_device_handle *fd, int ep, ULONG timeout)
 		PIPE_TRANSFER_TIMEOUT,
 		sizeof(ULONG),
 		&timeout );
-	printf("Set_pipe_timeout  %x :  %d\n",ep,timeout);
+	//printf("Set_pipe_timeout  %x :  %d\n",ep,timeout);
 
 	if (ep==fd->bulkInPipe)
 		fd->read_timeout = timeout;

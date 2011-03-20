@@ -8,6 +8,7 @@ extern "C"
 
 }
 #include "antares.h"
+#include "settings.h"
 
 
 
@@ -71,6 +72,7 @@ namespace Antares {
 			this->rate_milliseconds = 0;
 			this->parent_win = nullptr;
 			this->parent_form = nullptr;
+			this->settings=nullptr;
 			
 			this->usb_error=false;
 			this->file_error="";
@@ -194,7 +196,7 @@ namespace Antares {
 			{
 				CloseRequestCallback^ d = gcnew CloseRequestCallback(this, &CopyDialog::close_request_threadsafe);
 				try{
-					this->Invoke(d);
+					this->BeginInvoke(d);
 				}
 				catch (...)     // (in case the window has been closed)
 				{
@@ -283,10 +285,20 @@ namespace Antares {
 			//	total_rate=0;
             
 			if (this->has_initialised==false) {
+				/*
 				if (this->parent_checkbox !=nullptr)
 					this->checkBox1->Checked = this->parent_checkbox->Checked;
 				else
 				this->checkBox1->Checked = *this->turbo_mode;
+				*/
+				if (this->settings != nullptr)
+				{
+					this->checkBox1->Checked = this->turbo_request = (this->settings["TurboMode"] == "on");
+
+				}
+				else
+					this->checkBox1->Checked = *this->turbo_mode;
+
 				
 				this->has_initialised=true;
 
@@ -457,6 +469,7 @@ namespace Antares {
 		System::Windows::Forms::Form^ parent_form;
 		System::Threading::Thread^ thread;
 		System::Windows::Forms::CheckBox^ parent_checkbox;
+		Settings^ settings;
   
 
 
@@ -701,6 +714,8 @@ private:
 
 private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
 			 this->turbo_request  = this->checkBox1->Checked;
+			 if (this->checkBox1->Checked) this->settings->changeSetting("TurboMode","on"); else this->settings->changeSetting("TurboMode","off");
+
 			 if (this->parent_checkbox != nullptr)
 				 this->parent_checkbox->Checked = this->checkBox1->Checked;
 			

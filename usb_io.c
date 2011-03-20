@@ -463,7 +463,9 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
                       timeout, no_reply);
     if(r < 0)
     {
-        fprintf(stderr, "USB read error: %s\n", strerror(errno));
+		int e = errno;
+		if (e!=0)
+            fprintf(stderr, "USB read error: %s\n", strerror(e));
         return -1;
     }
 

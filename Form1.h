@@ -334,12 +334,12 @@ namespace Antares {
 			int r;
 			struct tf_packet reply;
 			if (this->fd==NULL) return;
-			printf("\nLate Packets:\n");
+			//printf("\nLate Packets:\n");
 			for (int i=0; i<count; i++)
 
 			{
 				r = get_tf_packet2(this->fd, &reply,timeout, 1);
-				printf("r=%d   reply.cmd = %d \n",r,get_u32(&reply.cmd));
+				//printf("r=%d   reply.cmd = %d \n",r,get_u32(&reply.cmd));
 
 			}
 		}
@@ -1093,7 +1093,7 @@ check_freespace:
 
 
 		// Load the specified topfield directory into an array of TopfieldItems
-		array<TopfieldItem^>^ loadTopfieldDirArray(String^ path)               
+		array<TopfieldItem^>^ loadTopfieldDirArrayOrNull(String^ path)               
 		{
 			//Console::WriteLine("Loading directory: "+path);
 			tf_packet reply;
@@ -1110,7 +1110,7 @@ check_freespace:
 			if (this->fd==NULL)
 			{
 				//toolStripStatusLabel1->Text="Topfield not connected.";
-				return items; 
+				return nullptr;//items; 
 			}
 			absorb_late_packets(1,50);
 			char* str2 = (char*)(void*)Marshal::StringToHGlobalAnsi(path);
@@ -1152,17 +1152,29 @@ check_freespace:
 				case FAIL:
 					fprintf(stderr, "ERROR: Device reports %s in loadTopfieldDirArray, path %s\n",
 						decode_error(&reply),path);
-					return items;
+					return nullptr;//items;
+
 					break;
 				default:
 					fprintf(stderr, "ERROR: Unhandled packet\n");
 					this->absorb_late_packets(4,100);
-					return items;
+					return nullptr;//items;
 				}
 
 			}
 			return items;
 		}
+
+		array<TopfieldItem^>^ loadTopfieldDirArray(String^ path)       
+		{
+			array<TopfieldItem^>^ items = this->loadTopfieldDirArrayOrNull(path);
+			if (items==nullptr)
+				items = gcnew array<TopfieldItem^>(0);
+
+			return items;
+		}
+
+
 
 
 		// Reload the directory entry of a particular topfield item specified by filename (i.e., to retrieve an update on its size)
@@ -1335,7 +1347,13 @@ check_freespace:
 			//this->listView1->EndUpdate();
 			this->textBox2->Select(0,0);
 			ListView::ListViewItemCollection^ q = this->listView1->Items; 
-			if (do_rename) rename_item->BeginEdit();
+			if (do_rename) 
+			{
+				//rename_item->BeginEdit();
+				TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(rename_item, &TopfieldItem::BeginEdit);
+				this->BeginInvoke(d);
+
+			}
 			else if (do_select)
 			{
 				select_item->Selected=true;
@@ -1348,9 +1366,10 @@ check_freespace:
 				if (q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
 			}
 
-			this->topfield_background_enumerator = q->GetEnumerator();
+			
 			if (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1")
 			{
+				this->topfield_background_enumerator = q->GetEnumerator();
 				TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
 				this->BeginInvoke(d);
 
@@ -1513,7 +1532,7 @@ check_freespace:
 
 
 
-	private: System::Windows::Forms::ToolStripSeparator^  toolStripSeparator3;
+
 	private: System::Windows::Forms::ToolStripButton^  toolStripButton12;
 
 	private: System::Windows::Forms::NotifyIcon^  notifyIcon1;
@@ -1546,6 +1565,10 @@ check_freespace:
 public: System::Windows::Forms::ComboBox^  textBox2;
 private: 
 public: System::Windows::Forms::ComboBox^  textBox1;
+private: System::Windows::Forms::CheckBox^  checkBox2;
+public: 
+
+public: 
 
 
 	public: 
@@ -1603,6 +1626,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->toolStripButton11 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->listView1 = (gcnew System::Windows::Forms::ListView());
 			this->panel2 = (gcnew System::Windows::Forms::Panel());
+			this->checkBox2 = (gcnew System::Windows::Forms::CheckBox());
 			this->button2 = (gcnew System::Windows::Forms::Button());
 			this->button1 = (gcnew System::Windows::Forms::Button());
 			this->panel7 = (gcnew System::Windows::Forms::Panel());
@@ -1617,7 +1641,6 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->toolStripButton2 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton3 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton4 = (gcnew System::Windows::Forms::ToolStripButton());
-			this->toolStripSeparator3 = (gcnew System::Windows::Forms::ToolStripSeparator());
 			this->toolStripButton13 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton12 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->listView2 = (gcnew System::Windows::Forms::ListView());
@@ -1640,7 +1663,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->statusStrip1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->statusStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(1) {this->toolStripStatusLabel1});
-			this->statusStrip1->Location = System::Drawing::Point(0, 567);
+			this->statusStrip1->Location = System::Drawing::Point(0, 580);
 			this->statusStrip1->Name = L"statusStrip1";
 			this->statusStrip1->Size = System::Drawing::Size(880, 22);
 			this->statusStrip1->TabIndex = 9;
@@ -1659,7 +1682,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->panel1->Dock = System::Windows::Forms::DockStyle::Fill;
 			this->panel1->Location = System::Drawing::Point(0, 0);
 			this->panel1->Name = L"panel1";
-			this->panel1->Size = System::Drawing::Size(880, 567);
+			this->panel1->Size = System::Drawing::Size(880, 580);
 			this->panel1->TabIndex = 10;
 			// 
 			// panel3
@@ -1675,7 +1698,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->panel3->Location = System::Drawing::Point(0, 0);
 			this->panel3->Margin = System::Windows::Forms::Padding(0, 3, 0, 3);
 			this->panel3->Name = L"panel3";
-			this->panel3->Size = System::Drawing::Size(495, 567);
+			this->panel3->Size = System::Drawing::Size(495, 580);
 			this->panel3->TabIndex = 8;
 			// 
 			// textBox2
@@ -1689,7 +1712,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->textBox2->Location = System::Drawing::Point(9, 68);
 			this->textBox2->Name = L"textBox2";
 			this->textBox2->Size = System::Drawing::Size(486, 21);
-			this->textBox2->TabIndex = 4;
+			this->textBox2->TabIndex = 12;
 			this->textBox2->Text = L"\\ProgramFiles";
 			this->textBox2->SelectionChangeCommitted += gcnew System::EventHandler(this, &Form1::textBox2_SelectionChangeCommitted);
 			// 
@@ -1706,6 +1729,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->checkBox1->TabIndex = 7;
 			this->checkBox1->Text = L"Turbo mode";
 			this->checkBox1->UseVisualStyleBackColor = false;
+			this->checkBox1->Visible = false;
 			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &Form1::checkBox1_CheckedChanged);
 			// 
 			// label2
@@ -1866,7 +1890,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->listView1->Location = System::Drawing::Point(9, 93);
 			this->listView1->Margin = System::Windows::Forms::Padding(0);
 			this->listView1->Name = L"listView1";
-			this->listView1->Size = System::Drawing::Size(486, 474);
+			this->listView1->Size = System::Drawing::Size(486, 487);
 			this->listView1->TabIndex = 0;
 			this->listView1->UseCompatibleStateImageBehavior = false;
 			this->listView1->View = System::Windows::Forms::View::Details;
@@ -1881,6 +1905,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			// 
 			this->panel2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->panel2->Controls->Add(this->checkBox2);
 			this->panel2->Controls->Add(this->button2);
 			this->panel2->Controls->Add(this->button1);
 			this->panel2->Controls->Add(this->panel7);
@@ -1888,8 +1913,22 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->panel2->Dock = System::Windows::Forms::DockStyle::Right;
 			this->panel2->Location = System::Drawing::Point(495, 0);
 			this->panel2->Name = L"panel2";
-			this->panel2->Size = System::Drawing::Size(47, 567);
+			this->panel2->Size = System::Drawing::Size(47, 580);
 			this->panel2->TabIndex = 7;
+			// 
+			// checkBox2
+			// 
+			this->checkBox2->AutoSize = true;
+			this->checkBox2->CheckAlign = System::Drawing::ContentAlignment::TopCenter;
+			this->checkBox2->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(150)));
+			this->checkBox2->Location = System::Drawing::Point(3, 133);
+			this->checkBox2->Name = L"checkBox2";
+			this->checkBox2->Size = System::Drawing::Size(38, 31);
+			this->checkBox2->TabIndex = 7;
+			this->checkBox2->Text = L"Move";
+			this->checkBox2->TextAlign = System::Drawing::ContentAlignment::BottomCenter;
+			this->checkBox2->UseVisualStyleBackColor = true;
 			// 
 			// button2
 			// 
@@ -1930,25 +1969,28 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			// 
 			this->panel7->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
-			this->panel7->BackColor = System::Drawing::Color::WhiteSmoke;
+			this->panel7->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(245)), static_cast<System::Int32>(static_cast<System::Byte>(245)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel7->Controls->Add(this->radioButton2);
 			this->panel7->Controls->Add(this->radioButton1);
-			this->panel7->Location = System::Drawing::Point(5, 170);
+			this->panel7->Location = System::Drawing::Point(5, 383);
 			this->panel7->Name = L"panel7";
-			this->panel7->Size = System::Drawing::Size(36, 77);
+			this->panel7->Size = System::Drawing::Size(36, 64);
 			this->panel7->TabIndex = 5;
+			this->panel7->Visible = false;
 			// 
 			// radioButton2
 			// 
 			this->radioButton2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
 			this->radioButton2->AutoSize = true;
-			this->radioButton2->BackColor = System::Drawing::Color::WhiteSmoke;
+			this->radioButton2->BackColor = System::Drawing::Color::Transparent;
 			this->radioButton2->CheckAlign = System::Drawing::ContentAlignment::TopCenter;
-			this->radioButton2->FlatStyle = System::Windows::Forms::FlatStyle::Popup;
-			this->radioButton2->Location = System::Drawing::Point(-1, 39);
+			this->radioButton2->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(200)));
+			this->radioButton2->Location = System::Drawing::Point(-1, 32);
 			this->radioButton2->Name = L"radioButton2";
-			this->radioButton2->Size = System::Drawing::Size(38, 29);
+			this->radioButton2->Size = System::Drawing::Size(38, 30);
 			this->radioButton2->TabIndex = 6;
 			this->radioButton2->Text = L"Move";
 			this->radioButton2->UseMnemonic = false;
@@ -1960,27 +2002,30 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->radioButton1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
 			this->radioButton1->AutoSize = true;
-			this->radioButton1->BackColor = System::Drawing::Color::WhiteSmoke;
+			this->radioButton1->BackColor = System::Drawing::Color::Transparent;
 			this->radioButton1->CheckAlign = System::Drawing::ContentAlignment::TopCenter;
 			this->radioButton1->Checked = true;
-			this->radioButton1->FlatStyle = System::Windows::Forms::FlatStyle::Popup;
-			this->radioButton1->Location = System::Drawing::Point(1, 4);
+			this->radioButton1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(200)));
+			this->radioButton1->Location = System::Drawing::Point(1, 2);
 			this->radioButton1->Margin = System::Windows::Forms::Padding(3, 7, 3, 7);
 			this->radioButton1->Name = L"radioButton1";
-			this->radioButton1->Size = System::Drawing::Size(35, 29);
+			this->radioButton1->Size = System::Drawing::Size(35, 30);
 			this->radioButton1->TabIndex = 5;
 			this->radioButton1->TabStop = true;
 			this->radioButton1->Text = L"Copy";
 			this->radioButton1->UseMnemonic = false;
 			this->radioButton1->UseVisualStyleBackColor = false;
+			this->radioButton1->CheckedChanged += gcnew System::EventHandler(this, &Form1::radioButton1_CheckedChanged);
 			// 
 			// panel8
 			// 
 			this->panel8->BackColor = System::Drawing::Color::White;
-			this->panel8->Location = System::Drawing::Point(4, 169);
+			this->panel8->Location = System::Drawing::Point(4, 382);
 			this->panel8->Name = L"panel8";
-			this->panel8->Size = System::Drawing::Size(38, 79);
+			this->panel8->Size = System::Drawing::Size(38, 66);
 			this->panel8->TabIndex = 6;
+			this->panel8->Visible = false;
 			// 
 			// panel4
 			// 
@@ -1993,7 +2038,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->panel4->Dock = System::Windows::Forms::DockStyle::Right;
 			this->panel4->Location = System::Drawing::Point(542, 0);
 			this->panel4->Name = L"panel4";
-			this->panel4->Size = System::Drawing::Size(338, 567);
+			this->panel4->Size = System::Drawing::Size(338, 580);
 			this->panel4->TabIndex = 6;
 			// 
 			// textBox1
@@ -2038,8 +2083,8 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->toolStrip1->Dock = System::Windows::Forms::DockStyle::None;
 			this->toolStrip1->GripStyle = System::Windows::Forms::ToolStripGripStyle::Hidden;
-			this->toolStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(7) {this->toolStripButton1, 
-				this->toolStripButton2, this->toolStripButton3, this->toolStripButton4, this->toolStripSeparator3, this->toolStripButton13, this->toolStripButton12});
+			this->toolStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(6) {this->toolStripButton1, 
+				this->toolStripButton2, this->toolStripButton3, this->toolStripButton4, this->toolStripButton13, this->toolStripButton12});
 			this->toolStrip1->Location = System::Drawing::Point(6, 0);
 			this->toolStrip1->Name = L"toolStrip1";
 			this->toolStrip1->Padding = System::Windows::Forms::Padding(0, 0, 4, 0);
@@ -2101,11 +2146,6 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->toolStripButton4->ToolTipText = L"New Folder";
 			this->toolStripButton4->Click += gcnew System::EventHandler(this, &Form1::toolStripButton4_Click);
 			// 
-			// toolStripSeparator3
-			// 
-			this->toolStripSeparator3->Name = L"toolStripSeparator3";
-			this->toolStripSeparator3->Size = System::Drawing::Size(6, 38);
-			// 
 			// toolStripButton13
 			// 
 			this->toolStripButton13->Alignment = System::Windows::Forms::ToolStripItemAlignment::Right;
@@ -2147,7 +2187,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->listView2->LabelEdit = true;
 			this->listView2->Location = System::Drawing::Point(0, 93);
 			this->listView2->Name = L"listView2";
-			this->listView2->Size = System::Drawing::Size(326, 474);
+			this->listView2->Size = System::Drawing::Size(326, 487);
 			this->listView2->TabIndex = 2;
 			this->listView2->UseCompatibleStateImageBehavior = false;
 			this->listView2->View = System::Windows::Forms::View::Details;
@@ -2182,7 +2222,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->AutoSize = true;
-			this->ClientSize = System::Drawing::Size(880, 589);
+			this->ClientSize = System::Drawing::Size(880, 602);
 			this->Controls->Add(this->panel1);
 			this->Controls->Add(this->statusStrip1);
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
@@ -2204,6 +2244,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			this->toolStrip2->ResumeLayout(false);
 			this->toolStrip2->PerformLayout();
 			this->panel2->ResumeLayout(false);
+			this->panel2->PerformLayout();
 			this->panel7->ResumeLayout(false);
 			this->panel7->PerformLayout();
 			this->panel4->ResumeLayout(false);
@@ -2444,7 +2485,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 		{
 
 			int d1=12;
-			int d2=12;
+			int d2=20;
 			int d3=98;
 
 			int ph = this->panel2->Height;
@@ -2456,7 +2497,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 
 			//if (bp1>268) {bp1=268;}
 
-			bp1=268; if (bp1+d1+d2+bh+bh>ph) bp1 = ph-d1-d2-bh-bh;
+			bp1=240; if (bp1+d1+d2+bh+bh>ph) bp1 = ph-d1-d2-bh-bh;   //268
 
 			bp2 = bp1 + d1+d2+bh;
 
@@ -2480,10 +2521,17 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 
 			//pp=93;//38+24+24;
 
-			pp=bp1-this->panel8->Height - 24;
+			pp=bp1-this->panel8->Height - 24 - 8;
+			pp=2;
+			pp=this->panel2->Height - this->panel8->Height-2;
 
 			p3.Y=pp;
 			p4.Y=pp-1;
+
+
+			Point p5 = this->checkBox2->Location;
+			p5.Y = bp1-this->panel8->Height - 20;
+			this->checkBox2->Location=p5;
 
 
 
@@ -2608,11 +2656,14 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			//if (this->transfer_in_progress) return;
 			this->computerUpDir();
 		}
-		System::Void toolStripButton2_Click(System::Object^  sender, System::EventArgs^  e) {
-			// Refresh
-			this->loadComputerDir();
-			//this->add_path_to_history(this->textBox1, this->computerCurrentDirectory);
 
+		void refreshComputer(void)
+		{
+			this->loadComputerDir();
+		}
+
+		System::Void toolStripButton2_Click(System::Object^  sender, System::EventArgs^  e) {
+			this->refreshComputer();
 		}
 
 		// Helper function: return size (in bytes) of file on computer, or -1 if there's a problem.
@@ -2660,6 +2711,15 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 		}
 
 
+		System::Void TransferBegan(void)
+		{
+			this->panel7->Enabled=false;
+			this->textBox2->Enabled=false;
+			this->checkBox2->Enabled=false;
+
+		}
+
+
 		System::Void TransferEnded(void)
 		{
 
@@ -2668,12 +2728,20 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			{
 				printf("0. Transfer ended.\n");
 				TransferEndedCallback^ d = gcnew TransferEndedCallback(this, &Form1::TransferEnded);
-				this->Invoke(d);
+				this->BeginInvoke(d);
 
 			}
 			else
 			{
-				this->EnableComponents(true);this->Update();
+				this->EnableComponents(true);
+				
+				this->panel7->Enabled=true;
+				this->textBox2->Enabled=true;
+				this->checkBox2->Enabled=true;
+				
+				
+				
+				this->Update();
 
 				printf("1. Enable components\n");
 
@@ -2736,6 +2804,7 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 			array<long long int>^    current_offsets    = copydialog->current_offsets;
 			array<long long int>^    src_sizes          = copydialog->filesizes;
 			array<FileItem^>^        src_items          = copydialog->src_items;
+			array<bool>^             source_deleted     = gcnew array<bool>(numitems); for (int i=0; i<numitems; i++) source_deleted[i]=false;
 
 			copydialog->maximum_successful_index=-1;
 			for (int i=0; i<numitems; i++)
@@ -2767,6 +2836,20 @@ public: System::Windows::Forms::ComboBox^  textBox1;
 
 							goto end_copy_to_pc;
 
+						}
+					}
+
+					if (copydialog->copymode == CopyMode::MOVE && i==numitems-1)
+					{
+
+
+						array<TopfieldItem^>^ dirarray = this->loadTopfieldDirArrayOrNull(item->full_filename);
+						if (dirarray != nullptr && dirarray->Length==0)
+						{
+
+							int dr = this->deleteTopfieldPath(item->full_filename);
+
+							if (dr>=0) source_deleted[i]=true;
 						}
 					}
 					continue;
@@ -2838,7 +2921,11 @@ restart_copy_to_pc:
 				}
 				bool io_error=false;
 
-				if (this_overwrite_action==SKIP) continue; //{item->Selected=false;continue;}  
+				if (this_overwrite_action==SKIP)
+				{
+						topfield_file_offset = src_sizes[i];
+						goto check_delete;	
+				}
 
 				tf_packet reply;
 				int r;
@@ -3168,6 +3255,61 @@ out:
 
 				if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
 
+check_delete:
+
+				if (copydialog->copymode==CopyMode::MOVE  && topfield_file_offset == src_sizes[i])
+				{
+					int dr;
+					if (overwrite_action[i]!=SKIP || copydialog->action1_skipdelete)
+					{
+						dr = this->deleteTopfieldPath(item->full_filename);
+						if (dr>=0) source_deleted[i]=true;
+					}
+
+
+					// Look for directories which might now be empty, and delete them:
+
+					for (int j=i-1; j>=0; j--)
+					{
+						TopfieldItem ^titem = safe_cast<TopfieldItem^>(src_items[j]);
+						String^ pth_with_slash = titem->full_filename;
+						if (!pth_with_slash->EndsWith("\\")) pth_with_slash = pth_with_slash + "\\";
+						if (titem->isdir && !source_deleted[j])
+						{
+							bool probably_empty=true;
+
+
+							for (int k=j+1; k<numitems; k++)  // assumes that sub-directories and sub-files are always later in array
+							{
+								 TopfieldItem^ titem_k = safe_cast<TopfieldItem^>(src_items[k]);
+                                 if (!source_deleted[k] && titem_k->full_filename->StartsWith(pth_with_slash))
+								 {
+									 probably_empty=false;
+									 break;
+								 }
+							}
+
+
+							if (probably_empty)
+							{
+								// Make real sure it's empty now.
+
+								array<TopfieldItem^>^ dirarray = this->loadTopfieldDirArrayOrNull(titem->full_filename);
+								if (dirarray != nullptr && dirarray->Length==0)
+								{
+									// Now finally delete it
+								    dr = this->deleteTopfieldPath(titem->full_filename);
+
+									if (dr>=0) source_deleted[j]=true;
+								}
+							}
+
+						}
+
+					}
+
+				}
+
 
 
 			}  // end loop over items to be copied
@@ -3187,8 +3329,7 @@ end_copy_to_pc:
 			if (this->transfer_in_progress) return;
 			const int max_folders = 1000;
 
-			CopyMode copymode = CopyMode::COPY;
-			if (this->radioButton2->Checked) copymode = CopyMode::MOVE;
+			CopyMode copymode = this->getCopyMode();
 
 
 			// Enumerate selected source items (PVR)
@@ -3322,18 +3463,32 @@ end_copy_to_pc:
 
 
 			if (numitems==0) return;
+			bool action1_skipdelete;
 
 			int num_skip=0;
 			if (num_exist>0)
 			{
-				printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
+				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1],files_cat[2]);
+                oc->copymode=copymode;
 				if (num_exist==1) oc->title_label->Text="A file with this name already exists                                                                     ";
 				else oc->title_label->Text="Files with these names already exist                                                                                  ";					
 				//oc->files1->Text = files_cat[0];
 				if (num_cat[0]==0)
 				{
 					oc->panel1->Visible = false;oc->files1->Visible=false;
+				}
+				if (num_cat[0]==0 || copymode!=CopyMode::MOVE)
+				{
+					oc->checkBox1->Visible=false;
+				}
+				else
+				{
+					oc->checkBox1->Visible=true;
+					if (num_cat[0]==1)
+						oc->checkBox1->Text = "Delete the PVR copy";
+					else
+						oc->checkBox1->Text = "Delete the PVR copies";
 				}
 				if (num_cat[0]>1) oc->label1->Text = "Files have correct size"; else oc->label1->Text = "File has correct size"; 
 
@@ -3357,6 +3512,8 @@ end_copy_to_pc:
 				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
 				int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
 
+				action1_skipdelete = oc->checkBox1->Checked;
+
 				for (int i=0; i<numitems; i++)
 				{
 					item=src_items[i];
@@ -3377,7 +3534,7 @@ end_copy_to_pc:
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
 			}
-			if (num_skip==numitems) return;
+			if (num_skip==numitems && copymode == CopyMode::COPY) return;
 
 
 
@@ -3403,7 +3560,7 @@ end_copy_to_pc:
 				}
 			}
 
-			if (this->checkBox1->Checked)
+			if (this->settings["TurboMode"] == "on")//(this->checkBox1->Checked)
 				this->set_turbo_mode( 1); //TODO: error handling for turbo mode selection
 			else
 				this->set_turbo_mode( 0);
@@ -3412,6 +3569,7 @@ end_copy_to_pc:
 
 
 			CopyDialog^ copydialog = gcnew CopyDialog();
+			copydialog->settings = this->settings;
 			copydialog->cancelled=false;
 			copydialog->parent_win = this;
 			copydialog->parent_form = this;
@@ -3422,7 +3580,10 @@ end_copy_to_pc:
 			copydialog->current_offsets = current_offsets;
 			copydialog->numfiles = num_files;
 			copydialog->current_index = 0;
-			copydialog->window_title="Copying File(s) ... [PVR --> PC]";
+			if (copymode==CopyMode::COPY)
+				copydialog->window_title="Copying File(s) ... [PVR --> PC]";
+			else
+				copydialog->window_title="Moving File(s) ... [PVR --> PC]";
 			copydialog->current_file="Waiting for PVR...";
 			copydialog->turbo_mode = this->turbo_mode;
 			//copydialog->update_dialog_threadsafe();
@@ -3438,12 +3599,16 @@ end_copy_to_pc:
 			copydialog->numfiles=numitems;
 			copydialog->current_index=0;
 			copydialog->parent_checkbox = this->checkBox1;
+			copydialog->copymode=copymode;
+			copydialog->action1_skipdelete = action1_skipdelete;
+			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 
 
 			//long long bytecount;
 			time_t startTime = time(NULL);
 
 			this->transfer_in_progress=true;
+			this->TransferBegan();
 
 			Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PC));
 			copydialog->thread=thread;
@@ -3656,7 +3821,11 @@ restart_copy_to_pvr:
 					continue;
 				}  
 
-				if (this_overwrite_action==RESUME && dest_size[i]>=src_sizes[i]) {printf("Not resuming.\n");continue;} // TODO: Handle this case better
+				if (this_overwrite_action==RESUME && dest_size[i]>=src_sizes[i]) {
+					printf("Not resuming.\n");
+					if (dest_size[i]==src_sizes[i]) topfield_file_offset = dest_size[i];
+					goto check_delete;
+				} // TODO: Handle this case better
 
 				copydialog->freespace_check_needed = false;
 
@@ -3677,7 +3846,7 @@ restart_copy_to_pvr:
 
 
 				long long fileSize = src_file_info->Length;
-				if(fileSize == 0)   //TODO: shouldn't we still create 0-byte files?
+				if(fileSize == 0)   
 				{
 					//printf("ERROR: Source file is empty - not transfering.\n");
 					//continue;
@@ -4082,15 +4251,23 @@ out:
 					break;
 				}
 
+check_delete:
+				Console::WriteLine(item->full_filename);
+				printf("  topfield_file_offset =%ld   src_sizes=%ld  \n",topfield_file_offset, src_sizes[i]);
 
 				if (copydialog->copymode==CopyMode::MOVE  && topfield_file_offset == src_sizes[i])
 				{
 					try{
-						File::Delete(item->full_filename);
-						source_deleted[i]=true;
+						if (overwrite_action[i]!=SKIP || copydialog->action1_skipdelete)
+						{
+							Console::WriteLine(item->full_filename);
+							File::Delete(item->full_filename);
+							source_deleted[i]=true;
+						}
 					}
 					catch(...)
 					{
+						Console::WriteLine("Didn't delete.");
 
 					}
 
@@ -4143,8 +4320,7 @@ finish_transfer:
 
 			const int max_folders = 1000;
 
-			CopyMode copymode = CopyMode::COPY;
-			if (this->radioButton2->Checked) copymode = CopyMode::MOVE;
+			CopyMode copymode = this->getCopyMode();
 
 			//time_t startTime = time(NULL);
 
@@ -4311,7 +4487,7 @@ finish_transfer:
 			bool action1_skipdelete=true;
 			if (num_exist>0)
 			{
-				printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
+				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1], files_cat[2]);
 				oc->copymode=copymode;
 				if (num_exist==1) oc->title_label->Text="A file with this name already exists                                                   ";
@@ -4411,13 +4587,14 @@ finish_transfer:
 			}
 
 
-			if (this->checkBox1->Checked)
+			if (this->settings["TurboMode"]=="on")//(this->checkBox1->Checked)
 				this->set_turbo_mode(1); //TODO: error handling for turbo mode selection
 			else
 				this->set_turbo_mode(0);
 
 
 			CopyDialog^ copydialog = gcnew CopyDialog();
+			copydialog->settings = this->settings;
 			copydialog->parent_win = this;
 			copydialog->parent_form = this;
 			copydialog->cancelled=false;
@@ -4439,18 +4616,24 @@ finish_transfer:
 			copydialog->overwrite_action = overwrite_action;
 			copydialog->numfiles=numitems;
 			copydialog->current_index=0;
-			copydialog->window_title="Copying File(s) ... [PC --> PVR]";
+			if (copymode==CopyMode::COPY)
+				copydialog->window_title="Copying File(s) ... [PC --> PVR]";
+			else
+				copydialog->window_title="Moving File(s) ... [PC --> PVR]";
+
 			copydialog->current_file="Waiting for PVR...";
 			copydialog->turbo_mode = this->turbo_mode;
 			copydialog->parent_checkbox = this->checkBox1;
 			copydialog->copymode=copymode;
 			copydialog->action1_skipdelete = action1_skipdelete;
+			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 
 			//copydialog->TopLevel = false;this->panel1->Controls->Add(copydialog);copydialog->Show();copydialog->Visible=true;
 			//copydialog->Dock = DockStyle::Bottom;
 
 
 			this->transfer_in_progress=true;
+			this->TransferBegan();
 			Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PVR));
 			copydialog->thread = thread;
 			thread->Start(copydialog);
@@ -4501,9 +4684,15 @@ finish_transfer:
 
 
 		}
-		System::Void toolStripButton6_Click(System::Object^  sender, System::EventArgs^  e) {
+
+		void refreshTopfield(void)
+		{
 			if (this->transfer_in_progress) return;
 			this->loadTopfieldDir();
+		}
+
+		System::Void toolStripButton6_Click(System::Object^  sender, System::EventArgs^  e) {
+			this->refreshTopfield();
 		}
 
 		System::Void listView_ColumnClick(System::Object^  sender, System::Windows::Forms::ColumnClickEventArgs^  e) {
@@ -4554,6 +4743,21 @@ finish_transfer:
 			listview->Sort();
 			this->setListViewStyle(listview);
 		}
+
+		int deleteTopfieldPath(String^ path)
+		{
+
+
+			char* ascii_path = (char*)(void*)Marshal::StringToHGlobalAnsi(path);
+
+			int r = do_hdd_del(this->fd, ascii_path);
+			Marshal::FreeHGlobal((System::IntPtr)(void*)ascii_path);
+
+			return r;
+
+		}
+
+
 		System::Void toolStripButton7_Click(System::Object^  sender, System::EventArgs^  e) {
 
 			// Delete files on the Topfield
@@ -4621,7 +4825,7 @@ finish_transfer:
 
 			myEnum = selected->GetEnumerator();
 			long long total_bytes_received=0;
-			long long bytecount;
+			//long long bytecount;
 			time_t startTime = time(NULL);
 			int r;
 
@@ -4629,17 +4833,21 @@ finish_transfer:
 			while ( myEnum->MoveNext() )
 			{
 				item = safe_cast<TopfieldItem^>(myEnum->Current);
-				Console::WriteLine(item->Text);
+				//Console::WriteLine(item->Text);
 				//if (item->isdir) {continue;}   
 
-				bytecount=0;
+				//bytecount=0;
 
-				String^ full_filename = item->directory + "\\" + item->filename;
+				//String^ full_filename = item->directory + "\\" + item->filename;
 
-				char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(full_filename);
+				//char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(full_filename);
 
-				r = do_hdd_del(this->fd, path);
-				Marshal::FreeHGlobal((System::IntPtr)(void*)path);
+				//r = do_hdd_del(this->fd, path);
+				//Marshal::FreeHGlobal((System::IntPtr)(void*)path);
+
+
+				this->deleteTopfieldPath(item->full_filename);
+
 
 			}
 			this->loadTopfieldDir();
@@ -4760,9 +4968,9 @@ finish_transfer:
 			if (e->KeyCode == Keys::F5)          // F5 (Refresh)
 			{
 				if (listview == this->listView1)
-					this->loadTopfieldDir();
+					this->refreshTopfield();
 				else
-					this->loadComputerDir();
+					this->refreshComputer();
 			}
 
 			if (e->KeyCode == Keys::Delete)
@@ -4883,7 +5091,7 @@ finish_transfer:
 			String^ txt = "";
 			if(listview->SelectedItems->Count ==0 )
 			{
-				this->button1->Enabled = false;
+				//this->button1->Enabled = false;
 			}
 			else
 
@@ -4938,7 +5146,7 @@ finish_transfer:
 			String^ txt = "";
 			if(listview->SelectedItems->Count ==0 )
 			{
-				this->button2->Enabled = false;
+				//this->button2->Enabled = false;
 			}
 			else
 
@@ -5574,9 +5782,11 @@ finish_transfer:
 			{
 				CopyDialog^ copydialog = this->current_copydialog;
 				copydialog->cancelled = true;
+			
+				if (copydialog->thread != nullptr)
+			    	 copydialog->thread->Join();
+				//this->TransferEnded();
 
-				//if (copydialog->thread != nullptr)
-				//	 copydialog->thread->Join();
 
 			}
 		}
@@ -5639,6 +5849,46 @@ finish_transfer:
 
 			this->add_path_to_history(this->textBox2, this->topfieldCurrentDirectory);
 		}
+
+		void centreRB(RadioButton^ rb)
+		{
+			Point p = rb->Location;
+			p.X = ( this->panel7->ClientSize.Width - rb->Width)/2;
+			rb->Location=p;
+
+		}
+
+private: System::Void radioButton1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+			 return;
+			 System::Drawing::Font^ boldfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Bold);
+			 System::Drawing::Font^ plainfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Regular);
+
+			 if (this->radioButton1->Checked)
+			 {
+				 this->radioButton1->Font = boldfont;
+				 this->radioButton2->Font = plainfont;
+
+			 }
+			 else
+			 {
+				 this->radioButton2->Font = boldfont;
+				 this->radioButton1->Font = plainfont;
+			 }
+
+			 this->centreRB(this->radioButton1);
+this->centreRB(this->radioButton2);
+
+		 }
+
+
+		 CopyMode getCopyMode(void)
+		 {
+			 if (this->checkBox2->Checked) 
+				 return CopyMode::MOVE;
+			 else
+				 return CopyMode::COPY;
+		 }
+
 
 };    // class form1
 };    // namespace antares
