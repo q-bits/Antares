@@ -23,6 +23,10 @@ namespace Antares {
 	/// </summary>
 	public ref class SettingsDialog : public System::Windows::Forms::Form
 	{
+
+
+
+
 	public:
 		SettingsDialog(void)
 		{

@@ -30,6 +30,7 @@ namespace Antares {
 	delegate void CloseRequestCallback(void);
 
 
+	
 
 	/// <summary>
 	/// Summary for CopyDialog

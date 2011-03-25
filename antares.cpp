@@ -31,6 +31,11 @@ FILE* hf;
 
 namespace Antares {
 
+	
+//	[DllImport("explorerframe.dll")]
+//	static HRESULT SetProgressState(HWND hWnd, int tbpFlags);
+
+
 
 String^ safeString( String^ filename_str)
 {

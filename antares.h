@@ -170,6 +170,21 @@ namespace Antares {
 			return;
 		}
 
+		void update(FileItem^ item)
+		{
+			this->filename=item->filename;
+			this->directory=item->directory;
+			this->safe_filename=item->safe_filename;
+			this->datetime=item->datetime;
+			this->datestring=item->datestring;
+			
+			for (int j=0; j<5; j++)
+			{
+				this->SubItems[j]->Text = item->SubItems[j]->Text;
+			}
+		}
+
+
 		System::String^ filename;
 		System::String^ directory;
 		System::String^ safe_filename;
@@ -211,6 +226,7 @@ namespace Antares {
 			this->type='f';
 			this->filename=namestring;
 			this->full_filename = namestring;
+			this->Name = namestring;
 			this->recursion_offset="";
 			this->isdrive = true;
 			this->channel="";
@@ -257,6 +273,7 @@ namespace Antares {
 			this->datestring = DateString(date);
 			this->Text = this->filename;
 			this->full_filename = path; 
+			this->Name=path;
 			this->SubItems->Add( sizestring );
 			this->SubItems->Add(typestring);
 			this->SubItems->Add(this->datestring);
@@ -341,6 +358,7 @@ namespace Antares {
 
 			this->directory = containing_directory;
 			this->full_filename = combineTopfieldPath(containing_directory, filename);
+			this->Name=this->full_filename;
 			//DateTime^ dt = DateTime::FromFileTimeUtc(timestamp * 10000000LL + 116444736000000000LL);
 
 

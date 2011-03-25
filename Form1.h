@@ -77,6 +77,7 @@ namespace Antares {
 	delegate void TransferEndedCallback(void);
 	delegate void ComputerBackgroundCallback(void);
 	delegate void TopfieldBackgroundCallback(void);
+	
 
 
 
@@ -91,6 +92,7 @@ namespace Antares {
 
 	[DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet::Auto)]
 	LRESULT SendMessage(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+
 
 
 
@@ -195,6 +197,8 @@ namespace Antares {
 			this->last_layout_x=-1;
 			this->last_layout_y=-1;
 			InitializeComponent();
+			this->clist = this->listView2;
+			this->tlist = this->listView1;
 
 			this->setTopfieldDir("\\DataFiles\\");
 			this->setComputerDir("C:\\");
@@ -275,7 +279,7 @@ namespace Antares {
 				String^ key = "ComputerHistory"+j.ToString();
 				String^ str = this->settings->getSettingOrNull(key);
 				if (str==nullptr) break;
-			    this->textBox1->Items->Add(str);
+				this->textBox1->Items->Add(str);
 			}
 			this->add_path_to_history(this->textBox1, this->computerCurrentDirectory);
 			for (int j=0; j<hist_len; j++)
@@ -283,13 +287,13 @@ namespace Antares {
 				String^ key = "TopfieldHistory"+j.ToString();
 				String^ str = this->settings->getSettingOrNull(key);
 				if (str==nullptr) break;
-			    this->textBox2->Items->Add(str);
+				this->textBox2->Items->Add(str);
 			}
 			this->textBox2->Select(0,0);
-	
 
 
-			
+
+
 
 
 			this->listView2->ListViewItemSorter = gcnew ListViewItemComparer(this->listView2SortColumn,this->listView2->Sorting);
@@ -322,7 +326,7 @@ namespace Antares {
 
 			this->Focus();
 			this->listView2->Focus();
-	
+
 
 		}
 
@@ -421,6 +425,7 @@ namespace Antares {
 				{
 					this->label2->Text = error_str;
 					this->listView1->Items->Clear();
+					this->listView1->Tag="";
 					this->topfield_background_enumerator=nullptr;
 				}
 			}
@@ -893,6 +898,79 @@ check_freespace:
 		}
 
 
+		void updateListViewItems(ListView^ listview,  array<FileItem^>^ newitems)
+		{
+			int j;
+			FileItem^ item;
+			FileItem^ item2;
+			ListView::ListViewItemCollection^ olditems = listview->Items;
+
+			int oldcount = olditems->Count;
+			int newcount = newitems->Length;
+			Dictionary< String^, FileItem^>^ to_remove = gcnew Dictionary<String^, FileItem^>(oldcount, StringComparer::Ordinal);
+			Dictionary< String^, FileItem^>^ to_add    = gcnew Dictionary<String^, FileItem^>(newcount, StringComparer::Ordinal);
+
+			for (j=0; j<oldcount; j++)
+			{
+				item = static_cast<FileItem^>(olditems[j]);
+				try {
+					to_remove->Add(item->full_filename, item);
+				}
+				catch(...)
+				{
+				}
+			}
+
+			for (j=0; j<newcount; j++)
+			{
+				item = newitems[j];
+				if (to_remove->ContainsKey(item->full_filename))        // This new item matches an old item
+				{
+
+					item2 = to_remove[item->full_filename];
+					try
+					{
+						to_remove->Remove(item->full_filename);
+					}
+					catch(...)
+					{
+
+					}
+
+					
+
+					// update item2 with details from item.
+
+					item2->update(item);
+
+
+				}
+				else                // This new item has no matching old item
+				{
+					try
+					{
+						//to_add->Add(item->full_filename, item);
+						listview->Items->Add(item);
+					}
+					catch(...)
+					{
+					}
+					
+
+				}
+
+			}
+
+
+			for each (FileItem^ it in to_remove->Values)
+			{
+				listview->Items->Remove(it);
+			}
+
+
+
+
+		}
 
 
 		// Load and display files in the current computer directory.
@@ -908,8 +986,24 @@ check_freespace:
 
 
 			String^ dir = this->computerCurrentDirectory;
-			ComputerItem^ rename_item; bool do_rename=false;
-			ComputerItem^ select_item; bool do_select=false;
+
+
+
+
+			bool reloaded;
+			try{
+
+				reloaded = (dir == this->clist->Tag);
+			}
+			catch (...)
+			{
+			}
+
+
+
+
+			ListViewItem^ rename_item=nullptr;
+			ListViewItem^ select_item=nullptr;
 
 			if (dir->Equals(""))  // List drives
 			{
@@ -932,6 +1026,7 @@ check_freespace:
 				}
 				this->label1->Text = "My Computer";
 				settings->changeSetting("ComputerDir","");
+				this->clist->Tag = "";
 			}
 			else   //List contents of actual directory
 			{
@@ -973,24 +1068,41 @@ check_freespace:
 					CachedProgramInformation^ pi = this->proginfo_cache->query(item);
 					if (pi!=nullptr) pi->apply_to_item(item);
 
-					if (String::Compare(item->filename, start_rename)==0)
+					if (item->filename == start_rename)
 					{
-						rename_item=item; do_rename=true;
+						rename_item=item;
 					}
 
-					if (String::Compare(item->filename, name_to_select)==0)
+					if (item->filename == name_to_select)
 					{
-						select_item = item; do_select=true;
+						select_item = item;
 					}
+
+
+
 
 				}
-				
-				//this->listView2->BeginUpdate();
-				this->listView2->Items->Clear();
-				
-				this->listView2->Items->AddRange(items);
+
+
+				if (reloaded)
+				{
+					this->updateListViewItems(clist,safe_cast<array<FileItem^>^>(items));
+				}
+				else
+
+				{
+					this->listView2->BeginUpdate();
+					this->listView2->Items->Clear();
+
+					this->listView2->Items->AddRange(items);
+
+					this->listView2->EndUpdate();
+				}
+
 				this->textBox1->Select(0,0);
-				//this->listView2->EndUpdate();
+				this->clist->Tag = dir;
+
+
 				settings->changeSetting("ComputerDir",dir);
 				// Add a drive summary to label1:
 				array<long long int>^ freespaceArray = this->computerFreeSpace(dir);
@@ -1006,18 +1118,28 @@ check_freespace:
 					label1->Text = "";
 				}
 				ListView::ListViewItemCollection^ q = this->listView2->Items; 
-				if (do_rename) rename_item->BeginEdit();
-				else if (do_select)
-				{
-					select_item->Selected=true;
-					select_item->Focused=true;
-					select_item->EnsureVisible();
-				}
-				else
-				{
 
-					if (q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
+
+				if (rename_item) 
+				{
+					this->clist->SelectedItems->Clear();
+					rename_item->BeginEdit();
 				}
+				else 
+				{
+					if (nullptr!=select_item )
+					{
+						select_item->Selected=true;
+						select_item->Focused=true;
+						select_item->EnsureVisible();
+					}
+					else
+					{
+
+						if (!reloaded && q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
+					}
+				}
+
 
 				this->computer_background_enumerator = q->GetEnumerator();
 				if (this->settings["PC_Column4Visible"]=="1" || this->settings["PC_Column5Visible"]=="1")
@@ -1031,6 +1153,8 @@ check_freespace:
 
 
 			}
+			this->listView2->Tag = dir;
+			if (!rename_item) this->Arrange2();
 
 		};
 
@@ -1283,6 +1407,16 @@ check_freespace:
 			array<TopfieldItem^>^ items;
 
 
+			String^ dir = this->topfieldCurrentDirectory;
+
+			bool reloaded = false;
+
+			try{
+				reloaded = (dir == this->tlist->Tag);
+			}
+			catch(...)
+			{
+			}
 
 			if (this->fd==NULL)
 			{
@@ -1293,8 +1427,14 @@ check_freespace:
 			this->updateTopfieldSummary();
 
 			///// Actually load the directory
-			items = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);     //TODO: handle errors in directory load
+			items = this->loadTopfieldDirArrayOrNull(dir);
 			/////
+
+			if (items==nullptr)   //TODO: think about better error handling
+			{
+				this->tlist->Tag="";
+				return -1;
+			}
 
 			for(i = 0; i < items->Length ; i++)
 			{
@@ -1321,7 +1461,7 @@ check_freespace:
 				CachedProgramInformation^ pi = this->proginfo_cache->query(item);
 				if (pi!=nullptr) pi->apply_to_item(item);
 
-				if (String::Compare(this->topfieldCurrentDirectory, this->TopfieldClipboardDirectory)==0)
+				if (dir == this->TopfieldClipboardDirectory)
 				{
 					int numc = this->TopfieldClipboard->Length;
 					if (numc>0)
@@ -1339,34 +1479,48 @@ check_freespace:
 
 
 			//if (items->Length > 0)  
-			settings->changeSetting("TopfieldDir",this->topfieldCurrentDirectory);//TODO: don't do this when error in directory load
+			settings->changeSetting("TopfieldDir",dir);//TODO: don't do this when error in directory load
+			this->tlist->Tag=dir;
 
-			//this->listView1->BeginUpdate();
-			this->listView1->Items->Clear();
-			this->listView1->Items->AddRange(items);
-			//this->listView1->EndUpdate();
+			if (reloaded)
+			{
+				this->updateListViewItems(this->tlist, items);
+			}
+			else
+			{
+				this->listView1->BeginUpdate();
+				this->listView1->Items->Clear();
+				this->listView1->Items->AddRange(items);
+				this->listView1->EndUpdate();
+			}
 			this->textBox2->Select(0,0);
 			ListView::ListViewItemCollection^ q = this->listView1->Items; 
 			if (do_rename) 
 			{
-				//rename_item->BeginEdit();
-				TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(rename_item, &TopfieldItem::BeginEdit);
-				this->BeginInvoke(d);
-
-			}
-			else if (do_select)
-			{
-				select_item->Selected=true;
-				select_item->Focused=true;
-				select_item->EnsureVisible();
-			}
-			else
-			{
-
-				if (q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
-			}
-
+				this->tlist->SelectedItems->Clear();
+				rename_item->BeginEdit();
 			
+				
+				//TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(rename_item, &TopfieldItem::BeginEdit);
+				//this->BeginInvoke(d);
+
+			}
+			else 
+			{
+				if (do_select)
+				{
+					select_item->Selected=true;
+					select_item->Focused=true;
+					select_item->EnsureVisible();
+				}
+				else
+				{
+
+					if (!reloaded && q->Count>0) {q[0]->Selected=true;q[0]->Focused=true;};
+				}
+			}
+
+
 			if (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1")
 			{
 				this->topfield_background_enumerator = q->GetEnumerator();
@@ -1376,7 +1530,7 @@ check_freespace:
 			}
 
 
-			this->Arrange2();
+			if (!do_rename) this->Arrange2();
 			return 0;
 		}
 
@@ -1482,6 +1636,8 @@ check_freespace:
 			System::Collections::IEnumerator ^computer_background_enumerator;
 
 			ProgramInformationCache^ proginfo_cache;
+			ListView^ clist;
+			ListView^ tlist;
 
 
 
@@ -1562,13 +1718,13 @@ check_freespace:
 
 	public: System::Windows::Forms::ListView^  listView1;
 	private: System::Windows::Forms::ToolTip^  toolTip1;
-public: System::Windows::Forms::ComboBox^  textBox2;
-private: 
-public: System::Windows::Forms::ComboBox^  textBox1;
-private: System::Windows::Forms::CheckBox^  checkBox2;
-public: 
+	public: System::Windows::Forms::ComboBox^  textBox2;
+	private: 
+	public: System::Windows::Forms::ComboBox^  textBox1;
+	private: System::Windows::Forms::CheckBox^  checkBox2;
+	public: 
 
-public: 
+	public: 
 
 
 	public: 
@@ -1892,6 +2048,7 @@ public:
 			this->listView1->Name = L"listView1";
 			this->listView1->Size = System::Drawing::Size(486, 487);
 			this->listView1->TabIndex = 0;
+			this->listView1->Tag = L"dummy";
 			this->listView1->UseCompatibleStateImageBehavior = false;
 			this->listView1->View = System::Windows::Forms::View::Details;
 			this->listView1->ItemActivate += gcnew System::EventHandler(this, &Form1::listView1_ItemActivate);
@@ -1995,7 +2152,6 @@ public:
 			this->radioButton2->Text = L"Move";
 			this->radioButton2->UseMnemonic = false;
 			this->radioButton2->UseVisualStyleBackColor = false;
-			this->radioButton2->CheckedChanged += gcnew System::EventHandler(this, &Form1::radioButton2_CheckedChanged);
 			// 
 			// radioButton1
 			// 
@@ -2016,7 +2172,6 @@ public:
 			this->radioButton1->Text = L"Copy";
 			this->radioButton1->UseMnemonic = false;
 			this->radioButton1->UseVisualStyleBackColor = false;
-			this->radioButton1->CheckedChanged += gcnew System::EventHandler(this, &Form1::radioButton1_CheckedChanged);
 			// 
 			// panel8
 			// 
@@ -2189,6 +2344,7 @@ public:
 			this->listView2->Name = L"listView2";
 			this->listView2->Size = System::Drawing::Size(326, 487);
 			this->listView2->TabIndex = 2;
+			this->listView2->Tag = L"dummy";
 			this->listView2->UseCompatibleStateImageBehavior = false;
 			this->listView2->View = System::Windows::Forms::View::Details;
 			this->listView2->ItemActivate += gcnew System::EventHandler(this, &Form1::listView2_ItemActivate);
@@ -2340,7 +2496,7 @@ public:
 				   this->textBox2->Select(0,0);
 				   this->Refresh();
 				   Arrange_Buttons();
-				   
+
 				   //panel4->Refresh();
 			   }
 	private:
@@ -2478,6 +2634,11 @@ public:
 				}
 
 			}
+			this->textBox2->Update();
+			this->textBox2->Select(0,0);
+			this->textBox1->Select(0,0);
+
+
 
 		}
 
@@ -2576,6 +2737,7 @@ public:
 
 		System::Void Form1_Resize(System::Object^  sender, System::EventArgs^  e) {
 
+			//Console::WriteLine("Resize");
 			if (this->WindowState != FormWindowState::Minimized)
 				this->Arrange2();
 			//this->Arrange();
@@ -2595,6 +2757,7 @@ public:
 			//	 topfieldDateHeader->Width = (int) (widths0[3]/tot0 * tot)-1;
 			// }
 			// printf("ListView1 layout\n");
+			this->textBox2->Select(0,0);
 		}
 
 		System::Void listView2_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
@@ -2734,13 +2897,13 @@ public:
 			else
 			{
 				this->EnableComponents(true);
-				
+
 				this->panel7->Enabled=true;
 				this->textBox2->Enabled=true;
 				this->checkBox2->Enabled=true;
-				
-				
-				
+
+
+
 				this->Update();
 
 				printf("1. Enable components\n");
@@ -2923,8 +3086,8 @@ restart_copy_to_pc:
 
 				if (this_overwrite_action==SKIP)
 				{
-						topfield_file_offset = src_sizes[i];
-						goto check_delete;	
+					topfield_file_offset = src_sizes[i];
+					goto check_delete;	
 				}
 
 				tf_packet reply;
@@ -3281,12 +3444,12 @@ check_delete:
 
 							for (int k=j+1; k<numitems; k++)  // assumes that sub-directories and sub-files are always later in array
 							{
-								 TopfieldItem^ titem_k = safe_cast<TopfieldItem^>(src_items[k]);
-                                 if (!source_deleted[k] && titem_k->full_filename->StartsWith(pth_with_slash))
-								 {
-									 probably_empty=false;
-									 break;
-								 }
+								TopfieldItem^ titem_k = safe_cast<TopfieldItem^>(src_items[k]);
+								if (!source_deleted[k] && titem_k->full_filename->StartsWith(pth_with_slash))
+								{
+									probably_empty=false;
+									break;
+								}
 							}
 
 
@@ -3298,7 +3461,7 @@ check_delete:
 								if (dirarray != nullptr && dirarray->Length==0)
 								{
 									// Now finally delete it
-								    dr = this->deleteTopfieldPath(titem->full_filename);
+									dr = this->deleteTopfieldPath(titem->full_filename);
 
 									if (dr>=0) source_deleted[j]=true;
 								}
@@ -3470,7 +3633,7 @@ end_copy_to_pc:
 			{
 				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1],files_cat[2]);
-                oc->copymode=copymode;
+				oc->copymode=copymode;
 				if (num_exist==1) oc->title_label->Text="A file with this name already exists                                                                     ";
 				else oc->title_label->Text="Files with these names already exist                                                                                  ";					
 				//oc->files1->Text = files_cat[0];
@@ -4857,6 +5020,7 @@ finish_transfer:
 		System::Void listView_AfterLabelEdit(System::Object^  sender, System::Windows::Forms::LabelEditEventArgs^  e) {
 			ListView^ listview = safe_cast<ListView^>(sender);
 			// User has finished editing a label
+			
 			if (e->Label == nullptr)
 				Console::WriteLine(e->Item.ToString()+": No change was made");
 			else
@@ -4880,6 +5044,7 @@ finish_transfer:
 
 					if (r==0) // success
 					{
+						e->CancelEdit=true;
 						this->loadTopfieldDir("",new_filename);
 					}
 					else
@@ -4929,7 +5094,13 @@ finish_transfer:
 						}
 						else
 						{
+
 							this->loadComputerDir("",new_filename);
+
+							e->CancelEdit=true;
+							
+
+
 						}
 
 
@@ -5633,7 +5804,7 @@ finish_transfer:
 
 
 		System::Void Form1_ResizeEnd(System::Object^  sender, System::EventArgs^  e) {
-			// Console::WriteLine("ResizeEnd");
+			 Console::WriteLine("ResizeEnd");
 			//this->ResumeLayout();
 		}
 		System::Void Form1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e) {
@@ -5782,9 +5953,9 @@ finish_transfer:
 			{
 				CopyDialog^ copydialog = this->current_copydialog;
 				copydialog->cancelled = true;
-			
+
 				if (copydialog->thread != nullptr)
-			    	 copydialog->thread->Join();
+					copydialog->thread->Join();
 				//this->TransferEnded();
 
 
@@ -5796,9 +5967,6 @@ finish_transfer:
 			this->loadComputerDir();
 			this->loadTopfieldDir();
 			this->Arrange2();
-		}
-		System::Void radioButton2_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-
 		}
 
 
@@ -5817,11 +5985,11 @@ finish_transfer:
 			// update settings.
 			int hist_len = this->settings->maximum_history_length;
 			int num = cb->Items->Count;  
-		    String^ key;
+			String^ key;
 			for (int j=0; j<hist_len; j++)
 			{
 				key=str+j.ToString();
-				 
+
 				if (j<num)
 					this->settings->changeSetting(key, safe_cast<String^>(cb->Items[j]));
 				else
@@ -5839,6 +6007,7 @@ finish_transfer:
 			this->setComputerDir( safe_cast<String^>(cb->SelectedItem));
 			this->loadComputerDir();
 			this->add_path_to_history(cb,this->computerCurrentDirectory);  
+			this->clist->Focus();
 		}
 
 		// An item in the topfield path history was selected
@@ -5848,6 +6017,7 @@ finish_transfer:
 			this->loadTopfieldDir();
 
 			this->add_path_to_history(this->textBox2, this->topfieldCurrentDirectory);
+			this->tlist->Focus();
 		}
 
 		void centreRB(RadioButton^ rb)
@@ -5858,38 +6028,40 @@ finish_transfer:
 
 		}
 
-private: System::Void radioButton1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 return;
-			 System::Drawing::Font^ boldfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Bold);
-			 System::Drawing::Font^ plainfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Regular);
+		/*
+	private: System::Void radioButton1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+				 return;
+				 System::Drawing::Font^ boldfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Bold);
+				 System::Drawing::Font^ plainfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Regular);
 
-			 if (this->radioButton1->Checked)
-			 {
-				 this->radioButton1->Font = boldfont;
-				 this->radioButton2->Font = plainfont;
+				 if (this->radioButton1->Checked)
+				 {
+					 this->radioButton1->Font = boldfont;
+					 this->radioButton2->Font = plainfont;
+
+				 }
+				 else
+				 {
+					 this->radioButton2->Font = boldfont;
+					 this->radioButton1->Font = plainfont;
+				 }
+
+				 this->centreRB(this->radioButton1);
+				 this->centreRB(this->radioButton2);
 
 			 }
-			 else
+			 */
+
+
+			 CopyMode getCopyMode(void)
 			 {
-				 this->radioButton2->Font = boldfont;
-				 this->radioButton1->Font = plainfont;
+				 if (this->checkBox2->Checked) 
+					 return CopyMode::MOVE;
+				 else
+					 return CopyMode::COPY;
 			 }
 
-			 this->centreRB(this->radioButton1);
-this->centreRB(this->radioButton2);
 
-		 }
-
-
-		 CopyMode getCopyMode(void)
-		 {
-			 if (this->checkBox2->Checked) 
-				 return CopyMode::MOVE;
-			 else
-				 return CopyMode::COPY;
-		 }
-
-
-};    // class form1
+	};    // class form1
 };    // namespace antares
 
