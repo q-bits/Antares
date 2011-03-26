@@ -24,7 +24,6 @@ extern "C" {
 #define EPROTO 1
 
 namespace Antares {
-
 	public enum class CopyDirection {PVR_TO_PC, PC_TO_PVR, UNDEFINED};
 	public enum class CopyMode {COPY, MOVE, UNDEFINED};
 
@@ -54,6 +53,193 @@ namespace Antares {
 	String^ combineTopfieldPath(String^ path1,  String^ path2);
 
 
+	///////////////////////////////////////////////////////
+	//// Definitions relating to the TaskBarState class
+	//
+	// TODO: Clean up, put somewhere else
+
+
+	enum TBPFLAG
+	{
+		TBPF_NOPROGRESS = 0,
+		TBPF_INDETERMINATE = 0x1,
+		TBPF_NORMAL = 0x2,
+		TBPF_ERROR = 0x4,
+		TBPF_PAUSED = 0x8
+	};
+	enum TBATFLAG
+	{
+		TBATF_USEMDITHUMBNAIL = 0x1,
+		TBATF_USEMDILIVEPREVIEW = 0x2
+	};
+
+	enum THBMASK
+	{
+		THB_BITMAP = 0x1,
+		THB_ICON = 0x2,
+		THB_TOOLTIP = 0x4,
+		THB_FLAGS = 0x8
+	};
+
+	enum THBFLAGS
+	{
+		THBF_ENABLED = 0,
+		THBF_DISABLED = 0x1,
+		THBF_DISMISSONCLICK = 0x2,
+		THBF_NOBACKGROUND = 0x4,
+		THBF_HIDDEN = 0x8
+	};
+
+	typedef unsigned int uint;
+
+	[ComImport]
+	[Guid("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf")]
+	[InterfaceType(ComInterfaceType::InterfaceIsIUnknown)]
+	interface class ITaskbarList3
+	{
+		// ITaskbarList
+		[PreserveSig]
+		HRESULT HrInit();
+		[PreserveSig]
+		void AddTab(HWND hwnd);
+
+		[PreserveSig]
+		void DeleteTab(IntPtr hwnd);
+		[PreserveSig]
+		void ActivateTab(IntPtr hwnd);
+		[PreserveSig]
+		void SetActiveAlt(IntPtr hwnd);
+
+		// ITaskbarList2
+		[PreserveSig]
+		void MarkFullscreenWindow(
+			IntPtr hwnd,
+			[MarshalAs(UnmanagedType::Bool)] bool fFullscreen);
+
+		// ITaskbarList3
+		HRESULT SetProgressValue(HWND hwnd, UInt64 ullCompleted, UInt64 ullTotal);
+		HRESULT SetProgressState(HWND hwnd, TBPFLAG tbpFlags);
+
+
+		void RegisterTab(IntPtr hwndTab, IntPtr hwndMDI);
+		void UnregisterTab(IntPtr hwndTab);
+		void SetTabOrder(IntPtr hwndTab, IntPtr hwndInsertBefore);
+		void SetTabActive(IntPtr hwndTab, IntPtr hwndMDI, TBATFLAG tbatFlags);
+		void ThumbBarAddButtons(IntPtr hwnd,		unsigned int cButtons,		[MarshalAs(UnmanagedType::LPArray)] void* pButtons);
+		void ThumbBarUpdateButtons(
+			IntPtr hwnd,
+			unsigned int cButtons,
+			[MarshalAs(UnmanagedType::LPArray)] void* pButtons);
+		void ThumbBarSetImageList(IntPtr hwnd, IntPtr himl);
+		void SetOverlayIcon(
+			IntPtr hwnd,
+			IntPtr hIcon,
+			[MarshalAs(UnmanagedType::LPWStr)] String^ pszDescription);
+		void SetThumbnailTooltip(
+			IntPtr hwnd,
+			[MarshalAs(UnmanagedType::LPWStr)] String^ pszTip);
+		void SetThumbnailClip(
+			IntPtr hwnd,
+			RECT prcClip);
+
+	};
+
+	[Guid("56FDF344-FD6D-11d0-958A-006097C9A090")]
+	[ClassInterface(ClassInterfaceType::None)]
+	[ComImport]
+	public ref class CTaskbarList { };
+
+
+	public ref class TaskbarState {
+
+	private:
+
+		static int error_count=0;
+		static int max_error_count = 10;
+		static ITaskbarList3^ taskbarList;
+
+
+
+	public:
+
+
+		static void init()
+		{
+			if (taskbarList == nullptr)
+			{
+				try
+				{
+
+					taskbarList = (ITaskbarList3^) gcnew CTaskbarList();
+					HRESULT hr=taskbarList->HrInit();
+					//printf("HrInit() = %d\n",(int) hr);
+
+				}
+				catch (...) {error_count = max_error_count+1;}
+			}
+		}
+
+		static void setState( System::Windows::Forms::Form^ form, TBPFLAG flags)
+		{
+			if (error_count<max_error_count)
+			{
+
+				init();
+				try{
+					HRESULT hr = taskbarList->SetProgressState((HWND) form->Handle.ToPointer(), flags);
+					//printf("SetProgressState,  flags=%d  hr=%d   hwd=%d \n",(int) flags,(int) hr, (int) form->Handle.ToPointer());
+				}
+				catch(...){error_count++;}
+			}
+		}
+
+		static void setNoProgress(System::Windows::Forms::Form^ form)
+		{
+			setState(form, TBPF_NOPROGRESS);
+		}
+
+		static void setNormal(System::Windows::Forms::Form^ form)
+		{
+			setState(form, TBPF_NORMAL);
+		}
+			static void setPaused(System::Windows::Forms::Form^ form)
+		{
+			setState(form, TBPF_PAUSED);
+		}
+
+		static void setError(System::Windows::Forms::Form^ form)
+		{
+			setState(form, TBPF_ERROR);
+		}
+		static void setIndeterminate(System::Windows::Forms::Form^ form)
+		{
+			setState(form, TBPF_INDETERMINATE);
+		}
+
+		static void addTab( System::Windows::Forms::Form^ form)
+		{
+			taskbarList->AddTab((HWND) form->Handle.ToPointer());
+		}
+
+		static void setValue( System::Windows::Forms::Form^ form, ULONGLONG value,  ULONGLONG maximum)
+		{
+			if (error_count<max_error_count)
+			{
+				init();
+
+				try{
+					HRESULT hr = taskbarList->SetProgressValue((HWND) form->Handle.ToPointer(), value, maximum);
+					//printf("SetProgressValue,  val=%d  max=%d hr=%d   hwd=%d \n",(int) value, (int) maximum,(int) hr, (int) form->Handle.ToPointer());
+				}
+				catch(...){error_count++;}
+
+			}
+		}
+
+	};
+
+
+	////////////////////////////////////////////////
 
 
 
@@ -177,7 +363,7 @@ namespace Antares {
 			this->safe_filename=item->safe_filename;
 			this->datetime=item->datetime;
 			this->datestring=item->datestring;
-			
+
 			for (int j=0; j<5; j++)
 			{
 				this->SubItems[j]->Text = item->SubItems[j]->Text;

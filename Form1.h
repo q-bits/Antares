@@ -595,6 +595,8 @@ namespace Antares {
 		{
 			array<long long int>^ fs = this->computerFreeSpace(path);
 			if (fs[0]>1024*1024) return -2;
+
+			//Antares::TaskbarState::setError(this);
 			copydialog->set_error( " NO SPACE LEFT ON PC. Retrying . . . ");
 			if (*this->turbo_mode ) this->set_turbo_mode(0);
 
@@ -614,6 +616,7 @@ namespace Antares {
 					if ( copydialog->turbo_request != *this->turbo_mode)
 						this->set_turbo_mode(copydialog->turbo_request);
 					copydialog->clear_error();
+					//Antares::TaskbarState::setNormal(this);
 					return 0;
 
 				}
@@ -629,6 +632,7 @@ namespace Antares {
 		int wait_for_connection(Antares::CopyDialog^ copydialog)
 		{
 
+			//Antares::TaskbarState::setError(this);
 			if (copydialog->usb_error)
 				copydialog->set_error( " ERROR CONNECTING TO THE PVR. Retrying . . . ");
 			if (copydialog->freespace_check_needed)
@@ -687,8 +691,10 @@ check_freespace:
 
 			this->set_turbo_mode(copydialog->turbo_request);
 
-			if (ret==0) copydialog->clear_error();
+			if (ret==0)
+				copydialog->clear_error();
 
+			//Antares::TaskbarState::setNormal(this);
 			return ret;
 		}
 
@@ -988,8 +994,8 @@ check_freespace:
 			String^ dir = this->computerCurrentDirectory;
 
 
-
-
+			
+			
 			bool reloaded;
 			try{
 
@@ -2826,6 +2832,8 @@ check_freespace:
 		}
 
 		System::Void toolStripButton2_Click(System::Object^  sender, System::EventArgs^  e) {
+			
+	
 			this->refreshComputer();
 		}
 
@@ -2902,6 +2910,7 @@ check_freespace:
 				this->textBox2->Enabled=true;
 				this->checkBox2->Enabled=true;
 
+				Antares::TaskbarState::setNoProgress(this);
 
 
 				this->Update();
@@ -3702,7 +3711,7 @@ end_copy_to_pc:
 
 
 			long long space_required=0;
-			for (int i; i<numitems; i++)
+			for (int i=0; i<numitems; i++)
 			{
 				if (overwrite_action[i] != SKIP)     //TODO: modify if we every have an "auto-rename" option.
 					space_required += (src_sizes[i] - dest_size[i]);
@@ -4717,7 +4726,7 @@ finish_transfer:
 
 
 			long long space_required=0;
-			for (int i; i<numitems; i++)
+			for (int i=0; i<numitems; i++)
 			{
 				if (overwrite_action[i] != SKIP)     //TODO: modify if we every have an "auto-rename" option.
 					space_required += (src_sizes[i] - dest_size[i]);
@@ -4990,24 +4999,11 @@ finish_transfer:
 			long long total_bytes_received=0;
 			//long long bytecount;
 			time_t startTime = time(NULL);
-			int r;
-
+	
 
 			while ( myEnum->MoveNext() )
 			{
 				item = safe_cast<TopfieldItem^>(myEnum->Current);
-				//Console::WriteLine(item->Text);
-				//if (item->isdir) {continue;}   
-
-				//bytecount=0;
-
-				//String^ full_filename = item->directory + "\\" + item->filename;
-
-				//char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(full_filename);
-
-				//r = do_hdd_del(this->fd, path);
-				//Marshal::FreeHGlobal((System::IntPtr)(void*)path);
-
 
 				this->deleteTopfieldPath(item->full_filename);
 

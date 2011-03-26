@@ -86,6 +86,7 @@ namespace Antares {
 			this->close_requested=false;
 			this->thread  = nullptr;
 			this->parent_checkbox = nullptr;
+			this->error_last_time=false;
 
 		}
 	
@@ -255,12 +256,23 @@ namespace Antares {
 			{
 				this->label3->Text = this->current_error;
 				this->label3->ForeColor = Color::FromArgb(200,0,0);
+				Antares::TaskbarState::setError(this->parent_form);
+				error_last_time=true;
 				
 			}
 			else
 			{
 				this->label3->Text = current_file;
 				this->label3->ForeColor = System::Drawing::SystemColors::ControlText;
+				
+				if (error_last_time)
+				{
+					Antares::TaskbarState::setNormal(this->parent_form);
+				}
+				
+				
+				error_last_time=false;
+
 			}
 
 			
@@ -374,6 +386,7 @@ namespace Antares {
 			if (total_size>0)
 			{
 				int val2 = (int)  ( (double) this->progressBar2->Maximum * (double) total_offset / (double) total_size  );
+				Antares::TaskbarState::setValue(this->parent_form, total_offset, total_size);
 				if (val2<= this->progressBar2->Maximum && val2>=this->progressBar2->Minimum)
 				    this->progressBar2->Value = val2;
 				else printf("Warning: progressBar2 out of bounds!\n");
@@ -471,6 +484,7 @@ namespace Antares {
 		System::Threading::Thread^ thread;
 		System::Windows::Forms::CheckBox^ parent_checkbox;
 		Settings^ settings;
+		bool error_last_time;
   
 
 
