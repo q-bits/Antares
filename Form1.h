@@ -102,12 +102,7 @@ namespace Antares {
 
 
 
-	enum
-	{
-		OVERWRITE,
-		SKIP,
-		RESUME
-	} overwrite_action_type;
+	enum OverwriteAction overwrite_action_type;
 
 	/// <summary>
 	/// Summary for Form1
@@ -186,6 +181,7 @@ namespace Antares {
 			this->computer_background_enumerator = nullptr;
 
 			this->proginfo_cache = gcnew ProgramInformationCache();
+			this->connection_needs_checking = true;
 
 			icons = gcnew Antares::Icons();
 
@@ -715,6 +711,7 @@ check_freespace:
 			if(r < 0)
 			{
 				this->absorb_late_packets(2,100);
+				this->connection_error_occurred();
 				return -EPROTO;
 			}
 
@@ -722,6 +719,7 @@ check_freespace:
 			if(r < 0)
 			{
 				this->absorb_late_packets(2,100);
+				this->connection_error_occurred();
 				return -EPROTO;
 			}
 
@@ -739,13 +737,16 @@ check_freespace:
 			case FAIL:
 				fprintf(stderr, "ERROR: Device reports %s in set_turbo_mode\n",
 					decode_error(&reply));
+				this->connection_error_occurred();
 				break;
 
 			default:
 				fprintf(stderr, "ERROR: Unhandled packet (in set_turbo_mode) cmd=%d\n",&reply.cmd);
+				this->connection_error_occurred();
 				this->absorb_late_packets(2,100);
 			}
 			this->absorb_late_packets(2,100);
+			this->connection_error_occurred();
 			return -EPROTO;
 		}
 
@@ -875,7 +876,7 @@ check_freespace:
 					TopfieldItem^ item = safe_cast<TopfieldItem^>(en->Current);
 					//Console::WriteLine(item->full_filename);
 
-					if (this->proginfo_cache->query(item)==nullptr)
+					if (!item->isdir && this->proginfo_cache->query(item)==nullptr)
 					{
 						ri.readsize=0;
 						this->loadInfo(item,&ri);
@@ -1282,12 +1283,14 @@ check_freespace:
 				case FAIL:
 					fprintf(stderr, "ERROR: Device reports %s in loadTopfieldDirArray, path %s\n",
 						decode_error(&reply),path);
+					this->connection_error_occurred();
 					return nullptr;//items;
 
 					break;
 				default:
 					fprintf(stderr, "ERROR: Unhandled packet\n");
 					this->absorb_late_packets(4,100);
+					this->connection_error_occurred();
 					return nullptr;//items;
 				}
 
@@ -1342,12 +1345,14 @@ check_freespace:
 			r = send_cmd_hdd_size(fd);
 			if(r < 0)
 			{
+				this->connection_error_occurred();
 				return v;
 			}
 
 			r = get_tf_packet(fd, &reply);
 			if(r < 0)
 			{
+				this->connection_error_occurred();
 				return v;
 			}
 
@@ -1365,10 +1370,12 @@ check_freespace:
 			case FAIL:
 				fprintf(stderr, "ERROR: Device reports %s in getTopfieldFreeSpace\n",
 					decode_error(&reply));
+				this->connection_error_occurred();
 				break;
 
 			default:
 				fprintf(stderr, "ERROR: Unhandled packet in load_topfield_dir/hdd_size\n");
+				this->connection_error_occurred();
 				this->absorb_late_packets(4,100);
 			}
 			this->last_topfield_freek = v.freek;
@@ -1644,6 +1651,8 @@ check_freespace:
 			ProgramInformationCache^ proginfo_cache;
 			ListView^ clist;
 			ListView^ tlist;
+
+			bool connection_needs_checking;
 
 
 
@@ -3141,6 +3150,7 @@ restart_copy_to_pc:
 
 
 				//printf("topfield_file_offset = %ld\n",topfield_file_offset);
+				copydialog->file_began();
 				if (topfield_file_offset==0) 
 					r = send_cmd_hdd_file_send(this->fd, GET, srcPath);   
 				else
@@ -3187,6 +3197,7 @@ restart_copy_to_pc:
 					if (r<=0)
 					{
 						copydialog->usb_error=true;
+						this->connection_error_occurred();
 						goto out;
 					}
 
@@ -3210,6 +3221,7 @@ restart_copy_to_pc:
 							fprintf(stderr,
 								"ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
 								state);
+							this->connection_error_occurred();
 							send_cancel(fd);
 							copydialog->usb_error=true;
 							state = ABORT;
@@ -3338,6 +3350,7 @@ restart_copy_to_pc:
 								state);
 							send_cancel(fd);
 							copydialog->usb_error=true;
+							this->connection_error_occurred();
 							state = ABORT;
 						}
 						break;
@@ -3353,6 +3366,7 @@ restart_copy_to_pc:
 					case FAIL:
 						printf("ERROR: Device reports %s in transfer_to_PC\n",
 							decode_error(&reply));
+						this->connection_error_occurred();
 						send_cancel(fd);
 						state = ABORT;
 						copydialog->usb_error=true;
@@ -3366,6 +3380,7 @@ restart_copy_to_pc:
 					default:
 						printf("ERROR: Unhandled packet (cmd 0x%x)\n",
 							get_u32(&reply.cmd));
+						this->connection_error_occurred();
 						send_cancel(fd);
 						copydialog->usb_error=true;
 						goto out;
@@ -3393,6 +3408,7 @@ out:
 
 				if (copydialog->usb_error)
 				{
+					this->connection_error_occurred();
 					if (this->wait_for_connection(copydialog) < 0) 
 						goto end_copy_to_pc;
 					else
@@ -4099,6 +4115,7 @@ restart_copy_to_pvr:
 				int r;
 
 				printf("topfield_file_offset=%lld   = %f MB\n",topfield_file_offset,((double)topfield_file_offset)/1024.0/1024.0);
+				copydialog->file_began();
 				if (topfield_file_offset==0)
 					r = send_cmd_hdd_file_send(this->fd, PUT, dstPath);
 				else
@@ -4376,6 +4393,8 @@ out:
 				//if (was_cancelled) break;
 
 				if (copydialog->usb_error)
+				{
+					this->connection_error_occurred();
 					if (this->wait_for_connection(copydialog) < 0) 
 					{
 						//copydialog->close_request_threadsafe();
@@ -4384,6 +4403,7 @@ out:
 					}
 					else
 						goto restart_copy_to_pvr;
+				}
 
 				if (copydialog->freespace_check_needed)
 				{
@@ -5688,7 +5708,9 @@ finish_transfer:
 
 			if(r < 0)
 			{
+				this->connection_error_occurred();
 				return out_array;
+				
 			}
 
 			state = START;
@@ -5713,6 +5735,7 @@ finish_transfer:
 						fprintf(stderr,
 							"ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
 							state);
+						this->connection_error_occurred();
 						send_cancel(fd);
 						state = ABORT;
 					}
@@ -5735,6 +5758,7 @@ finish_transfer:
 							fprintf(stderr,
 								"ERROR: Short packet %d instead of %d\n", r,
 								get_u16(&reply.length));
+							this->connection_error_occurred();
 
 						}
 
@@ -5752,6 +5776,7 @@ finish_transfer:
 						fprintf(stderr,
 							"ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
 							state);
+						this->connection_error_occurred();
 						send_cancel(fd);
 						state = ABORT;
 
@@ -5771,6 +5796,7 @@ finish_transfer:
 					fprintf(stderr, "ERROR: Device reports %s in read_topfield_file_snippet\n",
 						decode_error(&reply));
 					send_cancel(fd);
+					this->connection_error_occurred();
 					state = ABORT;
 
 					break;
@@ -5783,6 +5809,7 @@ finish_transfer:
 				default:
 					fprintf(stderr, "ERROR: Unhandled packet (cmd 0x%x)\n",
 						get_u32(&reply.cmd));
+					this->connection_error_occurred();
 				}
 
 
@@ -6055,6 +6082,11 @@ finish_transfer:
 					 return CopyMode::MOVE;
 				 else
 					 return CopyMode::COPY;
+			 }
+
+			 void connection_error_occurred(void)
+			 {
+				 this->connection_needs_checking=true;
 			 }
 
 

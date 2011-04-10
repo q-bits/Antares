@@ -30,7 +30,7 @@ namespace Antares {
 	delegate void CloseRequestCallback(void);
 
 
-	
+
 
 	/// <summary>
 	/// Summary for CopyDialog
@@ -70,11 +70,11 @@ namespace Antares {
 
 			this->rate_stopwatch = gcnew System::Diagnostics::Stopwatch();
 			this->rate_bytes = 0;
-			this->rate_milliseconds = 0;
+			this->rate_seconds = 0;
 			this->parent_win = nullptr;
 			this->parent_form = nullptr;
 			this->settings=nullptr;
-			
+
 			this->usb_error=false;
 			this->file_error="";
 			this->loaded = false;
@@ -88,54 +88,146 @@ namespace Antares {
 			this->parent_checkbox = nullptr;
 			this->error_last_time=false;
 
-		}
-	
-		/*
-		CopyDialog(IWin32Window ^win)
-		{
-			CopyDialog();
-			this->parent_win = win;
-			//this->turbo_mode = form1->turbo_mode;
+			this->num_between_files=0;
+			this->time_between_files=0;
+			this->bytes_between_files=0;
+
+
+
 
 		}
-		*/
-	
+
+		void file_began(void)
+		{
+
+			this->file_began_time = (double) this->rate_stopwatch->GetTimestamp() / (double) this->rate_stopwatch->Frequency;
+			this->no_packets_since_file_began=true;
+		}
+
+		double get_avg_time_between_files(void)
+		{
+			double a;
+			if (this->num_between_files==0)  // No measurements, so return realistic defaults
+			{
+
+				if ( *this->turbo_mode)
+				{
+					if (this->copydirection == CopyDirection::PC_TO_PVR)
+						a=.33;
+					else
+						a=.11;
+				}
+				else
+				{
+					if (this->copydirection == CopyDirection::PC_TO_PVR)
+						a=.53;
+					else
+						a=.13;
+				}
+			}
+			else
+			{
+
+				a= this->time_between_files / (double) this->num_between_files;
+
+			}
+
+			printf("avg = %f\n",a);
+			return a;
+		}
 
 		void new_packet(long long bytes)
 		{
-		   
-           if ( false == this->rate_stopwatch->IsRunning)
-		   {
-			   this->rate_stopwatch->Reset();
-			   this->rate_bytes=0;
-			   this->rate_milliseconds=0;
-			   this->rate_stopwatch->Start();
-		   }
-		   else
-		   {
-			   this->rate_bytes += bytes;
-			   this->rate_milliseconds = this->rate_stopwatch->ElapsedMilliseconds;
-		   }
 
-		   //printf("bytes = %lld  milliseconds=%lld  \n",this->rate_bytes, this->rate_milliseconds);
-		}
-		void reset_rate(void)
-		{
+			/*
+			if ( false == this->rate_stopwatch->IsRunning)
+			{
 			this->rate_stopwatch->Reset();
 			this->rate_bytes=0;
 			this->rate_milliseconds=0;
+			this->rate_stopwatch->Start();
+			}
+			else
+			{
+			this->rate_bytes += bytes;
+			this->rate_milliseconds = this->rate_stopwatch->ElapsedMilliseconds;
+			}
+			*/
+
+			long long ts = this->rate_stopwatch->GetTimestamp();
+			if (this->no_packets_since_file_began)
+			{ 
+				double delta = (double) (ts -  this->last_packet_ticks) / (double) this->rate_stopwatch->Frequency ;
+
+				if (delta < 2.0 && delta >=0.0)
+				{
+
+					this->num_between_files++;
+					this->time_between_files+=delta;
+					this->bytes_between_files+=bytes;
+				}
+
+			}
+
+
+			if ( ! (this->no_packets_since_file_began || this->no_packets_since_last_reset))
+			{
+
+
+
+				double delta = (double) (ts-this->last_packet_ticks)  / (double) this->rate_stopwatch->Frequency;
+
+				if (delta < 2.0 && delta >= 0.0)
+				{
+					this->rate_bytes+=bytes;
+					this->rate_seconds += delta;
+				}
+
+
+			}
+			this->last_packet_ticks = ts;
+
+			this->no_packets_since_file_began=false;
+			this->no_packets_since_last_reset=false;
+
+
+			//printf("bytes = %lld  milliseconds=%lld  \n",this->rate_bytes, this->rate_milliseconds);
+		}
+		void reset_rate(void)
+		{
+			//this->rate_stopwatch->Reset();
+			this->rate_bytes=0;
+			this->rate_seconds=0;
+			this->time_between_files=0;
+			this->num_between_files=0;
+			this->last_packet_ticks=0;
+			this->no_packets_since_last_reset=true;
+			this->bytes_between_files=0;
 		}
 		double get_rate(void)
 		{
 			double ret;
-			if (this->rate_milliseconds == 0) 
-				ret= -1;
+			if (this->rate_seconds == 0) // choose a reasonable default if we have not made a measurement
+			{
+				if ( *this->turbo_mode)
+				{
+					if (this->copydirection == CopyDirection::PC_TO_PVR)
+						ret=2.30 * 1024.0*1024.0;
+					else
+						ret=3.33 * 1024.0*1024.0;
+				}
+				else
+				{
+					if (this->copydirection == CopyDirection::PC_TO_PVR)
+						ret=1.02 * 1024.0*1024.0;
+					else
+						ret=1.33 * 1024.0*1024.0;
+				}
+			}
 			else
 			{
-				ret=(double) this->rate_bytes / (double) this->rate_milliseconds  * 1000.0;
+				ret=(double) this->rate_bytes / (double) this->rate_seconds ;
 			}
-
-			//printf(" rate = %f\n",ret);
 
 			return ret;
 
@@ -173,12 +265,18 @@ namespace Antares {
 
 		}
 
-		static String^ time_remaining_string(double rate, double bytes)
+		static String^ time_remaining_string(double rate, double bytes, double total_files_remaining, double avg_time_between_files)
 		{
 			String^ str;
 			str="--:--:--";
 			if (rate==0) return(str);
 			double t = bytes/rate;
+
+			t += avg_time_between_files*total_files_remaining;
+
+
+			//printf("t=%f   total_files_remaining=%f   avg=%f \n",t,total_files_remaining, avg_time_between_files);
+
 			if (t > 99*60*60 || t<0) return(str);
 			int ti = (int) t;
 			int sec = ti % 60;
@@ -219,7 +317,7 @@ namespace Antares {
 
 		void clear_error()
 		{
-            this->current_error="";
+			this->current_error="";
 		}
 
 
@@ -227,7 +325,7 @@ namespace Antares {
 		{
 
 			if (this->cancelled) return;
-		
+
 			while (!this->IsHandleCreated) 				
 			{
 				Thread::Sleep(100);
@@ -238,7 +336,7 @@ namespace Antares {
 				UpdateDialogCallback^ d = 
 					gcnew UpdateDialogCallback(this, &CopyDialog::update_dialog);
 				if (this->TopLevel)
-				this->BeginInvoke(d, gcnew array<Object^> { });
+					this->BeginInvoke(d, gcnew array<Object^> { });
 				else
 					this->parent_form->BeginInvoke(d, gcnew array<Object^> { });
 			}
@@ -249,7 +347,7 @@ namespace Antares {
 		void update_dialog(void)
 		{
 			if ( ! this->Visible) return;
-			
+
 			this->Text = this->window_title;
 
 			if (this->current_error->Length >  0)
@@ -258,27 +356,27 @@ namespace Antares {
 				this->label3->ForeColor = Color::FromArgb(200,0,0);
 				Antares::TaskbarState::setError(this->parent_form);
 				error_last_time=true;
-				
+
 			}
 			else
 			{
 				this->label3->Text = current_file;
 				this->label3->ForeColor = System::Drawing::SystemColors::ControlText;
-				
+
 				if (error_last_time)
 				{
 					Antares::TaskbarState::setNormal(this->parent_form);
 				}
-				
-				
+
+
 				error_last_time=false;
 
 			}
 
-			
+
 			//double current_delta = (double) (time(NULL) - this->current_start_time);
 			//double total_delta = (double) (time(NULL) - this->total_start_time);
-			double current_delta = (double) this->rate_milliseconds / 1000.0;
+			double current_delta = (double) this->rate_stopwatch->GetTimestamp() / (double) this->rate_stopwatch->Frequency;
 			double current_rate;//, total_rate;
 			int i = this->current_index;
 
@@ -296,11 +394,11 @@ namespace Antares {
 			//	total_rate = (double) (this->total_bytes_received) / total_delta;
 			//else
 			//	total_rate=0;
-            
+
 			if (this->has_initialised==false) {
 				/*
 				if (this->parent_checkbox !=nullptr)
-					this->checkBox1->Checked = this->parent_checkbox->Checked;
+				this->checkBox1->Checked = this->parent_checkbox->Checked;
 				else
 				this->checkBox1->Checked = *this->turbo_mode;
 				*/
@@ -312,7 +410,7 @@ namespace Antares {
 				else
 					this->checkBox1->Checked = *this->turbo_mode;
 
-				
+
 				this->has_initialised=true;
 
 				if (this->numfiles<=1)
@@ -343,14 +441,21 @@ namespace Antares {
 
 
 			long long total_offset=0;  long long total_size=0;
+			long long files_remaining=0;
 			for (int j=0; j < this->numfiles; j++)
 			{
 				total_offset += this->current_offsets[j];
 				total_size += this->filesizes[j];
+				if (j>this->current_index)
+				{
+					if (this->overwrite_action[j] != SKIP)
+						files_remaining++;
+				}
 			}
 
 
-//			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
+
+			//			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
 			long long int total_offset_MB = total_offset / 1024LL/1024LL;
 			int total_offset_dec_MB = (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024;
 			this->label5->Text =  (total_offset_MB).ToString("#,#,#")+"."+total_offset_dec_MB.ToString()+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
@@ -362,21 +467,56 @@ namespace Antares {
 					this->progressBar1->Value= val1; 
 				else printf("Warning: progressBar1 out of bounds!\n");
 			}
-			if (current_rate<0)
+
+			if (this->current_error->Length > 0 )
 			{
 				this->label8->Text = "-- MB/sec";
 				this->label6->Text = "--:--:--";
 				this->label7->Text = "--:--:--";
 			}
+
 			else
 			{
+
 				if ( floor(current_delta) > floor(this->last_current_delta) && current_delta>1.0)
 				{
-					this->label8->Text = (current_rate/1024.0/1024.0).ToString("F2")+" MB/sec";
-					this->label6->Text = time_remaining_string(current_rate,(double) (size - offset ) );
-                    this->label7->Text = time_remaining_string(current_rate, (double) ( total_size - total_offset ) );
-				}
 
+					String^ ratestring="--";
+
+					double current_rate2 = (double) (this->bytes_between_files + this->rate_bytes) /  (this->time_between_files + this->rate_seconds);
+
+					printf("%lld,  %lld,  %f,  %f  : %f\n",bytes_between_files, rate_bytes, time_between_files, rate_seconds, current_rate2);
+					if (current_rate2>0.0 && current_rate2<20000000.0)
+						ratestring = (current_rate2/1024.0/1024.0).ToString("F2");
+
+					/*
+					if (current_rate<0 )
+					{
+
+						if (this->time_between_files>0)
+						{
+						     double current_rate2 = this->bytes_between_files / this->time_between_files;
+                             if (current_rate2>0.0 && current_rate<20.0)
+                                 ratestring = (current_rate/1024.0/1024.0).ToString("F2");
+						}
+
+						
+					}
+					else
+					{
+						ratestring = (current_rate/1024.0/1024.0).ToString("F2");
+					}
+					*/
+
+					this->label8->Text = ratestring + " MB/s";
+
+
+					//this->label8->Text = (current_rate/1024.0/1024.0).ToString("F2")+" MB/sec";
+					current_rate = fabs(current_rate);
+					printf("size=%lld offset=%lld  total_offset=%lld  total_size=%lld  files_remaining=%lld  \n",size,offset,total_offset,total_size,files_remaining);
+					this->label6->Text = time_remaining_string(current_rate,(double) (size - offset ), 0, 0 );
+					this->label7->Text = time_remaining_string(current_rate, (double) ( total_size - total_offset ),(double) files_remaining , this->get_avg_time_between_files());
+				}
 
 
 			}
@@ -388,31 +528,31 @@ namespace Antares {
 				int val2 = (int)  ( (double) this->progressBar2->Maximum * (double) total_offset / (double) total_size  );
 				Antares::TaskbarState::setValue(this->parent_form, total_offset, total_size);
 				if (val2<= this->progressBar2->Maximum && val2>=this->progressBar2->Minimum)
-				    this->progressBar2->Value = val2;
+					this->progressBar2->Value = val2;
 				else printf("Warning: progressBar2 out of bounds!\n");
 			}
 
 
-				//if ( total_delta > 3.0)
-				//{
-				//	if (current_delta > this->last_current_delta)
-				//	{
-				//		
-//
-//					}
-//				}
-//				else
-//					this->label7->Text = "--:--:--";
-	//		}
+			//if ( total_delta > 3.0)
+			//{
+			//	if (current_delta > this->last_current_delta)
+			//	{
+			//		
+			//
+			//					}
+			//				}
+			//				else
+			//					this->label7->Text = "--:--:--";
+			//		}
 			// }
 			int perc1 = ((int)(100.00 * (double) offset / (double) size));
 			int perc2 = ((int)(100.00 * (double) total_offset / (double) total_size));
 			perc1 = perc1<0 ? 0 : perc1;
-            perc2 = perc2<0 ? 0 : perc2;
+			perc2 = perc2<0 ? 0 : perc2;
 			perc1 = perc1>100 ? 100 : perc1;
-            perc2 = perc2>100 ? 100 : perc2;
+			perc2 = perc2>100 ? 100 : perc2;
 
-            this->label1->Text =  perc1.ToString() + "%";
+			this->label1->Text =  perc1.ToString() + "%";
 			this->label2->Text =  perc2.ToString() + "%";
 			this->last_current_delta = current_delta;
 
@@ -433,11 +573,19 @@ namespace Antares {
 		bool is_closed;
 		bool turbo_request;
 		bool^ turbo_mode;
-	
 
-		long long rate_milliseconds;
+
+		double rate_seconds;
 		long long rate_bytes;
 		System::Diagnostics::Stopwatch ^rate_stopwatch;
+		double file_began_time;
+		double last_packet_time;
+		bool no_packets_since_file_began;
+		bool no_packets_since_last_reset;
+		double time_between_files;
+		int num_between_files;
+		long long last_packet_ticks;
+		long long bytes_between_files;
 
 
 		//long long int current_filesize;
@@ -449,7 +597,7 @@ namespace Antares {
 		array<long long int>^ filesizes;
 		//array<long long int>^ current_offsets;
 		int current_index;
-        int numfiles;
+		int numfiles;
 
 		time_t current_start_time, total_start_time;
 		String^ window_title;
@@ -472,7 +620,7 @@ namespace Antares {
 		bool loaded;
 		int maximum_successful_index;
 
-        CopyDirection copydirection;
+		CopyDirection copydirection;
 		CopyMode copymode;
 		bool action1_skipdelete;
 
@@ -485,7 +633,7 @@ namespace Antares {
 		System::Windows::Forms::CheckBox^ parent_checkbox;
 		Settings^ settings;
 		bool error_last_time;
-  
+
 
 
 	private: System::Windows::Forms::ProgressBar^  progressBar1;
@@ -501,9 +649,9 @@ namespace Antares {
 	private: System::Windows::Forms::Label^  label5;
 	private: System::Windows::Forms::Label^  label6;
 	private: System::Windows::Forms::Label^  label7;
-private: System::Windows::Forms::Label^  label8;
-public: System::Windows::Forms::CheckBox^  checkBox1;
-private: 
+	private: System::Windows::Forms::Label^  label8;
+	public: System::Windows::Forms::CheckBox^  checkBox1;
+	private: 
 
 
 	protected: 
@@ -727,38 +875,38 @@ private:
 				 this->cancelled = true;
 			 }
 
-private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-			 this->turbo_request  = this->checkBox1->Checked;
-			 if (this->checkBox1->Checked) this->settings->changeSetting("TurboMode","on"); else this->settings->changeSetting("TurboMode","off");
+	private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+				 this->turbo_request  = this->checkBox1->Checked;
+				 if (this->checkBox1->Checked) this->settings->changeSetting("TurboMode","on"); else this->settings->changeSetting("TurboMode","off");
 
-			 if (this->parent_checkbox != nullptr)
-				 this->parent_checkbox->Checked = this->checkBox1->Checked;
-			
-		 }
-private: System::Void CopyDialog_Load(System::Object^  sender, System::EventArgs^  e) {
-			 printf("CopyDialog loaded\n");
-			 this->loaded=true;
-		 }
+				 if (this->parent_checkbox != nullptr)
+					 this->parent_checkbox->Checked = this->checkBox1->Checked;
 
-private: System::Void CopyDialog_KeyDown(System::Object^  sender, System::Windows::Forms::KeyEventArgs^  e) {
-			 if (e->KeyCode == Keys::Escape)
-			 {
+			 }
+	private: System::Void CopyDialog_Load(System::Object^  sender, System::EventArgs^  e) {
+				 printf("CopyDialog loaded\n");
+				 this->loaded=true;
+			 }
+
+	private: System::Void CopyDialog_KeyDown(System::Object^  sender, System::Windows::Forms::KeyEventArgs^  e) {
+				 if (e->KeyCode == Keys::Escape)
+				 {
+					 this->button1->Enabled=false;
+					 this->cancelled=true;
+				 }
+			 }
+	private: System::Void CopyDialog_FormClosing(System::Object^  sender, System::Windows::Forms::FormClosingEventArgs^  e) {
+				 printf("Form closing, for some reason.\n");
 				 this->button1->Enabled=false;
 				 this->cancelled=true;
+				 if (!this->close_requested)
+					 e->Cancel = true;
+
+
 			 }
-		 }
-private: System::Void CopyDialog_FormClosing(System::Object^  sender, System::Windows::Forms::FormClosingEventArgs^  e) {
-			 printf("Form closing, for some reason.\n");
-			 this->button1->Enabled=false;
-			 this->cancelled=true;
-			 if (!this->close_requested)
-		    	 e->Cancel = true;
-			
-			 
-		 }
-private: System::Void CopyDialog_Resize(System::Object^  sender, System::EventArgs^  e) {
-			 if (FormWindowState::Minimized == this->WindowState)
-				 this->parent_form->WindowState = FormWindowState::Minimized;
-		 }
-};
+	private: System::Void CopyDialog_Resize(System::Object^  sender, System::EventArgs^  e) {
+				 if (FormWindowState::Minimized == this->WindowState)
+					 this->parent_form->WindowState = FormWindowState::Minimized;
+			 }
+	};
 }

@@ -24,6 +24,8 @@ extern "C" {
 #define EPROTO 1
 
 namespace Antares {
+
+
 	public enum class CopyDirection {PVR_TO_PC, PC_TO_PVR, UNDEFINED};
 	public enum class CopyMode {COPY, MOVE, UNDEFINED};
 
@@ -43,6 +45,13 @@ namespace Antares {
 	[DllImport("shell32.dll")]
 	DWORD_PTR SHGetFileInfo(LPCTSTR pszPath, DWORD dwFileAttributes, SHFILEINFO* psfi, UINT cbSizeFileInfo, UINT uFlags);
 
+
+	enum OverwriteAction
+	{
+		OVERWRITE,
+		SKIP,
+		RESUME
+	};
 
 	System::String^ HumanReadableSize(__u64 size);
 	System::String^ DateString(time_t time);
