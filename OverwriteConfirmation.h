@@ -489,18 +489,21 @@ namespace Antares {
 			// 
 			// checkBox1
 			// 
+			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->checkBox1->AutoSize = true;
+			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(255)), static_cast<System::Int32>(static_cast<System::Byte>(255)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(230)));
 			this->checkBox1->Checked = true;
 			this->checkBox1->CheckState = System::Windows::Forms::CheckState::Checked;
 			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->checkBox1->ForeColor = System::Drawing::Color::DarkGreen;
-			this->checkBox1->Location = System::Drawing::Point(371, 89);
+			this->checkBox1->Location = System::Drawing::Point(498, 89);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(129, 19);
 			this->checkBox1->TabIndex = 10;
 			this->checkBox1->Text = L"Delete the PC copy";
-			this->checkBox1->UseVisualStyleBackColor = true;
+			this->checkBox1->UseVisualStyleBackColor = false;
 			this->checkBox1->Visible = false;
 			// 
 			// OverwriteConfirmation

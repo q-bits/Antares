@@ -344,6 +344,77 @@ namespace Antares {
 				this->update_dialog();
 		}
 
+
+		void tiny_size(void)    //visual arrangement for "finding files" stage
+		{
+			this->SuspendLayout();
+			this->progressBar1->Visible=false;
+			this->progressBar2->Visible=false;
+
+			this->label2->Visible=false;
+			this->label5->Visible=false;
+			this->label7->Visible=false;
+
+			this->label1->Visible=false;
+			this->label4->Visible=false;
+			this->label6->Visible=false;
+
+			this->button1->Visible=false;
+			this->checkBox1->Visible=false;
+
+			this->Height=100;
+			this->ResumeLayout();
+
+		}
+
+
+		void small_size(void)   // visual arrangement for transferring one file.
+		{
+			this->SuspendLayout();
+			this->label2->Visible=false;
+			this->label5->Visible=false;
+			this->label7->Visible=false;
+
+			this->label1->Visible=true;
+			this->label4->Visible=true;
+			this->label6->Visible=true;
+
+			this->button1->Visible=true;
+			this->checkBox1->Visible=true;
+
+			this->progressBar2->Visible=false;
+
+			this->progressBar1->Visible=true;
+
+			this->Height=225;
+			this->ResumeLayout();
+		}
+
+		void normal_size(void) // visual arrangement for transferring several files
+		{
+
+			this->SuspendLayout();
+			this->label2->Visible=true;
+			this->label5->Visible=true;
+			this->label7->Visible=true;
+			this->progressBar2->Visible=true;
+
+			this->label1->Visible=true;
+			this->label4->Visible=true;
+			this->label6->Visible=true;
+
+			this->button1->Visible=true;
+			this->checkBox1->Visible=true;
+
+			this->progressBar1->Visible=true;
+
+			this->Height=282;
+
+
+			this->ResumeLayout();
+
+		}
+
 		void update_dialog(void)
 		{
 			if ( ! this->Visible) return;
@@ -413,15 +484,12 @@ namespace Antares {
 
 				this->has_initialised=true;
 
-				if (this->numfiles<=1)
-				{
-					this->label2->Visible=false;
-					this->label5->Visible=false;
-					this->label7->Visible=false;
-					this->progressBar2->Visible=false;
-					this->Height=225;
-
-				}
+				/*
+				if (this->numfiles<=1)				
+				  this->small_size();
+				else
+					this->normal_size();
+					*/
 
 			};
 			if (*this->turbo_mode != this->turbo_request && this->current_error->Length == 0)
@@ -750,7 +818,7 @@ namespace Antares {
 			this->label3->AutoSize = true;
 			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label3->Location = System::Drawing::Point(17, 20);
+			this->label3->Location = System::Drawing::Point(9, 20);
 			this->label3->Name = L"label3";
 			this->label3->Size = System::Drawing::Size(45, 16);
 			this->label3->TabIndex = 5;
@@ -809,7 +877,7 @@ namespace Antares {
 			this->label8->AutoSize = true;
 			this->label8->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label8->Location = System::Drawing::Point(566, 20);
+			this->label8->Location = System::Drawing::Point(574, 20);
 			this->label8->Name = L"label8";
 			this->label8->Size = System::Drawing::Size(45, 16);
 			this->label8->TabIndex = 10;
@@ -834,6 +902,7 @@ namespace Antares {
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->ClientSize = System::Drawing::Size(664, 248);
+			this->ControlBox = false;
 			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->label8);
 			this->Controls->Add(this->label7);
@@ -851,7 +920,7 @@ namespace Antares {
 			this->MaximizeBox = false;
 			this->MaximumSize = System::Drawing::Size(680, 282);
 			this->Name = L"CopyDialog";
-			this->Padding = System::Windows::Forms::Padding(5);
+			this->Padding = System::Windows::Forms::Padding(5, 5, 5, 5);
 			this->ShowIcon = false;
 			this->ShowInTaskbar = false;
 			this->SizeGripStyle = System::Windows::Forms::SizeGripStyle::Hide;

@@ -2878,6 +2878,14 @@ check_freespace:
 			}
 		}
 
+
+		System::Void CentreCopyDialog(CopyDialog^ copydialog, int offset)
+		{
+
+			copydialog->Location = System::Drawing::Point( (this->Width - copydialog->Width)/2, offset+(this->Height - copydialog->Height)/2);
+			copydialog->BringToFront();
+		}
+
 		System::Void ShowCopyDialog(CopyDialog^ copydialog)
 		{
 			this->current_copydialog = copydialog;
@@ -2885,8 +2893,7 @@ check_freespace:
 			//copydialog->Dock= DockStyle::Bottom;
 			this->EnableComponents(false);
 			this->Controls->Add(copydialog);copydialog->Show();
-			copydialog->Location = System::Drawing::Point( (this->Width - copydialog->Width)/2, (this->Height - copydialog->Height)/2);
-			copydialog->BringToFront();
+			this->CentreCopyDialog(copydialog,-100);
 
 		}
 
@@ -3526,6 +3533,31 @@ end_copy_to_pc:
 
 			ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
 
+
+			if (selected->Count==0) return;
+
+			CopyDialog^ copydialog = gcnew CopyDialog();
+			copydialog->settings = this->settings;
+			copydialog->cancelled=false;
+			copydialog->parent_win = this;
+			copydialog->parent_form = this;
+			//copydialog->showCopyDialog();
+
+			if (copymode==CopyMode::COPY)
+				copydialog->window_title="Copying File(s) ... [PVR --> PC]";
+			else
+				copydialog->window_title="Moving File(s) ... [PVR --> PC]";
+			
+			copydialog->Text = copydialog->window_title;
+
+			copydialog->tiny_size();
+			copydialog->label3->Text="Finding files...";
+		    this->ShowCopyDialog(copydialog);
+		
+			copydialog->Update();
+
+
+
 			array<TopfieldItem^>^ items = gcnew array<TopfieldItem^>(selected->Count);
 			selected->CopyTo(items,0);
 
@@ -3650,7 +3682,7 @@ end_copy_to_pc:
 			}
 
 
-			if (numitems==0) return;
+			if (numitems==0) goto aborted;
 			bool action1_skipdelete;
 
 			int num_skip=0;
@@ -3694,7 +3726,7 @@ end_copy_to_pc:
 				}
 				if (num_cat[2]>1) oc->label3->Text = "These existing files are larger!"; else oc->label3->Text = "This existing file is larger!";
 
-				if (::DialogResult::Cancel == oc->ShowDialog() ) return;
+				if (::DialogResult::Cancel == oc->ShowDialog() ) goto aborted;
 
 				int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
 				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
@@ -3722,7 +3754,7 @@ end_copy_to_pc:
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
 			}
-			if (num_skip==numitems && copymode == CopyMode::COPY) return;
+			if (num_skip==numitems && copymode == CopyMode::COPY) goto aborted;
 
 
 
@@ -3744,7 +3776,7 @@ end_copy_to_pc:
 				alert->available_label->Text = "Available: " + HumanReadableSize(freespaceArray[0]);
 				if (::DialogResult::Cancel ==  alert->ShowDialog())
 				{
-					return;
+					goto aborted;
 				}
 			}
 
@@ -3754,25 +3786,19 @@ end_copy_to_pc:
 				this->set_turbo_mode( 0);
 
 
+            copydialog->SuspendLayout();
+			//this->SuspendDrawing(this);
+			//this->SuspendDrawing(copydialog);
 
-
-			CopyDialog^ copydialog = gcnew CopyDialog();
-			copydialog->settings = this->settings;
-			copydialog->cancelled=false;
-			copydialog->parent_win = this;
-			copydialog->parent_form = this;
-			//copydialog->showCopyDialog();
+			
 			copydialog->total_start_time = time(NULL);
 			copydialog->current_start_time = 0 ;
 			copydialog->filesizes = src_sizes;
 			copydialog->current_offsets = current_offsets;
 			copydialog->numfiles = num_files;
 			copydialog->current_index = 0;
-			if (copymode==CopyMode::COPY)
-				copydialog->window_title="Copying File(s) ... [PVR --> PC]";
-			else
-				copydialog->window_title="Moving File(s) ... [PVR --> PC]";
-			copydialog->current_file="Waiting for PVR...";
+			
+			//copydialog->current_file="Waiting for PVR...";
 			copydialog->turbo_mode = this->turbo_mode;
 			//copydialog->update_dialog_threadsafe();
 
@@ -3790,7 +3816,18 @@ end_copy_to_pc:
 			copydialog->copymode=copymode;
 			copydialog->action1_skipdelete = action1_skipdelete;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
+			
+		
+			if (numitems>1)
+			   copydialog->normal_size();
+			else
+				copydialog->small_size();
+			//this->CentreCopyDialog(copydialog);
 
+			//this->ResumeDrawing(this);
+			//this->ResumeDrawing(copydialog);
+
+			copydialog->ResumeLayout();
 
 			//long long bytecount;
 			time_t startTime = time(NULL);
@@ -3803,28 +3840,18 @@ end_copy_to_pc:
 			thread->Start(copydialog);
 			//copydialog->showDialog_thread();
 
-			this->ShowCopyDialog(copydialog);
+			//this->ShowCopyDialog(copydialog);
 
 
+			return;
 
-			/*
-			//thread->Join();
-			this->transfer_in_progress=false;
+aborted:   // If the transfer was cancelled before it began
 
-			if (this->checkBox1->Checked != copydialog->turbo_request)
-			this->checkBox1->Checked = copydialog->turbo_request;
 
-			if (copydialog->file_error->Length > 0)
-			{
-			MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
-			}
+			this->TransferEnded();
 
-			this->loadComputerDir();
-			this->absorb_late_packets(2,200);
-			this->set_turbo_mode(0);
-			if (!copydialog->is_closed)
-			copydialog->close_request_threadsafe();
-			*/
+
+			
 
 		}
 
@@ -4526,9 +4553,33 @@ finish_transfer:
 
 			ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
 
+			if (selected->Count==0) return;
+
+
+				CopyDialog^ copydialog = gcnew CopyDialog();
+			copydialog->settings = this->settings;
+			copydialog->cancelled=false;
+			copydialog->parent_win = this;
+			copydialog->parent_form = this;
+			//copydialog->showCopyDialog();
+
+			if (copymode==CopyMode::COPY)
+				copydialog->window_title="Copying File(s) ... [PC --> PVR]";
+			else
+				copydialog->window_title="Moving File(s) ... [PC --> PVR]";
+			
+			copydialog->Text = copydialog->window_title;
+
+			copydialog->tiny_size();
+			copydialog->label3->Text="Finding files...";
+		    this->ShowCopyDialog(copydialog);
+		
+			copydialog->Update();
+
+
 			array<ComputerItem^>^ items = gcnew array<ComputerItem^>(selected->Count);
 			selected->CopyTo(items,0);
-			for (int i=0; i<items->Length; i++) if (items[i]->isdrive) {return;};  // Can't copy whole drives at a time
+			for (int i=0; i<items->Length; i++) if (items[i]->isdrive) {goto abort;};  // Can't copy whole drives at a time
 
 			array<array<ComputerItem^>^>^ items_by_folder = gcnew array<array<ComputerItem^>^>(max_folders);
 
@@ -4672,7 +4723,7 @@ finish_transfer:
 				current_offsets[ind]=0;
 				totalsize += item->size;
 			}
-			if (numitems==0) return;
+			if (numitems==0) goto abort;
 
 
 			int num_skip=0;
@@ -4716,7 +4767,7 @@ finish_transfer:
 				}
 				if (num_cat[2]>1) oc->label3->Text = "These exising files are larger!!"; else oc->label3->Text = "This existing file is larger!!";
 
-				if (::DialogResult::Cancel == oc->ShowDialog() ) return;
+				if (::DialogResult::Cancel == oc->ShowDialog() ) goto abort;
 
 				int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
 				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
@@ -4742,7 +4793,7 @@ finish_transfer:
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
 			}
-			if (num_skip==numitems && copymode == CopyMode::COPY) return;
+			if (num_skip==numitems && copymode == CopyMode::COPY) goto abort;
 
 
 			long long space_required=0;
@@ -4773,7 +4824,7 @@ finish_transfer:
 					}
 					if (::DialogResult::Cancel ==  alert->ShowDialog())
 					{
-						return;
+						goto abort;
 					}
 				}
 			}
@@ -4785,12 +4836,7 @@ finish_transfer:
 				this->set_turbo_mode(0);
 
 
-			CopyDialog^ copydialog = gcnew CopyDialog();
-			copydialog->settings = this->settings;
-			copydialog->parent_win = this;
-			copydialog->parent_form = this;
-			copydialog->cancelled=false;
-			//copydialog->showCopyDialog();
+		
 			//copydialog->total_filesize = totalsize;
 			copydialog->total_start_time = time(NULL);
 			copydialog->current_start_time=0;
@@ -4808,17 +4854,20 @@ finish_transfer:
 			copydialog->overwrite_action = overwrite_action;
 			copydialog->numfiles=numitems;
 			copydialog->current_index=0;
-			if (copymode==CopyMode::COPY)
-				copydialog->window_title="Copying File(s) ... [PC --> PVR]";
-			else
-				copydialog->window_title="Moving File(s) ... [PC --> PVR]";
 
-			copydialog->current_file="Waiting for PVR...";
+
 			copydialog->turbo_mode = this->turbo_mode;
 			copydialog->parent_checkbox = this->checkBox1;
 			copydialog->copymode=copymode;
 			copydialog->action1_skipdelete = action1_skipdelete;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
+
+
+					
+			if (numitems>1)
+			   copydialog->normal_size();
+			else
+				copydialog->small_size();
 
 			//copydialog->TopLevel = false;this->panel1->Controls->Add(copydialog);copydialog->Show();copydialog->Visible=true;
 			//copydialog->Dock = DockStyle::Bottom;
@@ -4831,9 +4880,13 @@ finish_transfer:
 			thread->Start(copydialog);
 
 
-			this->ShowCopyDialog(copydialog);
+			//this->ShowCopyDialog(copydialog);
 
 
+			return;
+abort:  // If the transfer was cancelled before it began
+
+			this->TransferEnded();
 
 		}
 

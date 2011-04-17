@@ -93,13 +93,13 @@ String^ DateString(time_t time)
 
 String^ DateString(DateTime time)
 {
-	//struct tm *newtime;
+
+
 	char str[100];
-	//newtime = localtime(&time);
 	sprintf_s(str,99,"%4d - %02d - %02d    %02d:%02d",time.Year,time.Month,time.Day,time.Hour,time.Minute);
 	System::String ^s = gcnew System::String(str);
 	return s;
-  
+//  return time.ToString(); 
 }
 
 String^ combineTopfieldPath(String^ path1,  String^ path2)
