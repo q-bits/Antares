@@ -258,7 +258,7 @@ namespace Antares {
 			//}));
 			//	Start(); 
 
-
+			// Hmm... I think this code can be thrown out
 			ThreadStart^ threadDelegate = gcnew ThreadStart( this, &CopyDialog::showDialog_thread);
 			Thread^ newThread = gcnew Thread( threadDelegate );
 			newThread->Start();
@@ -503,7 +503,7 @@ namespace Antares {
 
 			//this->label4->Text =  (offset / 1024).ToString("#,#,#")+"KB / "+(size/1024).ToString("#,#,#")+"KB";
 			long long int offset_MB = offset / 1024LL/1024LL;
-			int offset_dec_MB = (offset - offset_MB * 1024LL*1024LL)*10/1024/1024;
+			int offset_dec_MB = (int)  (  (offset - offset_MB * 1024LL*1024LL)*10/1024/1024 );
 			String^ offset_int_MB =  (offset_MB).ToString("#,#,#"); if (offset_int_MB->Length==0) offset_int_MB="0";
 			this->label4->Text = offset_int_MB+"."+offset_dec_MB.ToString()+" MB / "+(size/1024/1024).ToString("#,#,#")+" MB";
 
@@ -525,7 +525,7 @@ namespace Antares {
 
 			//			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
 			long long int total_offset_MB = total_offset / 1024LL/1024LL;
-			int total_offset_dec_MB = (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024;
+			int total_offset_dec_MB = (int)  ( (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024 );
 			this->label5->Text =  (total_offset_MB).ToString("#,#,#")+"."+total_offset_dec_MB.ToString()+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
 
 			if (size>0)
@@ -553,7 +553,7 @@ namespace Antares {
 
 					double current_rate2 = (double) (this->bytes_between_files + this->rate_bytes) /  (this->time_between_files + this->rate_seconds);
 
-					printf("%lld,  %lld,  %f,  %f  : %f\n",bytes_between_files, rate_bytes, time_between_files, rate_seconds, current_rate2);
+					//printf("%lld,  %lld,  %f,  %f  : %f\n",bytes_between_files, rate_bytes, time_between_files, rate_seconds, current_rate2);
 					if (current_rate2>0.0 && current_rate2<20000000.0)
 						ratestring = (current_rate2/1024.0/1024.0).ToString("F2");
 
@@ -581,7 +581,7 @@ namespace Antares {
 
 					//this->label8->Text = (current_rate/1024.0/1024.0).ToString("F2")+" MB/sec";
 					current_rate = fabs(current_rate);
-					printf("size=%lld offset=%lld  total_offset=%lld  total_size=%lld  files_remaining=%lld  \n",size,offset,total_offset,total_size,files_remaining);
+					//printf("size=%lld offset=%lld  total_offset=%lld  total_size=%lld  files_remaining=%lld  \n",size,offset,total_offset,total_size,files_remaining);
 					this->label6->Text = time_remaining_string(current_rate,(double) (size - offset ), 0, 0 );
 					this->label7->Text = time_remaining_string(current_rate, (double) ( total_size - total_offset ),(double) files_remaining , this->get_avg_time_between_files());
 				}

@@ -211,6 +211,13 @@ int get_vid_pid(char *str, int *vid, int *pid)
 
 char *windows_error_str(uint32_t retval);
 
+enum DriverType
+{
+	NOT_DEFINED=0,
+	WINUSB_DRIVER=1,
+	TFBULK_DRIVER=2,
+};
+
 struct husb_device_handle
 {
 	HANDLE usbHandle;
@@ -220,6 +227,7 @@ struct husb_device_handle
 	UCHAR interruptPipe;
 	ULONG read_timeout;
 	ULONG write_timeout;
+	enum DriverType driver_type;
 };
 #define USB_ENDPOINT_DIRECTION_MASK       0x80
 
@@ -247,7 +255,159 @@ set_pipe_timeout(struct husb_device_handle *fd, int ep, ULONG timeout)
 
 }
 
-int husb_bulk_write(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout)
+/*
+void set_tfbulk_timeouts(struct husb_device_handle *fd)
+{
+
+	 
+		COMMTIMEOUTS ct;
+		bool r;
+		  return ;
+		if (fd->read_timeout==0) fd->read_timeout=51;
+		if (fd->write_timeout==0) fd->write_timeout=51;
+		ct.ReadIntervalTimeout = fd->read_timeout;
+		ct.ReadTotalTimeoutConstant = fd->read_timeout;
+		ct.ReadTotalTimeoutMultiplier = 0;
+		ct.WriteTotalTimeoutConstant = fd->write_timeout;
+		ct.WriteTotalTimeoutMultiplier = 0;
+		r=SetCommTimeouts(fd->fileHandle, &ct);   
+		printf("SetCommTimeouts. r=%d  read_timeout=%d  write_timeout=%d \n",(int) r, (int) fd->read_timeout, (int) fd->write_timeout);
+		if (!r) printf(" (Error:  %s)\n",windows_error_str(0));
+   
+}
+*/
+
+int husb_bulk_write_tfbulk(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout)
+{
+	DWORD bytes_written;
+	bool r;
+	OVERLAPPED overlapped;
+	DWORD ret;
+	DWORD err;
+	
+	/*
+	if (fd->write_timeout != timeout) 
+	{
+		fd->write_timeout = timeout;
+		set_tfbulk_timeouts(fd);
+	}
+	*/
+
+	memset(&overlapped, 0, sizeof(overlapped));
+	
+    r=WriteFile(fd->fileHandle, bytes, size, &bytes_written, &overlapped);
+	if (!r) err = GetLastError();
+	if (!r && err != ERROR_IO_PENDING)
+	{
+		printf("WriteFile, %s.  bytes_written=%d.\n",windows_error_str(0),bytes_written);
+		return -( (int) GetLastError());
+	}
+
+	if (err==0) return bytes_written;
+
+	ret=WaitForSingleObject(fd->fileHandle, timeout);  //todo: check for errors
+
+	//printf("Write, WaitFor... ret=%d\n",(int) ret );
+
+
+	if (ret)
+	{
+		CancelIo(fd->fileHandle);
+		return -1;
+	}
+
+	bytes_written = overlapped.InternalHigh;
+
+	return bytes_written;
+}
+
+int husb_bulk_read_tfbulk(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout, int no_reply)
+{
+	bool r;
+	ULONG bytes_read, bytes_written_reply;
+	OVERLAPPED overlapped, overlapped2;
+	DWORD err,ret;
+	static unsigned char success_packet[8] = {0x08, 0x00, 0x81, 0xc1, 0x00, 0x00, 0x02, 0x00};
+	/*
+	if (fd->read_timeout != timeout) 
+	{
+		fd->read_timeout = timeout;
+		set_tfbulk_timeouts(fd);
+	}
+	*/
+
+	memset(&overlapped, 0, sizeof(overlapped));
+
+	//printf("Start of readfile...\n");
+	
+	r=ReadFile(fd->fileHandle, bytes, size, &bytes_read, &overlapped);
+	err=0; 
+	if (!r) err = GetLastError();
+	if (!r && err != ERROR_IO_PENDING)
+	{
+		printf("ReadFile, %s.  bytes_read=%d.\n",windows_error_str(0),bytes_read);
+		return - ((int) GetLastError());
+	}
+
+	if (err==ERROR_IO_PENDING)
+	{
+		ret=WaitForSingleObject(fd->fileHandle, timeout);  //todo: check for errors
+		bytes_read = overlapped.InternalHigh;
+
+
+		if (ret)
+		{
+			CancelIo(fd->fileHandle);
+			return -1;
+		}
+
+	}
+
+
+	if (!no_reply)
+	{
+		if (bytes_read>=8)
+		{
+
+			if ( * ( (uint32_t *) (bytes+4 )) == 0x100a0000L)
+			{
+
+				memset(&overlapped2, 0, sizeof(overlapped2)); 
+
+				r = WriteFile(fd->fileHandle,
+					success_packet,
+					8,
+					&bytes_written_reply,
+					&overlapped2);
+
+				
+				if (!r)
+				{
+					err=GetLastError();
+					if (err==ERROR_IO_PENDING)
+					{
+						ret=WaitForSingleObject(fd->fileHandle, timeout);  //todo: check for errors
+					}
+
+					if (ret)
+					{
+						CancelIo(fd->fileHandle);
+						return -1;
+					}
+
+				}
+
+
+			}
+		}
+	}
+
+	return bytes_read;
+
+
+}
+
+int husb_bulk_write_winusb(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout)
 {
 
 	bool r;
@@ -268,7 +428,7 @@ int husb_bulk_write(struct husb_device_handle *fd,  int ep,  char *bytes,   int 
 }
 
 
-int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout, int no_reply)
+int husb_bulk_read_winusb(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout, int no_reply)
 {
 
 	bool r;
@@ -311,13 +471,55 @@ int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int s
     return bytes_read;
 }
 
+int husb_bulk_write(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout)
+{
+	if (fd->driver_type == WINUSB_DRIVER)
+	{
+		return husb_bulk_write_winusb(fd,  ep,  bytes,   size,  timeout);
+	}
+	else if (fd->driver_type == TFBULK_DRIVER)
+	{
+
+		return husb_bulk_write_tfbulk(fd,  ep,  bytes,   size,  timeout);
+	}
+	return -1;
+}
+
+
+int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout, int no_reply)
+{
+	if (fd->driver_type == WINUSB_DRIVER)
+	{
+		return husb_bulk_read_winusb(fd,  ep,  bytes,   size,  timeout, no_reply);
+	}
+	else if (fd->driver_type == TFBULK_DRIVER)
+	{
+
+		return husb_bulk_read_tfbulk(fd,  ep,  bytes,   size,  timeout, no_reply);
+	}
+	return -1;
+}
+
 void husb_free(struct husb_device_handle *fd)
 {
 	if (fd==NULL) return;
-	WinUsb_Free(fd->usbHandle);
+	if (fd->driver_type == WINUSB_DRIVER)
+		WinUsb_Free(fd->usbHandle);
+	
 	CloseHandle(fd->fileHandle);
 }
 
+struct husb_device_handle* open_tfbulk_device(HANDLE hdev)
+{
+	struct husb_device_handle fd;
+
+	fd.driver_type = TFBULK_DRIVER;
+    fd.read_timeout=0; fd.write_timeout=0;
+	fd.fileHandle = hdev;
+
+	global_handle = fd;
+	return &global_handle;
+}
 
 struct husb_device_handle* open_winusb_device(HANDLE hdev)
 {
@@ -328,6 +530,7 @@ struct husb_device_handle* open_winusb_device(HANDLE hdev)
 	bool r;	
 	ULONG timeout = 1000;
 	fd.fileHandle = hdev;
+	fd.driver_type = WINUSB_DRIVER;
 	r = WinUsb_Initialize(hdev, &fd.usbHandle);
 
 	if (!r) return NULL;
@@ -377,7 +580,7 @@ struct husb_device_handle* open_winusb_device(HANDLE hdev)
 
 }
 
-int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_length)
+int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_length, char *driver_names)
 {
 	int i,vid,pid,nfound;
 	ULONG requiredLength,length;
@@ -445,10 +648,11 @@ int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_le
 		_snprintf(&dev_paths[nfound*paths_max_length],paths_max_length,"%s", dev_interface_details->DevicePath);
 		nfound++;
 		printf("%s\n",dev_interface_details->DevicePath);
-		continue;
+		//continue;
 
 		/// below: finds driver
 
+		driver_names[nfound*paths_max_length] = 0;
 
 		if (CR_SUCCESS != CM_Get_Device_IDA(dev_info_data.DevInst, path, sizeof(path),0)) continue;
 		printf("%s\n",path);
@@ -469,7 +673,8 @@ int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_le
 			&reg_type, (BYTE*)driver_str, MAX_KEY_LENGTH, &requiredLength))
 		{
 
-			printf("%s\n",driver_str);
+			//printf("%s\n",driver_str);
+           _snprintf(&driver_names[(nfound-1)*paths_max_length],paths_max_length,"%s", driver_str);
 		}
 
 	}

@@ -268,15 +268,7 @@ int main(array<System::String ^> ^args)
 		System::Console::WriteLine("Hello again!\n");
 		//Console::WindowHeight = 10;
 	
-		Console::ReadKey(true);
-		Console::ReadKey(true);
-				Console::ReadKey(true);
-		Console::ReadKey(true);
-		Console::ReadKey(true);
-		Console::ReadKey(true);
-				Console::ReadKey(true);
-		Console::ReadKey(true);
-  
+	
 
 
 		//return 0;

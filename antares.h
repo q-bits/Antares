@@ -270,12 +270,14 @@ namespace Antares {
 		DWORD_PTR imagelist;
 		int folder_index;
 		int file_index;
+		int play_index;
 		Dictionary<String^, int> ^dic;
 		Icons(void)
 		{
 			imagelist = GetFileIconList("test.txt");
 			folder_index = GetApproximateFolderIconIndex("c:\\test\\");
 			file_index = GetApproximateFileIconIndex("test.tkd3");
+			play_index = GetFileIconIndex("antares.exe");
 			dic = gcnew Dictionary<String^,int>();
 
 		}
@@ -302,6 +304,9 @@ namespace Antares {
 				else
 					ic=GetFileIconIndex( path);
 
+				if (ic==file_index && path->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase)) ic=play_index;
+
+
 				if (ic>=0) 
 				{
 					dic->Add(path, ic);
@@ -319,6 +324,9 @@ namespace Antares {
 			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
 			DWORD_PTR ind;
 			ind = Antares::SHGetFileInfo( str, 0, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON );
+
+			//if (ind==file_index && path->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase)) ind=play_index;
+
 			return shinfo.iIcon;
 
 		}
@@ -331,6 +339,9 @@ namespace Antares {
 			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
 			DWORD_PTR ind;
 			ind = Antares::SHGetFileInfo( str, FILE_ATTRIBUTE_NORMAL, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES | SHGFI_SMALLICON );
+
+			//if (ind==file_index && path->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase)) ind=play_index;
+
 			return shinfo.iIcon;
 
 		}

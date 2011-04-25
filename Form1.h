@@ -22,8 +22,9 @@ extern "C" {
 
 
 	struct husb_device_handle;
-	int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int max_length_paths);
+	int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int max_length_paths, char *driver_names);
 	struct husb_device_handle* open_winusb_device(HANDLE hdev);
+	struct husb_device_handle* open_tfbulk_device(HANDLE hdev);
 	char *windows_error_str(uint32_t retval);
 	void husb_free(struct husb_device_handle *fd);
 
@@ -333,6 +334,8 @@ namespace Antares {
 		{
 			int r;
 			struct tf_packet reply;
+
+			//return;
 			if (this->fd==NULL) return;
 			//printf("\nLate Packets:\n");
 			for (int i=0; i<count; i++)
@@ -361,6 +364,7 @@ namespace Antares {
 				const int max_paths=10;
 				const int paths_max_length=256;
 				char dev_paths[max_paths][paths_max_length];
+				char driver_names[max_paths][paths_max_length];
 				char *device_path;
 				int pids[max_paths];
 				//int this_pid=-1;
@@ -377,25 +381,50 @@ namespace Antares {
 					this->fd=NULL;
 				};
 
-				int ndev = find_usb_paths(&dev_paths[0][0],  pids, max_paths,  paths_max_length);
+				int ndev = find_usb_paths(&dev_paths[0][0],  pids, max_paths,  paths_max_length, &driver_names[0][0]);
 
 				for (int j=0; j<ndev; j++)
 				{
 					device_path = &dev_paths[j][0];
-					hdev = CreateFileA(device_path, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
-						OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,  NULL);
+					String^ driver_name = gcnew String( &driver_names[j][0]);
+					driver_name = driver_name->ToLowerInvariant();
+					Console::WriteLine("Driver: " + driver_name);
+					if (driver_name->Equals("winusb"))
+					{
+						hdev = CreateFileA(device_path, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+							OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,  NULL);
+
+					}
+					else if (driver_name->Equals("tfbulk"))
+					{
+
+						hdev = CreateFileA(device_path, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
+							OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,  NULL);
+					}
+					else
+					{
+						error_str = "PVR: Error -- wrong driver installed.";
+						continue;
+					}
 
 					if (hdev==INVALID_HANDLE_VALUE)
 					{
 						DWORD last_error = GetLastError();
 						printf("%s\n",windows_error_str(last_error));
-						if (last_error==ERROR_ACCESS_DENIED) error_str="PVR: Error -- already in use.";
-
+						if (last_error==ERROR_ACCESS_DENIED) 
+							error_str="PVR: Error -- already in use.";
 
 						continue;
 					}
+					else
+						printf("  CreateFile seemed to return successfully.\n");
 
-					fdtemp  = open_winusb_device(hdev);
+
+					if (driver_name->Equals("winusb"))
+					    fdtemp  = open_winusb_device(hdev);
+					else
+						fdtemp  = open_tfbulk_device(hdev);
+
 					//bResult = WinUsb_Initialize(deviceHandle, &usbHandle);
 
 					if (fdtemp!=NULL)
@@ -2559,9 +2588,9 @@ check_freespace:
 
 				double tmp = widths0[0]+widths0[5];
 
-				cols[0]->Width = (int) (tot1 - tot0m-5)*widths0[0]/tmp;
+				cols[0]->Width = (int)( (tot1 - tot0m-5.0)*widths0[0]/tmp );
 
-				cols[5]->Width = (int) (tot1 - tot0m-5)*widths0[5]/tmp;
+				cols[5]->Width = (int)( (tot1 - tot0m-5.0)*widths0[5]/tmp );
 
 			}
 			else
@@ -2590,14 +2619,14 @@ check_freespace:
 				cw2 = listView1->ClientSize.Width;
 				cw1 = cw1 < cw2 ? cw1 : cw2;
 
-				this->Arrange2a( this->topfieldHeaders, "PVR", cw1);
+				this->Arrange2a( this->topfieldHeaders, "PVR", (int) cw1);
 
 
 				cw1 = listView2->Width;
 				cw2 = listView2->ClientSize.Width;
 				cw1 = cw1 < cw2 ? cw1 : cw2;
 
-				this->Arrange2a( this->computerHeaders, "PC", cw1);
+				this->Arrange2a( this->computerHeaders, "PC", (int) cw1);
 
 				return;
 
@@ -3516,6 +3545,9 @@ end_copy_to_pc:
 
 		}
 
+
+		///////////////////////////////////////////////////////////////////////////
+
 		System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {    
 
 
@@ -3756,6 +3788,11 @@ end_copy_to_pc:
 			}
 			if (num_skip==numitems && copymode == CopyMode::COPY) goto aborted;
 
+			for (int i=0; i<numitems; i++)
+			{
+				if (src_sizes[i]<0 || src_sizes[i]>1000000000000LL)  // A riculous source size indicates a corrupt file. Skip.
+					overwrite_action[i]=SKIP;
+			}
 
 
 			long long space_required=0;
@@ -3772,6 +3809,7 @@ end_copy_to_pc:
 			{
 
 				LowSpaceAlert^ alert = gcnew LowSpaceAlert();
+
 				alert->required_label->Text = "Required: " + HumanReadableSize(space_required);
 				alert->available_label->Text = "Available: " + HumanReadableSize(freespaceArray[0]);
 				if (::DialogResult::Cancel ==  alert->ShowDialog())
