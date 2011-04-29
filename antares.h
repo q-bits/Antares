@@ -20,6 +20,9 @@ extern "C" {
 
 }
 
+#ifdef GetCurrentDirectory
+#undef GetCurrentDirectory
+#endif
 
 #define EPROTO 1
 
@@ -40,7 +43,7 @@ namespace Antares {
 	using namespace System::Drawing;
 	using namespace System::IO;
 	using namespace System::Configuration;
-	using namespace System::Runtime::InteropServices; // for class Marshal
+	using namespace System::Runtime::InteropServices;
 
 	[DllImport("shell32.dll")]
 	DWORD_PTR SHGetFileInfo(LPCTSTR pszPath, DWORD dwFileAttributes, SHFILEINFO* psfi, UINT cbSizeFileInfo, UINT uFlags);
@@ -262,7 +265,7 @@ namespace Antares {
 	};
 
 
-
+	///////////  Icons class
 
 
 	public ref class Icons {
@@ -272,13 +275,21 @@ namespace Antares {
 		int file_index;
 		int play_index;
 		Dictionary<String^, int> ^dic;
+		Dictionary<String^, int> ^extension_dic;
 		Icons(void)
 		{
 			imagelist = GetFileIconList("test.txt");
 			folder_index = GetApproximateFolderIconIndex("c:\\test\\");
 			file_index = GetApproximateFileIconIndex("test.tkd3");
-			play_index = GetFileIconIndex("antares.exe");
+			play_index = GetFileIconIndex(Application::ExecutablePath);
+			//Console::WriteLine(Directory::GetCurrentDirectory());
+			//Console::WriteLine(Application::ExecutablePath);
+			//Console::WriteLine(System::Diagnostics::Process::GetCurrentProcess()->ProcessName+".exe");
+			//Console::WriteLine("play_index="+play_index.ToString());Console::WriteLine(file_index); Console::WriteLine(folder_index);
+			
+			//Console::WriteLine(System::Diagnostics::Process::GetCurrentProcess()->ProcessName);
 			dic = gcnew Dictionary<String^,int>();
+			extension_dic = gcnew Dictionary<String^, int>();
 
 		}
 
@@ -286,23 +297,55 @@ namespace Antares {
 
 		int GetCachedIconIndex(String^ path)
 		{
-			return GetCachedIconIndex(path, false);
+			return GetCachedIconIndex(path, false, false);
 		}
-		int GetCachedIconIndex(String ^path, bool istopfield)
+
+
+		int GetCachedIconIndexFast(String ^path, bool istopfield, bool isfolder)
+		{
+
+			if (dic->ContainsKey(path))
+				return dic[path];
+			else if (!isfolder)
+			{
+				String^ ext = "";
+				try {ext = Path::GetExtension(path);} catch(...){};
+
+				if (ext->Length  && extension_dic->ContainsKey(ext))
+				{
+                     return extension_dic[ext];
+				}
+
+				if (path->EndsWith(".rec")) return play_index;
+			}
+
+			if (isfolder) return folder_index; else return file_index;
+
+
+		}
+
+		int GetCachedIconIndex(String ^path, bool istopfield, bool isfolder)
 		{
 			//istopfield=true;
 			if (dic->ContainsKey(path))
 				return dic[path];
 			else
 			{
+				//if (isfolder) return folder_index; else return file_index;
 
 				//if (fast_mode) return -1;
 
 				int ic;
 				if (istopfield)
-					ic=GetApproximateFileIconIndex(path);
+				{
+					if (isfolder)
+						ic=GetApproximateFolderIconIndex(path);
+					else
+						ic=GetApproximateFileIconIndex(path);
+				}
 				else
 					ic=GetFileIconIndex( path);
+			
 
 				if (ic==file_index && path->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase)) ic=play_index;
 
@@ -310,6 +353,18 @@ namespace Antares {
 				if (ic>=0) 
 				{
 					dic->Add(path, ic);
+
+					String^ ext = "";
+					try {ext = Path::GetExtension(path);} catch(...){};
+
+
+					if (!isfolder && ext->Length  && !extension_dic->ContainsKey(ext))
+					{
+						extension_dic->Add(ext, ic);
+						//Console::WriteLine("added ext,ic = " + ext + ", "+ic.ToString()+" to dic.");
+					}
+
+
 				}
 
 				return ic;
@@ -389,6 +444,16 @@ namespace Antares {
 				this->SubItems[j]->Text = item->SubItems[j]->Text;
 			}
 		}
+		
+		void update_program_information(void)
+		{
+			this->SubItems[4]->Text = this->channel;
+			this->SubItems[5]->Text = this->description;
+		}
+		void update_icon(void)
+		{
+			this->ImageIndex = this->icon_index;
+		}
 
 
 		System::String^ filename;
@@ -406,6 +471,7 @@ namespace Antares {
 		long long int size;
 		bool isdir;
 		bool isdrive;
+		int icon_index;
 
 
 

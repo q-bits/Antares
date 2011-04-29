@@ -132,7 +132,7 @@ namespace Antares {
 
 			}
 
-			printf("avg = %f\n",a);
+			//printf("avg = %f\n",a);
 			return a;
 		}
 
@@ -526,7 +526,8 @@ namespace Antares {
 			//			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
 			long long int total_offset_MB = total_offset / 1024LL/1024LL;
 			int total_offset_dec_MB = (int)  ( (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024 );
-			this->label5->Text =  (total_offset_MB).ToString("#,#,#")+"."+total_offset_dec_MB.ToString()+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
+			String^ total_offset_int_MB = (total_offset_MB).ToString("#,#,#"); if (total_offset_int_MB->Length==0) total_offset_int_MB="0";
+			this->label5->Text = total_offset_int_MB+"."+total_offset_dec_MB.ToString()+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
 
 			if (size>0)
 			{
@@ -917,10 +918,9 @@ namespace Antares {
 			this->Controls->Add(this->progressBar1);
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::SizableToolWindow;
 			this->KeyPreview = true;
-			this->MaximizeBox = false;
 			this->MaximumSize = System::Drawing::Size(680, 282);
 			this->Name = L"CopyDialog";
-			this->Padding = System::Windows::Forms::Padding(5, 5, 5, 5);
+			this->Padding = System::Windows::Forms::Padding(5);
 			this->ShowIcon = false;
 			this->ShowInTaskbar = false;
 			this->SizeGripStyle = System::Windows::Forms::SizeGripStyle::Hide;

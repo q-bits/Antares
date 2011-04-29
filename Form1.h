@@ -170,16 +170,25 @@ namespace Antares {
 
 
 	public:
+		// Form1 constructor
 		Form1(void)
 		{
 
+			this->topfield_background_enumerator = nullptr;
+			this->computer_background_enumerator = nullptr;
+			//this->close_request=false;
+
+			this->topfield_background_event = gcnew AutoResetEvent(false);
+			this->computer_background_event = gcnew AutoResetEvent(false);
+		
+
+			this->locker = gcnew Object();
 			this->last_topfield_freek = -1;
 			this->last_topfield_freek_time = 0;
 			this->pid=0;
 
 			this->current_copydialog = nullptr;
-			this->topfield_background_enumerator = nullptr;
-			this->computer_background_enumerator = nullptr;
+
 
 			this->proginfo_cache = gcnew ProgramInformationCache();
 			this->connection_needs_checking = true;
@@ -304,10 +313,7 @@ namespace Antares {
 
 			this->finished_constructing = 1;
 
-			this->loadTopfieldDir();
-			this->loadComputerDir();
-			//this->ResizeRedraw = true;
-
+	
 
 
 
@@ -323,6 +329,20 @@ namespace Antares {
 
 			this->Focus();
 			this->listView2->Focus();
+
+
+			this->cbthread = gcnew Thread(gcnew ThreadStart(this,&Form1::computerBackgroundWork));
+			this->tbthread = gcnew Thread(gcnew ThreadStart(this,&Form1::topfieldBackgroundWork));
+
+			this->cbthread->Start();
+			this->tbthread->Start();
+
+
+			this->loadTopfieldDir();
+			this->loadComputerDir();
+			//this->ResizeRedraw = true;
+
+
 
 
 		}
@@ -858,34 +878,78 @@ check_freespace:
 		void computerBackgroundWork(void)
 		{
 
-			try
-			{
-				System::Collections::IEnumerator ^en = this->computer_background_enumerator;
-				if (en==nullptr) return;
-				tRECHeaderInfo ri;
+			try {
+				while(1)
+				{
+repeat:
+					this->computer_background_event->WaitOne();
 
-				if (en->MoveNext())
-				{ 
-					ComputerItem^ item = safe_cast<ComputerItem^>(en->Current);
-					//Console::WriteLine(item->full_filename);
 
-					if (this->proginfo_cache->query(item)==nullptr)
+					System::Collections::IEnumerator ^en = this->computer_background_enumerator;
+					if (en==nullptr) continue;
+
+
+
+					while(en->MoveNext())
 					{
-						this->loadInfo(item,&ri);
-						this->proginfo_cache->add(item);
-					}
-					ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
+						ComputerItem^ item = safe_cast<ComputerItem^>(en->Current);
+						int ic = this->icons->GetCachedIconIndex(item->full_filename, false, item->isdir);
+						if (ic>=0 && ic != item->icon_index)
+						{
+							int was=item->icon_index;
+							item->icon_index=ic;
+							ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(item, &FileItem::update_icon);
+							this->Invoke(d);
+							//Console::WriteLine("Invoke for icon " + ic.ToString()+", was " + was.ToString()+". ext="+Path::GetExtension(item->full_filename));
+							Application::DoEvents();  // why is this needed?
 
-					Application::DoEvents();
-					this->BeginInvoke(d);
+						}
+						if (en!= this->computer_background_enumerator)
+						{
+							goto repeat;
+
+						}
+					}
+
+					if (! (this->settings["PC_Column4Visible"]=="1" || this->settings["PC_Column5Visible"]=="1")) continue;
+					en->Reset();
+
+					tRECHeaderInfo ri;
+
+					while (en->MoveNext())
+					{ 
+						ComputerItem^ item = safe_cast<ComputerItem^>(en->Current);
+						//Console::WriteLine(item->full_filename);
+
+						if (!item->isdir && this->proginfo_cache->query(item)==nullptr)
+						{
+							this->loadInfo(item,&ri);
+							this->proginfo_cache->add(item);
+							if (! (item->channel == "")  || ! (item->description == "") )
+							{
+								ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(item, &FileItem::update_program_information);
+								this->Invoke(d);
+								//printf("Invoking something...\n");
+
+							}
+						}
+						if (en != this->computer_background_enumerator) {goto repeat;};
+						//ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
+
+
+						//this->BeginInvoke(d);
+						//Application::DoEvents();
+
+
+					}
 
 
 				}
+
 			}
-			catch(...)
+			catch (...)
 			{
 			}
-
 
 		}
 
@@ -895,31 +959,78 @@ check_freespace:
 
 			try{
 
-				System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
-				if (en==nullptr) return;
+				while(1)
+				{
+repeat:
 
-				tRECHeaderInfo ri;
+					this->topfield_background_event->WaitOne();
+					printf("topfieldBackgroundWork iter.\n");
+					System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
+					if (en==nullptr) continue;
 
-				if (en->MoveNext())
-				{ 
-					TopfieldItem^ item = safe_cast<TopfieldItem^>(en->Current);
-					//Console::WriteLine(item->full_filename);
-
-					if (!item->isdir && this->proginfo_cache->query(item)==nullptr)
+		
+					while(en->MoveNext())
 					{
-						ri.readsize=0;
-						this->loadInfo(item,&ri);
-						Console::WriteLine(item->full_filename);
-						printf(" item->size = %d,  readsize=%d\n",(int)item->size, (int)ri.readsize);
-						if (!(item->size > 2048 && ri.readsize<2048))
-							this->proginfo_cache->add(item);
+						TopfieldItem^ item = safe_cast<TopfieldItem^>(en->Current);
+						int ic = this->icons->GetCachedIconIndex("T:"+safeString(item->directory)+"\\"+item->safe_filename, true, item->isdir);
+						if (ic>=0 && ic != item->icon_index)
+						{
+							    item->icon_index=ic;
+								TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(item, &FileItem::update_icon);
+								this->Invoke(d);
+								printf("Invoke, ic=%d ext=",ic); Console::WriteLine(Path::GetExtension(safeString(item->directory)+"\\"+item->safe_filename));
+								Application::DoEvents();  // why is this needed?
+
+						}
+						if (en!= this->topfield_background_enumerator)
+						{
+							goto repeat;
+
+						}
 					}
-					TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
-					Application::DoEvents();
 
-					if (this->transfer_in_progress) return;
+					if (! (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1")) continue;
 
-					this->BeginInvoke(d);
+					en->Reset();
+					tRECHeaderInfo ri;
+					while (en->MoveNext())
+					{ 
+						TopfieldItem^ item = safe_cast<TopfieldItem^>(en->Current);
+						//Console::WriteLine(item->full_filename);
+
+						if (!item->isdir && this->proginfo_cache->query(item)==nullptr)
+						{
+							ri.readsize=0;
+							this->loadInfo(item,&ri);
+							Console::WriteLine(item->full_filename);
+							printf(" item->size = %d,  readsize=%d\n",(int)item->size, (int)ri.readsize);
+							//if (!(item->size > 2048 && ri.readsize<2048))
+							this->proginfo_cache->add(item);
+							if (! (item->channel == "")  || ! (item->description == "") )
+							{
+								TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(item, &FileItem::update_program_information);
+								this->Invoke(d);
+								Application::DoEvents();  // why is this needed?
+								//printf("Invoking something... (TF)\n");
+
+							}
+
+						}
+						//Console::WriteLine(en->GetHashCode()); Console::WriteLine(this->topfield_background_enumerator->GetHashCode());
+
+						if (en!= this->topfield_background_enumerator)
+						{
+							goto repeat;
+						
+						}
+						//TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
+
+
+						//if (this->transfer_in_progress) return;
+
+						//this->BeginInvoke(d);
+						//Application::DoEvents();
+					}
 
 				}
 
@@ -928,6 +1039,7 @@ check_freespace:
 			catch (...)    //Todo: find out why there is an exception here when you close window while bkgnd work pending.
 			{
 
+				printf("The topfieldBackgroundWork thread stopped!!!!!!!!!!!\n");
 			}
 
 
@@ -1052,9 +1164,9 @@ check_freespace:
 						item = gcnew ComputerItem(j);
 						int ic = this->icons->GetCachedIconIndex(item->full_filename);
 						if (ic>=0)
-							item->ImageIndex=ic;
+							item->ImageIndex=item->icon_index=ic;
 						else
-							item->ImageIndex=this->icons->folder_index;
+							item->ImageIndex=item->icon_index=this->icons->folder_index;
 						this->listView2->Items->Add(item);
 					}
 
@@ -1088,17 +1200,17 @@ check_freespace:
 				for (j=0; j<items->Length; j++)
 				{
 					item = items[j];
-					int ic = this->icons->GetCachedIconIndex(item->full_filename,false);
+					int ic = this->icons->GetCachedIconIndexFast(item->full_filename,false, item->isdir);
 					if (ic >= 0)
 					{
-						item->ImageIndex = ic;
+						item->ImageIndex = item->icon_index = ic;
 					}
 					else
 					{
 						if (item->isdir)
-							item->ImageIndex = this->icons->folder_index;
+							item->ImageIndex = item->icon_index= this->icons->folder_index;
 						else
-							item->ImageIndex = this->icons->file_index;
+							item->ImageIndex = item->icon_index= this->icons->file_index;
 					}
 
 					CachedProgramInformation^ pi = this->proginfo_cache->query(item);
@@ -1178,12 +1290,16 @@ check_freespace:
 
 
 				this->computer_background_enumerator = q->GetEnumerator();
+				this->computer_background_event->Set();
+				/*
 				if (this->settings["PC_Column4Visible"]=="1" || this->settings["PC_Column5Visible"]=="1")
 				{
-					ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
-					this->BeginInvoke(d);
+					//ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
+					//this->BeginInvoke(d);
+					this->computer_background_event->Set();
 
 				}
+				*/
 
 
 
@@ -1409,6 +1525,7 @@ check_freespace:
 			}
 			this->last_topfield_freek = v.freek;
 			this->last_topfield_freek_time = time(NULL);
+			this->last_topfield_freespace = v;
 			this->bytes_sent_since_last_freek = 0;
 			return v;
 		}
@@ -1424,8 +1541,9 @@ check_freespace:
 			else
 			{
 
-				TopfieldFreeSpace v = getTopfieldFreeSpace();
+				//TopfieldFreeSpace v = getTopfieldFreeSpace();
 
+				TopfieldFreeSpace v = this->last_topfield_freespace;
 				if (v.valid)
 				{
 					String^ str=" Topfield device";
@@ -1466,11 +1584,15 @@ check_freespace:
 				return -EPROTO; 
 			}
 
-			this->updateTopfieldSummary();
+			
 
 			///// Actually load the directory
+			Monitor::Enter(this->locker);
+			this->getTopfieldFreeSpace();
 			items = this->loadTopfieldDirArrayOrNull(dir);
+			Monitor::Exit(this->locker);
 			/////
+			this->updateTopfieldSummary();
 
 			if (items==nullptr)   //TODO: think about better error handling
 			{
@@ -1481,12 +1603,13 @@ check_freespace:
 			for(i = 0; i < items->Length ; i++)
 			{
 
-
+			
 				item = items[i];
+				
 				if (item->isdir)
-					item->ImageIndex = this->icons->folder_index;
+					item->ImageIndex = item->icon_index=this->icons->folder_index;
 				else
-					item->ImageIndex = this->icons->GetCachedIconIndex(item->filename, true);
+					item->ImageIndex = item->icon_index = this->icons->GetCachedIconIndexFast("T:"+safeString(item->directory)+"\\"+item->safe_filename, true,false);
 
 				if (String::Equals(start_rename,item->filename) && !String::Equals(start_rename,"") )
 				{
@@ -1563,14 +1686,20 @@ check_freespace:
 			}
 
 
+			this->topfield_background_enumerator = q->GetEnumerator();
+			this->topfield_background_event->Set();
+			/*
 			if (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1")
 			{
 				this->topfield_background_enumerator = q->GetEnumerator();
-				TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
-				this->BeginInvoke(d);
+				//TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
+				//this->BeginInvoke(d);
+
+				this->topfield_background_event->Set();
 
 			}
 
+			*/
 
 			if (!do_rename) this->Arrange2();
 			return 0;
@@ -1610,7 +1739,13 @@ check_freespace:
 
 
 
+		/// Form1 member variables
 	public: libusb_device_handle *fd;
+			AutoResetEvent^ topfield_background_event;
+			AutoResetEvent^ computer_background_event;
+			Thread^ tbthread;
+			Thread^ cbthread;
+			Object^ locker; 
 			int dircount;
 			System::Windows::Forms::ColumnHeader^ topfieldNameHeader;
 			System::Windows::Forms::ColumnHeader^ topfieldSizeHeader;
@@ -1665,6 +1800,7 @@ check_freespace:
 			int last_topfield_freek;
 			time_t last_topfield_freek_time;
 			long long bytes_sent_since_last_freek;
+			TopfieldFreeSpace last_topfield_freespace;
 
 			static double topfield_minimum_free_megs = 150.0; // Antares won't let the free space get lower than this.
 			static double worst_case_fill_rate = 4.5;  // Worst case MB/sec rate that we can imagine the topfield HD being filled up
@@ -1682,6 +1818,7 @@ check_freespace:
 			ListView^ tlist;
 
 			bool connection_needs_checking;
+			//bool close_request;
 
 
 
@@ -2428,7 +2565,7 @@ check_freespace:
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.7.3";
+			this->Text = L"Antares  0.8";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2949,6 +3086,7 @@ check_freespace:
 			}
 			else
 			{
+				Monitor::Exit(this->locker);
 				this->EnableComponents(true);
 
 				this->panel7->Enabled=true;
@@ -3568,6 +3706,11 @@ end_copy_to_pc:
 
 			if (selected->Count==0) return;
 
+
+			/////////////////////////////
+			Monitor::Enter(this->locker);
+			//////////////////////////////
+
 			CopyDialog^ copydialog = gcnew CopyDialog();
 			copydialog->settings = this->settings;
 			copydialog->cancelled=false;
@@ -3886,6 +4029,7 @@ end_copy_to_pc:
 aborted:   // If the transfer was cancelled before it began
 
 
+		
 			this->TransferEnded();
 
 
@@ -4359,7 +4503,7 @@ restart_copy_to_pvr:
 
 								}
 
-								double dt = time(NULL)-this->last_topfield_freek_time;
+								double dt = (double) time(NULL)-this->last_topfield_freek_time;
 								if (dt>30)
 								{
 									double worst_free_mb = (double) this->last_topfield_freek / 1024.0;
@@ -4472,6 +4616,7 @@ out:
 
 				if (copydialog->freespace_check_needed)
 				{
+					this->getTopfieldFreeSpace();
 					this->updateTopfieldSummary();
 					if (this->last_topfield_freek < 1024.0 * this->topfield_minimum_free_megs )
 					{
@@ -4593,6 +4738,10 @@ finish_transfer:
 
 			if (selected->Count==0) return;
 
+
+			/////////////////////////////
+			Monitor::Enter(this->locker);
+            ////////////////////////////////
 
 				CopyDialog^ copydialog = gcnew CopyDialog();
 			copydialog->settings = this->settings;
@@ -5112,15 +5261,15 @@ abort:  // If the transfer was cancelled before it began
 			time_t startTime = time(NULL);
 	
 
+			Monitor::Enter(this->locker);
 			while ( myEnum->MoveNext() )
 			{
 				item = safe_cast<TopfieldItem^>(myEnum->Current);
 
 				this->deleteTopfieldPath(item->full_filename);
-
-
 			}
 			this->loadTopfieldDir();
+			Monitor::Exit(this->locker);
 			this->absorb_late_packets(2,200);
 
 		}
@@ -5138,13 +5287,17 @@ abort:  // If the transfer was cancelled before it began
 					// Rename a file on the PVR
 				{
 
+					
 					TopfieldItem^ item = safe_cast<TopfieldItem^>(listview->Items[e->Item]);
 					String^ old_full_filename = item->directory + "\\" + item->filename;
+					if (this->transfer_in_progress) {e->CancelEdit=true;item->Text = item->filename;return;};
 					char* old_path = (char*)(void*)Marshal::StringToHGlobalAnsi(old_full_filename);
 					String^ new_filename = safeString(e->Label);
 					String^ new_full_filename = item->directory + "\\" + new_filename;
 					char* new_path = (char*)(void*)Marshal::StringToHGlobalAnsi(new_full_filename);
+					Monitor::Enter(this->locker);
 					int r = do_hdd_rename(this->fd, old_path,new_path);
+					Monitor::Exit(this->locker);
 
 					Marshal::FreeHGlobal((System::IntPtr)(void*)old_path);
 					Marshal::FreeHGlobal((System::IntPtr)(void*)new_path);
@@ -5292,7 +5445,9 @@ abort:  // If the transfer was cancelled before it began
 
 			int r;
 			char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
+			Monitor::Enter(this->locker);
 			r = do_hdd_mkdir(this->fd,path);
+			Monitor::Exit(this->locker);
 			Marshal::FreeHGlobal((System::IntPtr)(void*)path);
 			return r;
 		}
@@ -5344,7 +5499,9 @@ abort:  // If the transfer was cancelled before it began
 
 				dir = this->topfieldCurrentDirectory + "\\"+ foldername; 
 
+				Monitor::Enter(this->locker);
 				r=this->newTopfieldFolder(dir);
+				Monitor::Exit(this->locker);
 				if (r!=0) this->toolStripStatusLabel1->Text="Error creating new folder.";
 				success=true;
 				break;
@@ -5495,7 +5652,7 @@ abort:  // If the transfer was cancelled before it began
 		System::Void toolStripButton9_Click(System::Object^  sender, System::EventArgs^  e) {
 			// "Cut" button pressed on the topfield side.
 			// Change colour of cut items, and record the filenames on the clipboard.   
-			if (this->transfer_in_progress) return;
+			//if (this->transfer_in_progress) return;
 			ListView^ listview = this->listView1;
 			ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
 			int num = selected->Count;
@@ -5579,7 +5736,11 @@ abort:  // If the transfer was cancelled before it began
 
 				char* src_path = (char*)(void*)Marshal::StringToHGlobalAnsi(full_src_filename);
 				char* dest_path = (char*)(void*)Marshal::StringToHGlobalAnsi(full_dest_filename);
+				Monitor::Enter(this->locker);
 				int r = do_hdd_rename(this->fd, src_path,dest_path);
+				Monitor::Exit(this->locker);
+
+
 
 
 				if (r!=0) 
@@ -5637,8 +5798,11 @@ abort:  // If the transfer was cancelled before it began
 			}
 			item->description = item->description + ext;
 
-			item->SubItems[4]->Text = item->channel;
-			item->SubItems[5]->Text = item->description;
+			if (!this->InvokeRequired)
+			{
+				item->SubItems[4]->Text = item->channel;
+				item->SubItems[5]->Text = item->description;
+			}
 
 			return ret;
 		}
@@ -5690,10 +5854,12 @@ abort:  // If the transfer was cancelled before it began
 		{
 			const int readsize = 2048;
 			char charbuf[readsize];
-			if (this->transfer_in_progress) return false;
-			this->transfer_in_progress = true;
+			//if (this->transfer_in_progress) return false;
+			//this->transfer_in_progress = true;
+			Monitor::Enter(this->locker);
 			array<Byte>^ buff = this->read_topfield_file_snippet(item->full_filename, 0);
-			this->transfer_in_progress=false;
+			Monitor::Exit(this->locker);
+			//this->transfer_in_progress=false;
 			int size = buff->Length;
 			if (size>=readsize)
 			{
@@ -5757,19 +5923,15 @@ abort:  // If the transfer was cancelled before it began
 		System::Void Info_Click(System::Object^  sender, System::EventArgs^  e) {
 			// Someone clicked "info" on either PVR or PC side
 
-			ListView^ listview;
+			//ListView^ listview;
 
 			if (sender == this->toolStripButton11)
 			{
 				if (this->transfer_in_progress) return;
-				listview = this->listView1;
+				this->ViewInfo(listView1);
 			}
 			else
-				listview = this->listView2;
-
-
-
-			this->ViewInfo(listview);
+				this->ViewInfo(listView2);
 		}
 
 

@@ -353,6 +353,8 @@ int main(array<System::String ^> ^args)
 		disconnect_device(form->fd);
 	}
 	libusb_exit(NULL);
+	form->cbthread->Abort();
+	form->tbthread->Abort();
 
 
 
