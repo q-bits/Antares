@@ -265,6 +265,21 @@ namespace Antares {
 	};
 
 
+
+	public ref class FileType
+	{
+	public:
+		int icon_index;
+		String^ file_type;
+		FileType(int icon_index_in, String^ file_type_in)
+		{
+			this->icon_index = icon_index_in;
+			this->file_type = file_type_in;
+
+		}
+	};
+
+
 	///////////  Icons class
 
 
@@ -274,34 +289,39 @@ namespace Antares {
 		int folder_index;
 		int file_index;
 		int play_index;
-		Dictionary<String^, int> ^dic;
-		Dictionary<String^, int> ^extension_dic;
+        FileType^ folder_info, ^file_info, ^play_info;
+
+		Dictionary<String^, FileType^> ^dic;
+		Dictionary<String^, FileType^> ^extension_dic;
 		Icons(void)
 		{
 			imagelist = GetFileIconList("test.txt");
 			folder_index = GetApproximateFolderIconIndex("c:\\test\\");
-			file_index = GetApproximateFileIconIndex("test.tkd3");
-			play_index = GetFileIconIndex(Application::ExecutablePath);
+			file_index = GetApproximateFileIconIndex("test.tkd3")->icon_index;
+			play_index = GetFileIconIndex(Application::ExecutablePath)->icon_index;
+			folder_info = gcnew FileType(folder_index, "Folder");
+			file_info = gcnew FileType(file_index, "");
+			play_info = gcnew FileType(play_index,"REC File");
 			//Console::WriteLine(Directory::GetCurrentDirectory());
 			//Console::WriteLine(Application::ExecutablePath);
 			//Console::WriteLine(System::Diagnostics::Process::GetCurrentProcess()->ProcessName+".exe");
 			//Console::WriteLine("play_index="+play_index.ToString());Console::WriteLine(file_index); Console::WriteLine(folder_index);
 			
 			//Console::WriteLine(System::Diagnostics::Process::GetCurrentProcess()->ProcessName);
-			dic = gcnew Dictionary<String^,int>();
-			extension_dic = gcnew Dictionary<String^, int>();
+			dic = gcnew Dictionary<String^,FileType^>();
+			extension_dic = gcnew Dictionary<String^, FileType^>();
 
 		}
 
 
 
-		int GetCachedIconIndex(String^ path)
+		FileType^ GetCachedIconIndex(String^ path)
 		{
 			return GetCachedIconIndex(path, false, false);
 		}
 
 
-		int GetCachedIconIndexFast(String ^path, bool istopfield, bool isfolder)
+		FileType^ GetCachedIconIndexFast(String ^path, bool istopfield, bool isfolder)
 		{
 
 			if (dic->ContainsKey(path))
@@ -316,15 +336,31 @@ namespace Antares {
                      return extension_dic[ext];
 				}
 
-				if (path->EndsWith(".rec")) return play_index;
+				if (path->EndsWith(".rec")) 
+				{
+					return this->play_info;
+				}
 			}
 
-			if (isfolder) return folder_index; else return file_index;
+			if (isfolder) return 
+				this->folder_info; 
+			else 
+			{
+				FileType^ info = gcnew FileType(file_index, "");
+				String^ type = "File";
+				try {
+				type =  Path::GetExtension(path) + " " + type;
+				}
+				catch(...){};
+
+				info->file_type = type;
+				return info;
+			}
 
 
 		}
 
-		int GetCachedIconIndex(String ^path, bool istopfield, bool isfolder)
+		FileType^ GetCachedIconIndex(String ^path, bool istopfield, bool isfolder)
 		{
 			//istopfield=true;
 			if (dic->ContainsKey(path))
@@ -335,24 +371,31 @@ namespace Antares {
 
 				//if (fast_mode) return -1;
 
-				int ic;
+				FileType^ info;
 				if (istopfield)
 				{
 					if (isfolder)
-						ic=GetApproximateFolderIconIndex(path);
+					{
+						info=gcnew FileType(GetApproximateFolderIconIndex(path), this->folder_info->file_type);
+					}
 					else
-						ic=GetApproximateFileIconIndex(path);
+						info=GetApproximateFileIconIndex(path);
 				}
 				else
-					ic=GetFileIconIndex( path);
+					info=GetFileIconIndex( path);
 			
 
-				if (ic==file_index && path->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase)) ic=play_index;
-
-
-				if (ic>=0) 
+				if (path->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase)) 
 				{
-					dic->Add(path, ic);
+					if(info->icon_index==file_index)  info=play_info;
+
+					info->file_type = "REC File";
+				}
+
+
+				if (info->icon_index>=0) 
+				{
+					dic->Add(path, info);
 
 					String^ ext = "";
 					try {ext = Path::GetExtension(path);} catch(...){};
@@ -360,44 +403,48 @@ namespace Antares {
 
 					if (!isfolder && ext->Length  && !extension_dic->ContainsKey(ext))
 					{
-						extension_dic->Add(ext, ic);
+						extension_dic->Add(ext, info);
 						//Console::WriteLine("added ext,ic = " + ext + ", "+ic.ToString()+" to dic.");
 					}
 
 
 				}
 
-				return ic;
+				return info;
 			}
 		}
 
 
 
-		static int GetFileIconIndex(String ^ path)
+		static FileType^ GetFileIconIndex(String ^ path)
 		{
 			SHFILEINFO shinfo;
+			FileType^ info;
 			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
 			DWORD_PTR ind;
-			ind = Antares::SHGetFileInfo( str, 0, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON );
+			ind = Antares::SHGetFileInfo( str, 0, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON | SHGFI_TYPENAME  );
 
 			//if (ind==file_index && path->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase)) ind=play_index;
 
-			return shinfo.iIcon;
+			info = gcnew FileType(shinfo.iIcon, gcnew String(shinfo.szTypeName) );
+			return info; //shinfo.iIcon;
 
 		}
 
 
 
-		static int GetApproximateFileIconIndex(String ^ path)
+		static FileType^ GetApproximateFileIconIndex(String ^ path)
 		{
 			SHFILEINFO shinfo;
+			FileType^ info;
 			wchar_t* str = (wchar_t*)(void*)Marshal::StringToHGlobalUni(path);
 			DWORD_PTR ind;
-			ind = Antares::SHGetFileInfo( str, FILE_ATTRIBUTE_NORMAL, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES | SHGFI_SMALLICON );
+			ind = Antares::SHGetFileInfo( str, FILE_ATTRIBUTE_NORMAL, &shinfo, sizeof(shinfo), 0*SHGFI_ATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES | SHGFI_SMALLICON | SHGFI_TYPENAME );
 
 			//if (ind==file_index && path->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase)) ind=play_index;
 
-			return shinfo.iIcon;
+			info = gcnew FileType(shinfo.iIcon, gcnew String(shinfo.szTypeName));
+			return info;//shinfo.iIcon;
 
 		}
 		static int GetApproximateFolderIconIndex(String ^ path)
@@ -438,6 +485,9 @@ namespace Antares {
 			this->safe_filename=item->safe_filename;
 			this->datetime=item->datetime;
 			this->datestring=item->datestring;
+			this->size=item->size;
+			//this->file_type=item->file_type;
+
 
 			for (int j=0; j<5; j++)
 			{
@@ -453,6 +503,7 @@ namespace Antares {
 		void update_icon(void)
 		{
 			this->ImageIndex = this->icon_index;
+			this->SubItems[2]->Text=this->file_type;
 		}
 
 
@@ -462,6 +513,8 @@ namespace Antares {
 		System::String^ datestring;
 		System::String^ full_filename;
 		System::String^ recursion_offset;
+
+		System::String^ file_type;
 
 		System::String^ channel;
 		System::String^ description;
@@ -503,6 +556,7 @@ namespace Antares {
 			this->isdrive = true;
 			this->channel="";
 			this->description="";
+			this->file_type="";
 
 		}
 
@@ -513,7 +567,6 @@ namespace Antares {
 			FileAttributes attr = f->Attributes::get();
 			this->filename = Path::GetFileName(path);
 			this->isdrive = false;
-			String^ typestring;
 			String^ sizestring="";
 			this->recursion_offset="";
 			this->channel="";
@@ -522,14 +575,14 @@ namespace Antares {
 			if ( (attr & FileAttributes::Directory) == FileAttributes::Directory)
 			{
 				this->isdir=true;
-				typestring = "Folder";
+				this->file_type = "Folder";
 				this->size=0;
 				//this->ImageIndex = 0;
 			}
 			else
 			{
 				this->isdir = false;
-				typestring="File";
+				this->file_type="File";
 				this->size = f->Length::get();
 				sizestring = HumanReadableSize(this->size);
 				//if (this->filename->EndsWith(".rec"))
@@ -547,7 +600,7 @@ namespace Antares {
 			this->full_filename = path; 
 			this->Name=path;
 			this->SubItems->Add( sizestring );
-			this->SubItems->Add(typestring);
+			this->SubItems->Add(this->file_type);
 			this->SubItems->Add(this->datestring);
 			this->SubItems->Add(this->channel);
 			this->SubItems->Add(this->description);
@@ -573,19 +626,19 @@ namespace Antares {
 			String ^namestring = gcnew String( (char *) entry->name);
 
 			//toolStripStatusLabel1->Text= " i= "+i.ToString();
-			String ^typestring = gcnew String("");
+			//String ^typestring = gcnew String("");
 			switch (entry->filetype)
 			{
 			case 1:
 				this->type = 'd';
-				typestring = "Folder";
+				this->file_type = "Folder";
 				this->isdir = true;
 				//this->ImageIndex = 0;
 				break;
 
 			case 2:
 				this->type = 'f';
-				typestring = "File";
+				this->file_type = "File";
 				//if (namestring->EndsWith(".rec"))
 				//	this->ImageIndex=2;
 				//else
@@ -596,7 +649,7 @@ namespace Antares {
 			default:
 
 				this->type= '?';
-				typestring="??";
+				this->file_type="??";
 				this->isdir=false;
 			}
 
@@ -642,7 +695,7 @@ namespace Antares {
 			this->Text = namestring;
 
 			this->SubItems->Add( sizestring );
-			this->SubItems->Add(typestring);
+			this->SubItems->Add(this->file_type);
 			this->SubItems->Add(this->datestring);
 			this->SubItems->Add(this->channel);
 			this->SubItems->Add(this->description);
@@ -755,7 +808,7 @@ namespace Antares {
 			}
 
 			// Sort by type
-			if (this->col == 2) return 0; //(currently only recognise two types)
+			if (this->col == 2) return String::Compare(fx->file_type, fy->file_type);
 
 			// Sort by date
 			if (this->col == 3) return String::Compare(fx->datestring, fy->datestring);

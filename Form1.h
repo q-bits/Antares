@@ -893,11 +893,14 @@ repeat:
 					while(en->MoveNext())
 					{
 						ComputerItem^ item = safe_cast<ComputerItem^>(en->Current);
-						int ic = this->icons->GetCachedIconIndex(item->full_filename, false, item->isdir);
-						if (ic>=0 && ic != item->icon_index)
+						FileType^ info = this->icons->GetCachedIconIndex(item->full_filename, false, item->isdir);
+
+						int ic = info->icon_index;
+						if (ic>=0 && (ic != item->icon_index || (!item->isdir && info->file_type != item->file_type)))
 						{
 							int was=item->icon_index;
 							item->icon_index=ic;
+							if (!item->isdir) item->file_type = info->file_type;
 							ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(item, &FileItem::update_icon);
 							this->Invoke(d);
 							//Console::WriteLine("Invoke for icon " + ic.ToString()+", was " + was.ToString()+". ext="+Path::GetExtension(item->full_filename));
@@ -972,10 +975,12 @@ repeat:
 					while(en->MoveNext())
 					{
 						TopfieldItem^ item = safe_cast<TopfieldItem^>(en->Current);
-						int ic = this->icons->GetCachedIconIndex("T:"+safeString(item->directory)+"\\"+item->safe_filename, true, item->isdir);
-						if (ic>=0 && ic != item->icon_index)
+						FileType^ info = this->icons->GetCachedIconIndex("T:"+safeString(item->directory)+"\\"+item->safe_filename, true, item->isdir);
+						int ic = info->icon_index;
+						if (ic>=0 && (ic != item->icon_index || (!item->isdir && info->file_type != item->file_type )) )
 						{
 							    item->icon_index=ic;
+								if (!item->isdir) item->file_type=info->file_type;
 								TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(item, &FileItem::update_icon);
 								this->Invoke(d);
 								printf("Invoke, ic=%d ext=",ic); Console::WriteLine(Path::GetExtension(safeString(item->directory)+"\\"+item->safe_filename));
@@ -1162,7 +1167,8 @@ repeat:
 					if ( (drives&1)==1)
 					{
 						item = gcnew ComputerItem(j);
-						int ic = this->icons->GetCachedIconIndex(item->full_filename);
+						FileType^ info = this->icons->GetCachedIconIndex(item->full_filename);
+						int ic = info->icon_index;
 						if (ic>=0)
 							item->ImageIndex=item->icon_index=ic;
 						else
@@ -1200,10 +1206,17 @@ repeat:
 				for (j=0; j<items->Length; j++)
 				{
 					item = items[j];
-					int ic = this->icons->GetCachedIconIndexFast(item->full_filename,false, item->isdir);
+					FileType^ info = this->icons->GetCachedIconIndexFast(item->full_filename,false, item->isdir);
+					int ic = info->icon_index;
 					if (ic >= 0)
 					{
 						item->ImageIndex = item->icon_index = ic;
+						if (!item->isdir)
+						{
+							item->file_type = info->file_type;
+							item->SubItems[2]->Text = info->file_type;
+						}
+
 					}
 					else
 					{
@@ -1609,7 +1622,14 @@ repeat:
 				if (item->isdir)
 					item->ImageIndex = item->icon_index=this->icons->folder_index;
 				else
-					item->ImageIndex = item->icon_index = this->icons->GetCachedIconIndexFast("T:"+safeString(item->directory)+"\\"+item->safe_filename, true,false);
+				{
+					FileType^ info = this->icons->GetCachedIconIndexFast("T:"+safeString(item->directory)+"\\"+item->safe_filename, true,false);
+			
+
+					item->ImageIndex = item->icon_index = info->icon_index;	
+					item->file_type = info->file_type;
+					item->SubItems[2]->Text = info->file_type;
+				}
 
 				if (String::Equals(start_rename,item->filename) && !String::Equals(start_rename,"") )
 				{
@@ -2911,9 +2931,21 @@ repeat:
 			Arrange2();
 		}
 
+		System::Void deselectComboBoxes(void)
+		{
+			this->textBox1->Select(0,0);
+			this->textBox2->Select(0,0);
+
+		}
+
 		System::Void Form1_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
-			//Console::WriteLine("Layout");
+			Console::WriteLine("Layout");
+
 			//this->Arrange();
+
+				ListViewSelectionDelegate^ d = gcnew ListViewSelectionDelegate(this, &Form1::deselectComboBoxes);
+				this->BeginInvoke(d);
+
 		}
 
 		System::Void Form1_Resize(System::Object^  sender, System::EventArgs^  e) {
@@ -3079,6 +3111,7 @@ repeat:
 
 			if (this->InvokeRequired)
 			{
+				Monitor::Exit(this->locker);
 				printf("0. Transfer ended.\n");
 				TransferEndedCallback^ d = gcnew TransferEndedCallback(this, &Form1::TransferEnded);
 				this->BeginInvoke(d);
@@ -3086,7 +3119,6 @@ repeat:
 			}
 			else
 			{
-				Monitor::Exit(this->locker);
 				this->EnableComponents(true);
 
 				this->panel7->Enabled=true;
@@ -3141,6 +3173,9 @@ repeat:
 		System::Void transfer_to_PC(Object^ input){
 			// Worker thread for doing the transfer from PVR -> PC
 			CopyDialog^ copydialog = safe_cast<CopyDialog^>(input);
+			//////////////
+			Monitor::Enter(this->locker);
+			//////////////
 			while(copydialog->loaded==false)
 			{
 				Thread::Sleep(100);
@@ -4019,6 +4054,7 @@ end_copy_to_pc:
 			Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PC));
 			copydialog->thread=thread;
 			thread->Start(copydialog);
+			Monitor::Exit(this->locker);
 			//copydialog->showDialog_thread();
 
 			//this->ShowCopyDialog(copydialog);
@@ -4029,6 +4065,7 @@ end_copy_to_pc:
 aborted:   // If the transfer was cancelled before it began
 
 
+			Monitor::Exit(this->locker);
 		
 			this->TransferEnded();
 
@@ -4057,6 +4094,9 @@ aborted:   // If the transfer was cancelled before it began
 		System::Void transfer_to_PVR(Object^ input){
 			// Worker thread for doing the transfer from PC -> PVR
 			CopyDialog^ copydialog = safe_cast<CopyDialog^>(input);
+			///////
+			Monitor::Enter(this->locker);
+			//////
 			while(copydialog->loaded==false)
 			{
 				Thread::Sleep(100);
@@ -4840,7 +4880,20 @@ finish_transfer:
 						tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->recursion_offset);
 						tmp = Antares::combineTopfieldPath(tmp,item->filename);
 					}
-					topfield_items_by_folder[ind]=this->loadTopfieldDirArray(tmp);
+
+                    bool seen_before=false;
+					for (int j=0; j<ind; j++)
+					{
+						for each (TopfieldItem^ titem in topfield_items_by_folder[j])
+						{
+							if (titem->full_filename->StartsWith(tmp)) {seen_before=true;break;};
+						}
+						if (seen_before) break;
+					}
+					if (seen_before)
+						topfield_items_by_folder[ind]=this->loadTopfieldDirArray(tmp);
+					else
+						topfield_items_by_folder[ind]=gcnew array<TopfieldItem^>(0);
 				}
 			}
 
@@ -5066,6 +5119,7 @@ finish_transfer:
 			copydialog->thread = thread;
 			thread->Start(copydialog);
 
+			Monitor::Exit(this->locker);
 
 			//this->ShowCopyDialog(copydialog);
 
@@ -5073,6 +5127,7 @@ finish_transfer:
 			return;
 abort:  // If the transfer was cancelled before it began
 
+			Monitor::Exit(this->locker);
 			this->TransferEnded();
 
 		}
@@ -5443,10 +5498,12 @@ abort:  // If the transfer was cancelled before it began
 		int newTopfieldFolder(String^ dir)
 		{
 
-			int r;
+			int r=-1;
 			char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
 			Monitor::Enter(this->locker);
-			r = do_hdd_mkdir(this->fd,path);
+			try{
+				r = do_hdd_mkdir(this->fd,path);}
+			catch(...){};
 			Monitor::Exit(this->locker);
 			Marshal::FreeHGlobal((System::IntPtr)(void*)path);
 			return r;
@@ -5856,8 +5913,11 @@ abort:  // If the transfer was cancelled before it began
 			char charbuf[readsize];
 			//if (this->transfer_in_progress) return false;
 			//this->transfer_in_progress = true;
+			array<Byte>^ buff;
 			Monitor::Enter(this->locker);
-			array<Byte>^ buff = this->read_topfield_file_snippet(item->full_filename, 0);
+			try{
+			buff = this->read_topfield_file_snippet(item->full_filename, 0);
+			} catch(...){};
 			Monitor::Exit(this->locker);
 			//this->transfer_in_progress=false;
 			int size = buff->Length;
@@ -6343,6 +6403,7 @@ abort:  // If the transfer was cancelled before it began
 			 }
 
 
-	};    // class form1
+
+};    // class form1
 };    // namespace antares
 
