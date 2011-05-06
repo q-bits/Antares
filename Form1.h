@@ -78,7 +78,7 @@ namespace Antares {
 	delegate void TransferEndedCallback(void);
 	delegate void ComputerBackgroundCallback(void);
 	delegate void TopfieldBackgroundCallback(void);
-	
+
 
 
 
@@ -180,7 +180,7 @@ namespace Antares {
 
 			this->topfield_background_event = gcnew AutoResetEvent(false);
 			this->computer_background_event = gcnew AutoResetEvent(false);
-		
+
 
 			this->locker = gcnew Object();
 			this->last_topfield_freek = -1;
@@ -313,7 +313,7 @@ namespace Antares {
 
 			this->finished_constructing = 1;
 
-	
+
 
 
 
@@ -333,6 +333,9 @@ namespace Antares {
 
 			this->cbthread = gcnew Thread(gcnew ThreadStart(this,&Form1::computerBackgroundWork));
 			this->tbthread = gcnew Thread(gcnew ThreadStart(this,&Form1::topfieldBackgroundWork));
+
+			cbthread->Name = "cbthread";
+			tbthread->Name = "tbthread";
 
 			this->cbthread->Start();
 			this->tbthread->Start();
@@ -441,7 +444,7 @@ namespace Antares {
 
 
 					if (driver_name->Equals("winusb"))
-					    fdtemp  = open_winusb_device(hdev);
+						fdtemp  = open_winusb_device(hdev);
 					else
 						fdtemp  = open_tfbulk_device(hdev);
 
@@ -971,7 +974,7 @@ repeat:
 					System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
 					if (en==nullptr) continue;
 
-		
+
 					while(en->MoveNext())
 					{
 						TopfieldItem^ item = safe_cast<TopfieldItem^>(en->Current);
@@ -979,12 +982,12 @@ repeat:
 						int ic = info->icon_index;
 						if (ic>=0 && (ic != item->icon_index || (!item->isdir && info->file_type != item->file_type )) )
 						{
-							    item->icon_index=ic;
-								if (!item->isdir) item->file_type=info->file_type;
-								TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(item, &FileItem::update_icon);
-								this->Invoke(d);
-								printf("Invoke, ic=%d ext=",ic); Console::WriteLine(Path::GetExtension(safeString(item->directory)+"\\"+item->safe_filename));
-								Application::DoEvents();  // why is this needed?
+							item->icon_index=ic;
+							if (!item->isdir) item->file_type=info->file_type;
+							TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(item, &FileItem::update_icon);
+							this->Invoke(d);
+							printf("Invoke, ic=%d ext=",ic); Console::WriteLine(Path::GetExtension(safeString(item->directory)+"\\"+item->safe_filename));
+							Application::DoEvents();  // why is this needed?
 
 						}
 						if (en!= this->topfield_background_enumerator)
@@ -1026,7 +1029,7 @@ repeat:
 						if (en!= this->topfield_background_enumerator)
 						{
 							goto repeat;
-						
+
 						}
 						//TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
 
@@ -1090,7 +1093,7 @@ repeat:
 
 					}
 
-					
+
 
 					// update item2 with details from item.
 
@@ -1108,7 +1111,7 @@ repeat:
 					catch(...)
 					{
 					}
-					
+
 
 				}
 
@@ -1141,8 +1144,8 @@ repeat:
 			String^ dir = this->computerCurrentDirectory;
 
 
-			
-			
+
+
 			bool reloaded;
 			try{
 
@@ -1307,9 +1310,9 @@ repeat:
 				/*
 				if (this->settings["PC_Column4Visible"]=="1" || this->settings["PC_Column5Visible"]=="1")
 				{
-					//ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
-					//this->BeginInvoke(d);
-					this->computer_background_event->Set();
+				//ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
+				//this->BeginInvoke(d);
+				this->computer_background_event->Set();
 
 				}
 				*/
@@ -1597,7 +1600,7 @@ repeat:
 				return -EPROTO; 
 			}
 
-			
+
 
 			///// Actually load the directory
 			Monitor::Enter(this->locker);
@@ -1616,15 +1619,15 @@ repeat:
 			for(i = 0; i < items->Length ; i++)
 			{
 
-			
+
 				item = items[i];
-				
+
 				if (item->isdir)
 					item->ImageIndex = item->icon_index=this->icons->folder_index;
 				else
 				{
 					FileType^ info = this->icons->GetCachedIconIndexFast("T:"+safeString(item->directory)+"\\"+item->safe_filename, true,false);
-			
+
 
 					item->ImageIndex = item->icon_index = info->icon_index;	
 					item->file_type = info->file_type;
@@ -1684,8 +1687,8 @@ repeat:
 			{
 				this->tlist->SelectedItems->Clear();
 				rename_item->BeginEdit();
-			
-				
+
+
 				//TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(rename_item, &TopfieldItem::BeginEdit);
 				//this->BeginInvoke(d);
 
@@ -1711,11 +1714,11 @@ repeat:
 			/*
 			if (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1")
 			{
-				this->topfield_background_enumerator = q->GetEnumerator();
-				//TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
-				//this->BeginInvoke(d);
+			this->topfield_background_enumerator = q->GetEnumerator();
+			//TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(this, &Form1::topfieldBackgroundWork);
+			//this->BeginInvoke(d);
 
-				this->topfield_background_event->Set();
+			this->topfield_background_event->Set();
 
 			}
 
@@ -2585,7 +2588,7 @@ repeat:
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.8";
+			this->Text = L"Antares  0.8.1";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2943,8 +2946,8 @@ repeat:
 
 			//this->Arrange();
 
-				ListViewSelectionDelegate^ d = gcnew ListViewSelectionDelegate(this, &Form1::deselectComboBoxes);
-				this->BeginInvoke(d);
+			ListViewSelectionDelegate^ d = gcnew ListViewSelectionDelegate(this, &Form1::deselectComboBoxes);
+			this->BeginInvoke(d);
 
 		}
 
@@ -3039,8 +3042,8 @@ repeat:
 		}
 
 		System::Void toolStripButton2_Click(System::Object^  sender, System::EventArgs^  e) {
-			
-	
+
+
 			this->refreshComputer();
 		}
 
@@ -3154,8 +3157,7 @@ repeat:
 				if (copydialog->copydirection == CopyDirection::PC_TO_PVR || copydialog->copymode == CopyMode::MOVE)
 					this->loadTopfieldDir();
 
-				this->absorb_late_packets(2,200);
-				this->set_turbo_mode(0);
+
 				if (!copydialog->is_closed)
 					copydialog->close_request_threadsafe();
 
@@ -3347,6 +3349,12 @@ restart_copy_to_pc:
 					goto end_copy_to_pc;				
 				}
 
+				try{
+					dest_file->SetLength(src_sizes[i]);
+				}
+				catch (...)
+				{
+				}
 
 				dest_file->Seek(topfield_file_offset,SeekOrigin::Begin);
 
@@ -3601,7 +3609,12 @@ restart_copy_to_pc:
 				}
 
 out:
-				//_close(dst);
+
+				try  
+				{
+					dest_file->SetLength(copydialog->current_offsets[i]);
+				} catch(...){};
+
 				try
 				{
 					dest_file->Close();
@@ -3618,7 +3631,14 @@ out:
 				if (copydialog->usb_error)
 				{
 					this->connection_error_occurred();
-					if (this->wait_for_connection(copydialog) < 0) 
+
+					Monitor::Exit(this->locker);
+					int wfc = this->wait_for_connection(copydialog);
+					Monitor::Enter(this->locker);
+
+
+
+					if (wfc < 0) 
 						goto end_copy_to_pc;
 					else
 						goto restart_copy_to_pc;
@@ -3714,6 +3734,8 @@ check_delete:
 end_copy_to_pc:
 
 			copydialog->close_request_threadsafe();
+			this->absorb_late_packets(2,200);
+			this->set_turbo_mode(0);
 			this->TransferEnded();
 
 		}
@@ -3757,13 +3779,13 @@ end_copy_to_pc:
 				copydialog->window_title="Copying File(s) ... [PVR --> PC]";
 			else
 				copydialog->window_title="Moving File(s) ... [PVR --> PC]";
-			
+
 			copydialog->Text = copydialog->window_title;
 
 			copydialog->tiny_size();
 			copydialog->label3->Text="Finding files...";
-		    this->ShowCopyDialog(copydialog);
-		
+			this->ShowCopyDialog(copydialog);
+
 			copydialog->Update();
 
 
@@ -4002,18 +4024,18 @@ end_copy_to_pc:
 				this->set_turbo_mode( 0);
 
 
-            copydialog->SuspendLayout();
+			copydialog->SuspendLayout();
 			//this->SuspendDrawing(this);
 			//this->SuspendDrawing(copydialog);
 
-			
+
 			copydialog->total_start_time = time(NULL);
 			copydialog->current_start_time = 0 ;
 			copydialog->filesizes = src_sizes;
 			copydialog->current_offsets = current_offsets;
 			copydialog->numfiles = num_files;
 			copydialog->current_index = 0;
-			
+
 			//copydialog->current_file="Waiting for PVR...";
 			copydialog->turbo_mode = this->turbo_mode;
 			//copydialog->update_dialog_threadsafe();
@@ -4032,10 +4054,10 @@ end_copy_to_pc:
 			copydialog->copymode=copymode;
 			copydialog->action1_skipdelete = action1_skipdelete;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
-			
-		
+
+
 			if (numitems>1)
-			   copydialog->normal_size();
+				copydialog->normal_size();
 			else
 				copydialog->small_size();
 			//this->CentreCopyDialog(copydialog);
@@ -4052,6 +4074,7 @@ end_copy_to_pc:
 			this->TransferBegan();
 
 			Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PC));
+			thread->Name = "Transfer_to_PC";
 			copydialog->thread=thread;
 			thread->Start(copydialog);
 			Monitor::Exit(this->locker);
@@ -4066,11 +4089,11 @@ aborted:   // If the transfer was cancelled before it began
 
 
 			Monitor::Exit(this->locker);
-		
+
 			this->TransferEnded();
 
 
-			
+
 
 		}
 
@@ -4644,7 +4667,12 @@ out:
 				if (copydialog->usb_error)
 				{
 					this->connection_error_occurred();
-					if (this->wait_for_connection(copydialog) < 0) 
+
+					Monitor::Exit(this->locker);
+					int wfc = this->wait_for_connection(copydialog);
+					Monitor::Enter(this->locker);
+
+					if (wfc < 0) 
 					{
 						//copydialog->close_request_threadsafe();
 						printf("Cancelling after error.\n");
@@ -4660,7 +4688,11 @@ out:
 					this->updateTopfieldSummary();
 					if (this->last_topfield_freek < 1024.0 * this->topfield_minimum_free_megs )
 					{
-						if (this->wait_for_connection(copydialog)<0)
+						Monitor::Exit(this->locker);
+						int wfc = this->wait_for_connection(copydialog);
+						Monitor::Enter(this->locker);
+
+						if (wfc<0)
 						{
 							goto finish_transfer;
 						}
@@ -4747,6 +4779,8 @@ check_delete:
 finish_transfer:
 
 			copydialog->close_request_threadsafe();
+			this->absorb_late_packets(2,200);
+			this->set_turbo_mode(0);
 			this->TransferEnded();
 			//printf("!!!!!!! Transfer thread ended normally.\n");
 		}
@@ -4781,9 +4815,9 @@ finish_transfer:
 
 			/////////////////////////////
 			Monitor::Enter(this->locker);
-            ////////////////////////////////
+			////////////////////////////////
 
-				CopyDialog^ copydialog = gcnew CopyDialog();
+			CopyDialog^ copydialog = gcnew CopyDialog();
 			copydialog->settings = this->settings;
 			copydialog->cancelled=false;
 			copydialog->parent_win = this;
@@ -4794,13 +4828,13 @@ finish_transfer:
 				copydialog->window_title="Copying File(s) ... [PC --> PVR]";
 			else
 				copydialog->window_title="Moving File(s) ... [PC --> PVR]";
-			
+
 			copydialog->Text = copydialog->window_title;
 
 			copydialog->tiny_size();
 			copydialog->label3->Text="Finding files...";
-		    this->ShowCopyDialog(copydialog);
-		
+			this->ShowCopyDialog(copydialog);
+
 			copydialog->Update();
 
 
@@ -4881,7 +4915,7 @@ finish_transfer:
 						tmp = Antares::combineTopfieldPath(tmp,item->filename);
 					}
 
-                    bool seen_before=false;
+					bool seen_before=false;
 					for (int j=0; j<ind; j++)
 					{
 						for each (TopfieldItem^ titem in topfield_items_by_folder[j])
@@ -5076,7 +5110,7 @@ finish_transfer:
 				this->set_turbo_mode(0);
 
 
-		
+
 			//copydialog->total_filesize = totalsize;
 			copydialog->total_start_time = time(NULL);
 			copydialog->current_start_time=0;
@@ -5103,9 +5137,9 @@ finish_transfer:
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 
 
-					
+
 			if (numitems>1)
-			   copydialog->normal_size();
+				copydialog->normal_size();
 			else
 				copydialog->small_size();
 
@@ -5116,6 +5150,7 @@ finish_transfer:
 			this->transfer_in_progress=true;
 			this->TransferBegan();
 			Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PVR));
+			thread->Name = "transfer_to_PVR";
 			copydialog->thread = thread;
 			thread->Start(copydialog);
 
@@ -5314,7 +5349,7 @@ abort:  // If the transfer was cancelled before it began
 			long long total_bytes_received=0;
 			//long long bytecount;
 			time_t startTime = time(NULL);
-	
+
 
 			Monitor::Enter(this->locker);
 			while ( myEnum->MoveNext() )
@@ -5331,7 +5366,7 @@ abort:  // If the transfer was cancelled before it began
 		System::Void listView_AfterLabelEdit(System::Object^  sender, System::Windows::Forms::LabelEditEventArgs^  e) {
 			ListView^ listview = safe_cast<ListView^>(sender);
 			// User has finished editing a label
-			
+
 			if (e->Label == nullptr)
 				Console::WriteLine(e->Item.ToString()+": No change was made");
 			else
@@ -5342,7 +5377,7 @@ abort:  // If the transfer was cancelled before it began
 					// Rename a file on the PVR
 				{
 
-					
+
 					TopfieldItem^ item = safe_cast<TopfieldItem^>(listview->Items[e->Item]);
 					String^ old_full_filename = item->directory + "\\" + item->filename;
 					if (this->transfer_in_progress) {e->CancelEdit=true;item->Text = item->filename;return;};
@@ -5413,7 +5448,7 @@ abort:  // If the transfer was cancelled before it began
 							this->loadComputerDir("",new_filename);
 
 							e->CancelEdit=true;
-							
+
 
 
 						}
@@ -5916,7 +5951,7 @@ abort:  // If the transfer was cancelled before it began
 			array<Byte>^ buff;
 			Monitor::Enter(this->locker);
 			try{
-			buff = this->read_topfield_file_snippet(item->full_filename, 0);
+				buff = this->read_topfield_file_snippet(item->full_filename, 0);
 			} catch(...){};
 			Monitor::Exit(this->locker);
 			//this->transfer_in_progress=false;
@@ -6023,7 +6058,7 @@ abort:  // If the transfer was cancelled before it began
 			{
 				this->connection_error_occurred();
 				return out_array;
-				
+
 			}
 
 			state = START;
@@ -6140,7 +6175,7 @@ abort:  // If the transfer was cancelled before it began
 
 
 		System::Void Form1_ResizeEnd(System::Object^  sender, System::EventArgs^  e) {
-			 Console::WriteLine("ResizeEnd");
+			Console::WriteLine("ResizeEnd");
 			//this->ResumeLayout();
 		}
 		System::Void Form1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e) {
@@ -6365,45 +6400,45 @@ abort:  // If the transfer was cancelled before it began
 		}
 
 		/*
-	private: System::Void radioButton1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
-				 return;
-				 System::Drawing::Font^ boldfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Bold);
-				 System::Drawing::Font^ plainfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Regular);
+		private: System::Void radioButton1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+		return;
+		System::Drawing::Font^ boldfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Bold);
+		System::Drawing::Font^ plainfont = gcnew System::Drawing::Font(this->radioButton1->Font,FontStyle::Regular);
 
-				 if (this->radioButton1->Checked)
-				 {
-					 this->radioButton1->Font = boldfont;
-					 this->radioButton2->Font = plainfont;
+		if (this->radioButton1->Checked)
+		{
+		this->radioButton1->Font = boldfont;
+		this->radioButton2->Font = plainfont;
 
-				 }
-				 else
-				 {
-					 this->radioButton2->Font = boldfont;
-					 this->radioButton1->Font = plainfont;
-				 }
+		}
+		else
+		{
+		this->radioButton2->Font = boldfont;
+		this->radioButton1->Font = plainfont;
+		}
 
-				 this->centreRB(this->radioButton1);
-				 this->centreRB(this->radioButton2);
+		this->centreRB(this->radioButton1);
+		this->centreRB(this->radioButton2);
 
-			 }
-			 */
-
-
-			 CopyMode getCopyMode(void)
-			 {
-				 if (this->checkBox2->Checked) 
-					 return CopyMode::MOVE;
-				 else
-					 return CopyMode::COPY;
-			 }
-
-			 void connection_error_occurred(void)
-			 {
-				 this->connection_needs_checking=true;
-			 }
+		}
+		*/
 
 
+		CopyMode getCopyMode(void)
+		{
+			if (this->checkBox2->Checked) 
+				return CopyMode::MOVE;
+			else
+				return CopyMode::COPY;
+		}
 
-};    // class form1
+		void connection_error_occurred(void)
+		{
+			this->connection_needs_checking=true;
+		}
+
+
+
+	};    // class form1
 };    // namespace antares
 
