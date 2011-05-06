@@ -5,7 +5,7 @@
 #define PUT 0
 #define GET 1
 
-extern int quiet;
+//extern int quiet;
 extern __u32 cmd;
 extern char *arg1;
 extern char *arg2;

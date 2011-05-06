@@ -406,7 +406,7 @@ int do_hdd_file_put(libusb_device_handle* fd, char *srcPath, char *dstPath)
                             }
                         }
 
-                        if(!update && !quiet)
+                        if(!update)
                         {
                             progressStats(fileSize, byteCount, startTime);
                         }
@@ -520,7 +520,7 @@ int do_hdd_file_get(libusb_device_handle* fd, char *srcPath, char *dstPath)
                         get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
                     int w;
 
-                    if(!update && !quiet)
+                    if(!update)
                     {
                         progressStats(byteCount, offset + dataLen, startTime);
                     }
@@ -685,9 +685,6 @@ void progressStats(__u64 totalSize, __u64 bytes, time_t startTime)
 {
     int delta = (int)(time(NULL) - startTime);
 
-    if(quiet)
-        return;
-
     if(delta > 0)
     {
         double rate = (double)bytes / delta;
@@ -705,9 +702,6 @@ void progressStats(__u64 totalSize, __u64 bytes, time_t startTime)
 void finalStats(__u64 bytes, time_t startTime)
 {
     int delta = (int)(time(NULL) - startTime);
-
-    if(quiet)
-        return;
 
     if(delta > 0)
     {

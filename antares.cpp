@@ -350,7 +350,8 @@ int main(array<System::String ^> ^args)
 
 	if (form->fd != NULL)
 	{
-		disconnect_device(form->fd);
+		//disconnect_device(form->fd);
+		//TODO: write proper disconnect code
 	}
 	libusb_exit(NULL);
 	form->cbthread->Abort();

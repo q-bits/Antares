@@ -261,26 +261,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\connect.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAsManaged="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAsManaged="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
 				RelativePath=".\CopyDialog.cpp"
 				>
 			</File>
@@ -307,26 +287,6 @@
 			<File
 				RelativePath=".\DeleteConfirmation.cpp"
 				>
-			</File>
-			<File
-				RelativePath=".\getopt.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAsManaged="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAsManaged="0"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\HDD_DecodeRECHeader.c"
@@ -436,26 +396,6 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="1"
-						CompileAsManaged="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAsManaged="0"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath=".\wuppy.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
 						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
