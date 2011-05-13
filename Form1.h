@@ -21,6 +21,7 @@ extern "C" {
 #include "FBLib_rec.h"
 
 
+	//TODO: put these prototypes somewhere better
 	struct husb_device_handle;
 	int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int max_length_paths, char *driver_names);
 	struct husb_device_handle* open_winusb_device(HANDLE hdev);
@@ -136,11 +137,13 @@ namespace Antares {
 
 		static void SuspendDrawing( Control^ parent ) 
 		{ 
+			if (parent==nullptr) return;
 			Antares::SendMessage((HWND) parent->Handle.ToPointer(), WM_SETREDRAW, false, 0); 
 		} 
 
 		static void ResumeDrawing( Control^ parent ) 
 		{ 
+			if (parent==nullptr) return;
 			Antares::SendMessage((HWND) parent->Handle.ToPointer(), WM_SETREDRAW, true, 0); 
 			//parent->Refresh(); 
 		} 
@@ -202,7 +205,44 @@ namespace Antares {
 			this->finished_constructing = 0;
 			this->last_layout_x=-1;
 			this->last_layout_y=-1;
+			// Load configuration. 
+			this->settings = gcnew Settings();
+
+
+			this->Hide();
+			///////////////////////////
 			InitializeComponent();
+			///////////////////////////
+
+			//this->SuspendLayout();
+			//this->SuspendDrawing(this);
+			this->SuspendLayout();
+			System::Drawing::Size sz = this->Size;
+			sz.Width = Convert::ToInt32(this->settings["Width"]);
+			sz.Height = Convert::ToInt32(this->settings["Height"]);
+			System::Drawing::Point loc = this->Location;
+
+			try
+			{
+				loc.X = Convert::ToInt32(this->settings["X"]);
+				loc.Y = Convert::ToInt32(this->settings["Y"]);
+			}
+			catch (...){}
+
+
+			if (this->location_is_sane(sz.Width, sz.Height, loc.X, loc.Y))
+			{
+				this->Size =sz;
+				this->Location = loc;
+			}
+		
+
+			
+
+			//this->ResumeLayout(false);
+
+			printf("-----------  %d  %d ----------\n",Convert::ToInt32(this->settings["Width"]), Convert::ToInt32(this->settings["Height"]));
+
 			this->clist = this->listView2;
 			this->tlist = this->listView1;
 
@@ -241,16 +281,7 @@ namespace Antares {
 			{computerNameHeader, computerSizeHeader, computerTypeHeader, computerDateHeader, computerChannelHeader, computerDescriptionHeader};
 
 
-			//this->basicIconsSmall = gcnew ImageList();
-			//this->basicIconsSmall->Images->Add( Bitmap::FromFile( "folder.bmp" ) );
-			//this->basicIconsSmall->Images->Add( Bitmap::FromFile( "document.bmp" ) );
-			//this->basicIconsSmall->Images->Add( Bitmap::FromFile( "rec_file.bmp" ) );
-			//this->listView1->SmallImageList = this->basicIconsSmall;
-			//this->listView2->SmallImageList = this->basicIconsSmall;
-
-
-			// Load configuration. 
-			this->settings = gcnew Settings();
+			
 
 			if (String::Compare("on",settings["TurboMode"])==0) this->checkBox1->Checked = true; else this->checkBox1->Checked = false;
 
@@ -328,7 +359,12 @@ namespace Antares {
 
 
 			this->Focus();
+			if (this->settings["Maximized"]=="1") 
+			{
+				this->WindowState = FormWindowState::Maximized;
+			}
 			this->listView2->Focus();
+			
 
 
 			this->cbthread = gcnew Thread(gcnew ThreadStart(this,&Form1::computerBackgroundWork));
@@ -340,12 +376,19 @@ namespace Antares {
 			this->cbthread->Start();
 			this->tbthread->Start();
 
+			//this->ResumeDrawing(this);
+			this->Opacity=1.0;
+			
+			this->ResumeLayout(false);
+			
+			Console::WriteLine("Constructed Form.");
 
+			this->Show();
 			this->loadTopfieldDir();
 			this->loadComputerDir();
 			//this->ResizeRedraw = true;
 
-
+			
 
 
 		}
@@ -2080,16 +2123,14 @@ repeat:
 			// 
 			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
-				static_cast<System::Int32>(static_cast<System::Byte>(240)));
+			this->checkBox1->BackColor = System::Drawing::Color::Transparent;
 			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F));
-			this->checkBox1->Location = System::Drawing::Point(412, 13);
+			this->checkBox1->Location = System::Drawing::Point(417, 13);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 7;
 			this->checkBox1->Text = L"Turbo mode";
 			this->checkBox1->UseVisualStyleBackColor = false;
-			this->checkBox1->Visible = false;
 			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &Form1::checkBox1_CheckedChanged);
 			// 
 			// label2
@@ -2588,11 +2629,14 @@ repeat:
 			this->ForeColor = System::Drawing::SystemColors::ControlText;
 			this->Icon = (cli::safe_cast<System::Drawing::Icon^  >(resources->GetObject(L"$this.Icon")));
 			this->Name = L"Form1";
-			this->Text = L"Antares  0.8.1";
+			this->Opacity = 0;
+			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
+			this->Text = L"Antares  0.8.2";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
 			this->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::Form1_Layout);
+			this->Move += gcnew System::EventHandler(this, &Form1::Form1_Move);
 			this->FormClosing += gcnew System::Windows::Forms::FormClosingEventHandler(this, &Form1::Form1_FormClosing);
 			this->Resize += gcnew System::EventHandler(this, &Form1::Form1_Resize);
 			this->ResizeEnd += gcnew System::EventHandler(this, &Form1::Form1_ResizeEnd);
@@ -2616,6 +2660,7 @@ repeat:
 		}
 #pragma endregion
 		System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
+			Console::WriteLine("Loaded Form.");
 		}
 		System::Void splitContainer1_Panel1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e) {
 		}
@@ -2951,12 +2996,80 @@ repeat:
 
 		}
 
+		bool location_is_sane(int width, int height, int X, int Y)
+		{
+			if (width<500 || height < 250) return false;
+			if (Y<-32) return false;
+
+			Screen ^screen = System::Windows::Forms::Screen::PrimaryScreen;
+			int s_width = screen->Bounds.Width;
+			int s_height = screen->Bounds.Height;
+
+
+			if (width > s_width + 100) return false;
+			if (height > s_height + 100) return false;
+
+			if (Y>s_height-32) return false;
+
+			double off_width = 0;
+		    if (X<0) off_width -= X;
+			if (X+width>s_width) off_width+=(X+width-s_width);
+
+			if (off_width / width > .3) return false;
+
+			double off_height = 0;
+			if (Y<0) off_height = -Y;
+			if (Y+height > s_height) off_height -= (Y+height - s_height);
+			if (off_height / height > .3) return false;
+
+			return true;
+		}
+
+		System::Void save_location(void)
+		{
+
+			if (this->finished_constructing==0) return;
+			
+			Console::WriteLine(this->Size);
+			Console::WriteLine(this->Location);
+
+
+						//Console::WriteLine(System::Windows::Forms::Screen::PrimaryScreen);
+			bool is_maximized = (this->WindowState == FormWindowState::Maximized);
+			bool is_minimized = (this->WindowState == FormWindowState::Minimized);
+
+			
+			this->settings->changeSetting("Maximized",  ((int) is_maximized).ToString());
+			if (is_minimized || is_maximized) return;
+			
+			
+
+			int width = this->Size.Width;
+			int height = this->Size.Height;
+			int X = this->Location.X;
+			int Y = this->Location.Y;
+
+
+			if (this->location_is_sane(width, height, X, Y)) 
+			{
+
+				this->settings->changeSetting("Width", width.ToString());
+				this->settings->changeSetting("Height", height.ToString());
+				this->settings->changeSetting("X",X.ToString());
+				this->settings->changeSetting("Y",Y.ToString());
+
+			}
+			
+
+		}
+
 		System::Void Form1_Resize(System::Object^  sender, System::EventArgs^  e) {
 
-			//Console::WriteLine("Resize");
 			if (this->WindowState != FormWindowState::Minimized)
 				this->Arrange2();
-			//this->Arrange();
+			//this->Arrange();			
+			Console::WriteLine("Resize");
+			this->save_location();
 
 		}
 
@@ -6175,13 +6288,17 @@ abort:  // If the transfer was cancelled before it began
 
 
 		System::Void Form1_ResizeEnd(System::Object^  sender, System::EventArgs^  e) {
-			Console::WriteLine("ResizeEnd");
+
+			this->save_location();
+
+
 			//this->ResumeLayout();
 		}
 		System::Void Form1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e) {
 			// Console::WriteLine("Paint");
 		}
 		System::Void Form1_ResizeBegin(System::Object^  sender, System::EventArgs^  e) {
+
 			//Console::WriteLine(this->topfieldSizeHeader->);
 			// this->SuspendLayout();
 		}
@@ -6331,6 +6448,7 @@ abort:  // If the transfer was cancelled before it began
 
 
 			}
+			//Application::Exit();
 		}
 		System::Void toolStripButton13_Click(System::Object^  sender, System::EventArgs^  e) {
 			SettingsDialog^ sd = gcnew SettingsDialog(this->settings);
@@ -6439,6 +6557,9 @@ abort:  // If the transfer was cancelled before it began
 
 
 
-	};    // class form1
+	private: System::Void Form1_Move(System::Object^  sender, System::EventArgs^  e) {
+				 //this->save_location();
+			 }
+};    // class form1
 };    // namespace antares
 

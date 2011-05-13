@@ -220,6 +220,7 @@ namespace Antares {
 			this->checkBox1->TabIndex = 4;
 			this->checkBox1->Text = L"Turbo mode";
 			this->checkBox1->UseVisualStyleBackColor = true;
+			this->checkBox1->Visible = false;
 			// 
 			// SettingsDialog
 			// 

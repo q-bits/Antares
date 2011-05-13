@@ -341,11 +341,12 @@ int main(array<System::String ^> ^args)
     Settings ^settings = form->settings;
 
     //form->Focus();
-	form->textBox1->Select(0,0);
+	//form->textBox1->Select(0,0);
 	Application::Run(form);
 	form->topfield_background_enumerator=nullptr;
 
 
+	
 	settings->writeXmlSettings();
 
 	if (form->fd != NULL)
@@ -353,9 +354,10 @@ int main(array<System::String ^> ^args)
 		//disconnect_device(form->fd);
 		//TODO: write proper disconnect code
 	}
-	libusb_exit(NULL);
 	form->cbthread->Abort();
 	form->tbthread->Abort();
+	libusb_exit(NULL);
+
 
 
 

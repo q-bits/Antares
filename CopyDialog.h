@@ -181,6 +181,7 @@ namespace Antares {
 				{
 					this->rate_bytes+=bytes;
 					this->rate_seconds += delta;
+					//printf("# %lld:  %d  %f\n", this->current_offsets[this->current_index],(int) bytes, delta);
 				}
 
 

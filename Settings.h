@@ -52,6 +52,9 @@ namespace Antares {
 			dic->Add("PC_Column4Visible","0"); // Channel
 			dic->Add("PC_Column5Visible","0"); // Description
 
+			dic->Add("Maximized","0");
+			dic->Add("Width","896");
+			dic->Add("Height","640");
 
 
 			String ^folder = Path::Combine(Environment::GetFolderPath(Environment::SpecialFolder::ApplicationData) , "Antares\\");
