@@ -61,6 +61,13 @@ void put_u16(void *addr, __u16 val)
     b[1] = (val & 0xFF);
 }
 
+__u32 get_u24(const void *addr)
+{
+    const __u8 *b = addr;
+
+    return (b[0] << 16) | (b[1] << 8) | (b[2]);
+}
+
 __u32 get_u32(void *addr)
 {
     __u8 *b = addr;

@@ -289,6 +289,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\FirmwareInstaller.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\HDD_DecodeRECHeader.c"
 				>
 				<FileConfiguration
@@ -388,6 +392,26 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\tf_fwio.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath=".\usb_io.c"
 				>
 				<FileConfiguration
@@ -451,6 +475,15 @@
 			<File
 				RelativePath=".\FBLib_rec.h"
 				>
+			</File>
+			<File
+				RelativePath=".\FirmwareInstaller.h"
+				FileType="3"
+				>
+				<File
+					RelativePath=".\FirmwareInstaller.resx"
+					>
+				</File>
 			</File>
 			<File
 				RelativePath=".\Form1.h"
@@ -524,6 +557,10 @@
 			</File>
 			<File
 				RelativePath=".\tf_bytes.h"
+				>
+			</File>
+			<File
+				RelativePath=".\tf_fwio.h"
 				>
 			</File>
 			<File

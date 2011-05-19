@@ -13,6 +13,7 @@ extern "C" {
 #include <sys/stat.h>
 #include <sys/utime.h>
 #include "usb_io.h"
+#include "tf_fwio.h"
 #include "connect.h"
 #include "commands.h"
 #include "windows.h"
@@ -48,6 +49,7 @@ extern FILE* hf;
 #include "ProgInfo.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
+#include "FirmwareInstaller.h"
 
 //ref class CopyDialog ;
 
@@ -188,7 +190,7 @@ namespace Antares {
 			this->locker = gcnew Object();
 			this->last_topfield_freek = -1;
 			this->last_topfield_freek_time = 0;
-			this->pid=0;
+			this->pid=0;this->ndev=0;
 
 			this->current_copydialog = nullptr;
 
@@ -235,9 +237,9 @@ namespace Antares {
 				this->Size =sz;
 				this->Location = loc;
 			}
-		
 
-			
+
+
 
 			//this->ResumeLayout(false);
 
@@ -255,6 +257,7 @@ namespace Antares {
 			//this->SetStyle(ControlStyles::AllPaintingInWmPaint | ControlStyles::UserPaint | ControlStyles::DoubleBuffer,true);
 
 			this->transfer_in_progress=false;
+			this->firmware_transfer_in_progress=false;
 
 			this->dircount=0;
 			this->fd  = NULL;//connect_device2(&reason);
@@ -281,7 +284,7 @@ namespace Antares {
 			{computerNameHeader, computerSizeHeader, computerTypeHeader, computerDateHeader, computerChannelHeader, computerDescriptionHeader};
 
 
-			
+
 
 			if (String::Compare("on",settings["TurboMode"])==0) this->checkBox1->Checked = true; else this->checkBox1->Checked = false;
 
@@ -364,7 +367,7 @@ namespace Antares {
 				this->WindowState = FormWindowState::Maximized;
 			}
 			this->listView2->Focus();
-			
+
 
 
 			this->cbthread = gcnew Thread(gcnew ThreadStart(this,&Form1::computerBackgroundWork));
@@ -378,9 +381,9 @@ namespace Antares {
 
 			//this->ResumeDrawing(this);
 			this->Opacity=1.0;
-			
+
 			this->ResumeLayout(false);
-			
+
 			Console::WriteLine("Constructed Form.");
 
 			this->Show();
@@ -388,7 +391,7 @@ namespace Antares {
 			this->loadComputerDir();
 			//this->ResizeRedraw = true;
 
-			
+
 
 
 		}
@@ -420,7 +423,7 @@ namespace Antares {
 		void CheckConnection(void)
 		{
 
-			if (this->InvokeRequired)
+			if (this->InvokeRequired && !this->firmware_transfer_in_progress)
 			{
 				CheckConnectionCallback^ d = gcnew CheckConnectionCallback(this, &Form1::CheckConnection);
 				this->Invoke(d);
@@ -449,6 +452,7 @@ namespace Antares {
 
 				int ndev = find_usb_paths(&dev_paths[0][0],  pids, max_paths,  paths_max_length, &driver_names[0][0]);
 
+				this->ndev = ndev;
 				for (int j=0; j<ndev; j++)
 				{
 					device_path = &dev_paths[j][0];
@@ -508,16 +512,19 @@ namespace Antares {
 				printf("this->fd = %ld   fdtemp=%ld  \n",(long int) this->fd, (long int) fdtemp);
 				this->fd = (libusb_device_handle *) (void*) fdtemp;
 
-				if (this->fd !=NULL)
+				if (!this->firmware_transfer_in_progress)
 				{
-					this->loadTopfieldDir();
-				}
-				else
-				{
-					this->label2->Text = error_str;
-					this->listView1->Items->Clear();
-					this->listView1->Tag="";
-					this->topfield_background_enumerator=nullptr;
+					if (this->fd !=NULL)
+					{
+						this->loadTopfieldDir();
+					}
+					else
+					{
+						this->label2->Text = error_str;
+						this->listView1->Items->Clear();
+						this->listView1->Tag="";
+						this->topfield_background_enumerator=nullptr;
+					}
 				}
 			}
 		}
@@ -1862,6 +1869,7 @@ repeat:
 			bool listView2_selection_was_changed, listView1_selection_was_changed;
 			static const long long resume_granularity = 8192;
 			bool transfer_in_progress;
+			bool firmware_transfer_in_progress;
 
 			int last_topfield_freek;
 			time_t last_topfield_freek_time;
@@ -1872,8 +1880,10 @@ repeat:
 			static double worst_case_fill_rate = 4.5;  // Worst case MB/sec rate that we can imagine the topfield HD being filled up
 
 			int pid;
+			int ndev; // number of devices connected
 
 			CopyDialog^ current_copydialog;
+			FirmwareInstaller^ current_firmware_installer;
 
 			// used for updating the program details columns in the background;
 			System::Collections::IEnumerator ^topfield_background_enumerator;
@@ -1969,6 +1979,9 @@ repeat:
 	private: 
 	public: System::Windows::Forms::ComboBox^  textBox1;
 	private: System::Windows::Forms::CheckBox^  checkBox2;
+	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip1;
+	private: System::Windows::Forms::ToolStripMenuItem^  testToolStripMenuItem;
+	private: System::Windows::Forms::ToolStripMenuItem^  helloToolStripMenuItem;
 	public: 
 
 	public: 
@@ -2047,6 +2060,9 @@ repeat:
 			this->toolStripButton13 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->toolStripButton12 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->listView2 = (gcnew System::Windows::Forms::ListView());
+			this->contextMenuStrip1 = (gcnew System::Windows::Forms::ContextMenuStrip(this->components));
+			this->testToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
+			this->helloToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
 			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->basicIconsSmall = (gcnew System::Windows::Forms::ImageList(this->components));
 			this->notifyIcon1 = (gcnew System::Windows::Forms::NotifyIcon(this->components));
@@ -2059,6 +2075,7 @@ repeat:
 			this->panel7->SuspendLayout();
 			this->panel4->SuspendLayout();
 			this->toolStrip1->SuspendLayout();
+			this->contextMenuStrip1->SuspendLayout();
 			this->SuspendLayout();
 			// 
 			// statusStrip1
@@ -2579,6 +2596,7 @@ repeat:
 			this->listView2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom) 
 				| System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
+			this->listView2->ContextMenuStrip = this->contextMenuStrip1;
 			this->listView2->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->listView2->FullRowSelect = true;
@@ -2598,6 +2616,26 @@ repeat:
 			this->listView2->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView2_Layout);
 			this->listView2->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
 			this->listView2->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
+			// 
+			// contextMenuStrip1
+			// 
+			this->contextMenuStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(2) {this->testToolStripMenuItem, 
+				this->helloToolStripMenuItem});
+			this->contextMenuStrip1->Name = L"contextMenuStrip1";
+			this->contextMenuStrip1->Size = System::Drawing::Size(103, 48);
+			this->contextMenuStrip1->Opening += gcnew System::ComponentModel::CancelEventHandler(this, &Form1::contextMenuStrip1_Opening);
+			// 
+			// testToolStripMenuItem
+			// 
+			this->testToolStripMenuItem->Name = L"testToolStripMenuItem";
+			this->testToolStripMenuItem->Size = System::Drawing::Size(102, 22);
+			this->testToolStripMenuItem->Text = L"Test";
+			// 
+			// helloToolStripMenuItem
+			// 
+			this->helloToolStripMenuItem->Name = L"helloToolStripMenuItem";
+			this->helloToolStripMenuItem->Size = System::Drawing::Size(102, 22);
+			this->helloToolStripMenuItem->Text = L"Hello";
 			// 
 			// timer1
 			// 
@@ -2631,7 +2669,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  0.8.2";
+			this->Text = L"Antares  0.8.2-test";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2654,6 +2692,7 @@ repeat:
 			this->panel4->ResumeLayout(false);
 			this->toolStrip1->ResumeLayout(false);
 			this->toolStrip1->PerformLayout();
+			this->contextMenuStrip1->ResumeLayout(false);
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -3012,7 +3051,7 @@ repeat:
 			if (Y>s_height-32) return false;
 
 			double off_width = 0;
-		    if (X<0) off_width -= X;
+			if (X<0) off_width -= X;
 			if (X+width>s_width) off_width+=(X+width-s_width);
 
 			if (off_width / width > .3) return false;
@@ -3029,20 +3068,20 @@ repeat:
 		{
 
 			if (this->finished_constructing==0) return;
-			
+
 			Console::WriteLine(this->Size);
 			Console::WriteLine(this->Location);
 
 
-						//Console::WriteLine(System::Windows::Forms::Screen::PrimaryScreen);
+			//Console::WriteLine(System::Windows::Forms::Screen::PrimaryScreen);
 			bool is_maximized = (this->WindowState == FormWindowState::Maximized);
 			bool is_minimized = (this->WindowState == FormWindowState::Minimized);
 
-			
+
 			this->settings->changeSetting("Maximized",  ((int) is_maximized).ToString());
 			if (is_minimized || is_maximized) return;
-			
-			
+
+
 
 			int width = this->Size.Width;
 			int height = this->Size.Height;
@@ -3059,7 +3098,7 @@ repeat:
 				this->settings->changeSetting("Y",Y.ToString());
 
 			}
-			
+
 
 		}
 
@@ -3106,6 +3145,326 @@ repeat:
 			//	 }
 			//	 printf("ListView2 layout\n");
 		}
+		System::Void firmware_transfer_ended(void)
+		{
+
+
+
+			if (this->InvokeRequired)
+			{
+				//Monitor::Exit(this->locker);
+				//printf("0. Transfer ended.\n");
+				TransferEndedCallback^ d = gcnew TransferEndedCallback(this, &Form1::firmware_transfer_ended);
+				this->BeginInvoke(d);
+
+			}
+			else
+			{
+				this->EnableComponents(true);
+
+				this->panel7->Enabled=true;
+				this->textBox2->Enabled=true;
+				this->checkBox2->Enabled=true;
+
+				this->Update();
+
+				FirmwareInstaller^ firmware_dialog = this->current_firmware_installer;
+
+				if (firmware_dialog==nullptr) return;
+
+				if (firmware_dialog->error_str->Length > 0)
+				{
+					MessageBox::Show(this,firmware_dialog->error_str,"Error",MessageBoxButtons::OK);						
+				}
+
+
+				System::Threading::Thread ^thr = firmware_dialog->thread;
+				if (thr != nullptr) thr->Join();
+
+				this->transfer_in_progress=false;
+				this->firmware_transfer_in_progress=false;
+
+				
+				this->CheckConnection();
+
+				this->loadTopfieldDir();
+
+				firmware_dialog->Close();
+				this->current_firmware_installer = nullptr;
+
+			}
+
+
+
+
+		}
+
+		System::Void firmware_installer_cancelled(System::Object^  sender, System::EventArgs^  e) {
+
+			Console::WriteLine("Firmware installation cancelled.");
+
+
+			FirmwareInstaller^ firmware_dialog = this->current_firmware_installer;
+
+			if (firmware_dialog) {
+				firmware_dialog->button1->Enabled=false;
+				firmware_dialog->cancelled=true;
+				firmware_dialog->button1->Text="Please wait...";
+			}
+
+/*
+			this->EnableComponents(true);
+			this->transfer_in_progress=false;
+			this->firmware_transfer_in_progress=false;
+
+			if (firmware_dialog) firmware_dialog->Close();
+			this->current_firmware_installer=nullptr;
+*/
+
+		}
+
+		System::Void transfer_firmware_to_PVR(Object^ input)
+		{
+			struct tf_packet reply;
+			int r;
+			time_t reboot_time=0;
+			tf_fw_data_t fw_data;
+			char buffer[MAX_DATA_SIZE];
+			array<Byte>^ inp_buffer = gcnew array<unsigned char>(MAX_DATA_SIZE);
+			FirmwareInstaller^ firmware_dialog = safe_cast<FirmwareInstaller^>(input);
+
+			Monitor::Enter(this->locker);
+			System::IO::FileStream ^src_file = nullptr;
+
+			unsigned long long offset;
+			while(1) // Loop until we successfully initiate upload. Todo: exit on cancel.
+			{
+
+				if (firmware_dialog->cancelled) goto out;
+				r = tf_fw_upload(this->fd, &fw_data);
+				if (r<0) 
+				{
+					Thread::Sleep(100);
+					this->CheckConnection();
+					if (this->fd==NULL)
+					{
+						if (  (time(NULL)-reboot_time) < 6)
+							firmware_dialog->update_status_text("Rebooting...",false);
+						else
+							firmware_dialog->update_status_text("The PVR is off or disconnected.\r\n\r\nEnsure the PVR is off (standby) and plugged into the PC. Then turn the PVR on.",false);  
+					}
+					else
+					{
+
+						if (this->ndev>1)
+						{
+							firmware_dialog->error_str="There is more than one PVR connected! \r\n The firmware installation cannot proceed.";
+							goto out;
+						}
+
+						firmware_dialog->update_status_text("The PVR is on and connected.\r\n\r\nTurn the PVR off (standby) and then on again.\r\n\r\nOr, click Reboot PVR.",true);
+					
+						if (firmware_dialog->reboot_requested)
+						{
+
+							firmware_dialog->reboot_requested=false;
+							this->absorb_late_packets(5,50);
+							int r = do_cmd_reset(this->fd);
+							if (r==0) reboot_time=time(NULL);
+
+
+						}
+					
+					}
+
+					continue;
+
+				}
+				else
+					break;
+
+			}
+			FileInfo^ file_info;
+			long long file_size;
+			try{
+				src_file = File::Open(firmware_dialog->path, System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
+				file_info = gcnew FileInfo(firmware_dialog->path);
+				file_size = file_info->Length;
+			} catch(...) {
+				firmware_dialog->error_str="Unable to open file: "+firmware_dialog->path;
+				goto out;
+			};
+
+
+			firmware_dialog->show_reboot=false;
+
+
+			int perc = 0;
+			while(r==0)
+			{
+				size_t len;
+				if (offset != fw_data.offset)
+				{
+					printf("Error:  offset=%d fs_data.offset=%d\n",(int) offset, (int) fw_data.offset);  // TODO: deal with this
+					//src_file->Seek(fw_data.offset,SeekOrigin::Begin); 
+					break;
+				}
+				if (fw_data.len > MAX_DATA_SIZE)
+				{
+					printf("Error: fw_data.len=%d, MAX_DATA_SIZE=%d\n",fw_data.len, MAX_DATA_SIZE);
+					break;
+				}
+
+				int w=0;
+
+				try{
+					w = src_file->Read(inp_buffer, 0, fw_data.len);
+				}catch(...) {
+					firmware_dialog->error_str="Error reading from file: "+firmware_dialog->path;
+					goto out;
+				}
+				if (w!=fw_data.len)
+				{
+					firmware_dialog->error_str="Error reading from file: "+firmware_dialog->path;
+					break;
+				}
+
+				Marshal::Copy(inp_buffer,0,System::IntPtr( &buffer[0]),w);
+
+				offset += w;
+				int next_perc = 100*offset/file_size;
+				if (next_perc/5 > perc/5)
+				{
+					firmware_dialog->update_status_text("Tansferring firmware:   " + next_perc.ToString() + "%");
+					perc=next_perc;
+				}
+
+				/*fprintf(stderr, "Before tf_fw_upload_next() offset=%ld\n", offset);*/
+				r = tf_fw_upload_next(this->fd, buffer, w, &fw_data);
+				/*fprintf(stderr, "After tf_fw_upload_next() ret=%d, offset=%ld, len=%d, fw_data.offset=%lu, fw_data.len=%d\n", ret, offset, len, fw_data.offset, fw_data.len);*/
+
+
+			}
+
+
+			bool success;
+			if (r == 1) {
+				firmware_dialog->cancel_text="Close";
+				//printf("Firmware upgrade completed successully -- you must reboot\n");
+				firmware_dialog->update_status_text("The firmware was transferred successfully!"
+					+ "\r\nThe PVR will install the firmware. " 
+					+ "\r\n\r\nAntares will attempt to automatically reboot the PVR."
+					);
+				success=true;
+			}
+			else if (r < 0) {
+				success=false;
+				//printf("Failed to upgrade firmware -- you must reboot\n");
+				firmware_dialog->cancel_text = "Close";
+				firmware_dialog->update_status_text("The firmware upgrade failed. Are you sure the file is the correct version for your PVR?"
+					+"\r\nAntares will attempt to automatically reboot the PVR.");
+				
+
+			}
+
+			try{ src_file->Close();}catch(...){};
+
+			Thread::Sleep(500);
+			bool reboot_success=false;
+			int reboot_successes=0;
+			for (int j=0; j<5; j++)
+			{
+				r=tf_fw_reboot(this->fd);
+				printf("tf_fw_reboot returned %d. fd=%ld\n",r,(long int) this->fd);
+				if (r==0) {reboot_success=true;reboot_successes++;}
+				
+				Thread::Sleep(200);
+
+				if (reboot_successes>1) break;
+				/*
+				if (!r) this->CheckConnection()
+				if (this->fd==null)
+				{
+					firmware_dialog->cancel_text="Close";
+					if (reboot_success)
+						firmware_dialog->update_status_text("The PVR is rebooting. You can close this window.");
+					else
+						firmware_dialog->update_status_text("When the firmware installation is complete, .");
+						break;
+				}
+				if (!r) break;
+				reboot_success=true;
+				*/
+
+			}
+		
+
+
+
+			while(1)
+			{
+				Thread::Sleep(100);
+				if (firmware_dialog->cancelled) break;
+			}
+
+
+
+out:
+			Monitor::Exit(this->locker);
+			this->firmware_transfer_ended();
+		}
+
+
+		System::Void firmware_click_install(System::Object^  sender, System::EventArgs^  e) {
+			FirmwareInstaller^ firmware_dialog = this->current_firmware_installer;
+			if (!firmware_dialog) return;
+
+			//firmware_dialog->button3->Enabled=false;
+
+			Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_firmware_to_PVR));
+			thread->Name = "transfer_firmware_to_PVR";
+			firmware_dialog->thread = thread;
+			thread->Start(firmware_dialog);
+		}
+
+		System::Void install_firmware(String^ path)
+
+		{
+			if (this->transfer_in_progress || this->firmware_transfer_in_progress) return;
+
+			//this->TransferBegan();
+			this->transfer_in_progress=true;
+			this->firmware_transfer_in_progress=true;
+
+
+			FirmwareInstaller^ firmware_dialog = gcnew FirmwareInstaller();
+			this->current_firmware_installer = firmware_dialog;
+
+			firmware_dialog->TopLevel = false;
+
+			this->Controls->Add(firmware_dialog);
+			firmware_dialog->Show();
+			this->EnableComponents(false);
+			firmware_dialog->Location = System::Drawing::Point( (this->Width - firmware_dialog->Width)/2, -50+(this->Height - firmware_dialog->Height)/2);
+			firmware_dialog->BringToFront();
+			firmware_dialog->path = path;
+			firmware_dialog->textBox1->Text = path;
+			firmware_dialog->parent_form = this;
+			//firmware_dialog->textBox2->Text = "The file you selected contains Topfield firmware. To install it to your device, click 'Install'.";
+			firmware_dialog->button1->Click += gcnew System::EventHandler(this, &Form1::firmware_installer_cancelled);
+			//firmware_dialog->button3->Click += gcnew System::EventHandler(this, &Form1::firmware_click_install);
+
+			firmware_dialog->cancel_text="Cancel";
+			this->firmware_click_install(nullptr, nullptr);
+
+
+
+
+
+
+		}
+
+
 
 		System::Void listView2_ItemActivate(System::Object^  sender, System::EventArgs^  e) {
 			ListView^ listview = (ListView^) sender;
@@ -3114,30 +3473,33 @@ repeat:
 			//Console::WriteLine(item->Text);
 
 			ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
+			int cnt = selected->Count;
 
-			System::Collections::IEnumerator^ myEnum = selected->GetEnumerator();
-			ComputerItem^ item;
-			bool success=false;
-			while ( myEnum->MoveNext() )
-			{
-				item = safe_cast<ComputerItem^>(myEnum->Current);
-				Console::WriteLine(item->Text);
-				if (item->isdir) {success=true;break;};
+			if (cnt != 1) return;
 
-			}
+			ComputerItem^ item = safe_cast<ComputerItem^> (selected[0]);
 
-			if(success)
+			if(item->isdir)
 			{
 				String^ dir = Path::Combine(this->computerCurrentDirectory,item->Text);
 				this->setComputerDir(dir);
 				this->loadComputerDir();
 				this->add_path_to_history(this->textBox1, this->computerCurrentDirectory);
+				return;
 
 			}
-			else
+
+
+			if (item->full_filename->EndsWith(".tfd"))
 			{
-				this->ViewInfo(listview);
+				if(::DialogResult::Yes == MessageBox::Show(this,"Do you want to install this firmware to your PVR?\n\n    "+item->filename,"Really install firmware?",MessageBoxButtons::YesNo))
+					this->install_firmware(item->full_filename);
+				return;
 			}
+
+
+			this->ViewInfo(listview);
+
 
 
 
@@ -6387,8 +6749,6 @@ abort:  // If the transfer was cancelled before it began
 			if (error)
 			{
 				MessageBox::Show(this,"An error occurred while deleting.","Error.",MessageBoxButtons::OK);
-
-
 			}
 			this->loadComputerDir();
 		}
@@ -6440,12 +6800,27 @@ abort:  // If the transfer was cancelled before it began
 			if (this->transfer_in_progress)
 			{
 				CopyDialog^ copydialog = this->current_copydialog;
-				copydialog->cancelled = true;
+				if ( (!this->firmware_transfer_in_progress) &&  (copydialog != nullptr))
+				{
+					copydialog->cancelled = true;
+					System::Threading::Thread^ thr = copydialog->thread;
 
-				if (copydialog->thread != nullptr)
-					copydialog->thread->Join();
-				//this->TransferEnded();
+					if (thr != nullptr)
+						thr->Join();
+					//this->TransferEnded();
+				}
 
+				FirmwareInstaller^ firmware_dialog = this->current_firmware_installer;
+
+				if (this->firmware_transfer_in_progress &&  (firmware_dialog != nullptr)) 
+				{
+					firmware_dialog->cancelled = true;
+					System::Threading::Thread^ thr = firmware_dialog->thread ;
+					if (thr!= nullptr)
+					{
+						thr->Join();
+					}
+				}
 
 			}
 			//Application::Exit();
@@ -6560,6 +6935,8 @@ abort:  // If the transfer was cancelled before it began
 	private: System::Void Form1_Move(System::Object^  sender, System::EventArgs^  e) {
 				 //this->save_location();
 			 }
-};    // class form1
+	private: System::Void contextMenuStrip1_Opening(System::Object^  sender, System::ComponentModel::CancelEventArgs^  e) {
+			 }
+	};    // class form1
 };    // namespace antares
 

@@ -30,6 +30,7 @@
 
 __u16 get_u16(void *addr);
 __u16 get_u16_raw(void *addr);
+__u32 get_u24(const void *addr);
 __u32 get_u32(void *addr);
 __u32 get_u32_raw(void *addr);
 __u64 get_u64(void *addr);
