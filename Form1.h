@@ -283,6 +283,7 @@ namespace Antares {
 			this->computerHeaders = gcnew array<ColumnHeader^>
 			{computerNameHeader, computerSizeHeader, computerTypeHeader, computerDateHeader, computerChannelHeader, computerDescriptionHeader};
 
+			this->apply_columns_visible();
 
 
 
@@ -330,11 +331,6 @@ namespace Antares {
 				this->textBox2->Items->Add(str);
 			}
 			this->textBox2->Select(0,0);
-
-
-
-
-
 
 			this->listView2->ListViewItemSorter = gcnew ListViewItemComparer(this->listView2SortColumn,this->listView2->Sorting);
 			this->listView1->ListViewItemSorter = gcnew ListViewItemComparer(this->listView1SortColumn,this->listView1->Sorting);
@@ -1267,7 +1263,7 @@ repeat:
 						if (!item->isdir)
 						{
 							item->file_type = info->file_type;
-							item->SubItems[2]->Text = info->file_type;
+							item->populate_subitems();
 						}
 
 					}
@@ -1681,7 +1677,7 @@ repeat:
 
 					item->ImageIndex = item->icon_index = info->icon_index;	
 					item->file_type = info->file_type;
-					item->SubItems[2]->Text = info->file_type;
+					item->populate_subitems();
 				}
 
 				if (String::Equals(start_rename,item->filename) && !String::Equals(start_rename,"") )
@@ -1982,6 +1978,11 @@ repeat:
 	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip1;
 	private: System::Windows::Forms::ToolStripMenuItem^  testToolStripMenuItem;
 	private: System::Windows::Forms::ToolStripMenuItem^  helloToolStripMenuItem;
+
+
+
+
+
 	public: 
 
 	public: 
@@ -2318,6 +2319,7 @@ repeat:
 			this->listView1->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView1_SelectedIndexChanged);
 			this->listView1->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView1_Layout);
 			this->listView1->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
+			this->listView1->ColumnWidthChanging += gcnew System::Windows::Forms::ColumnWidthChangingEventHandler(this, &Form1::listView_ColumnWidthChanging);
 			this->listView1->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
 			// 
 			// panel2
@@ -2615,6 +2617,7 @@ repeat:
 			this->listView2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView2_SelectedIndexChanged);
 			this->listView2->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView2_Layout);
 			this->listView2->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
+			this->listView2->ColumnWidthChanging += gcnew System::Windows::Forms::ColumnWidthChangingEventHandler(this, &Form1::listView_ColumnWidthChanging);
 			this->listView2->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
 			// 
 			// contextMenuStrip1
@@ -2669,7 +2672,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  0.8.2-test";
+			this->Text = L"Antares  0.8.2-test2";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2787,13 +2790,21 @@ repeat:
 
 				   //panel4->Refresh();
 			   }
+
 	private:
 
-		System::Void Arrange2a(array<ColumnHeader^>^ cols, String^ type, int client_width)
+		System::Void Arrange2a(array<ColumnHeader^>^ cols, String^ type, int client_width, ListView^ listview)
 		{
 
 			double widths0[] = {140, 60, 60, 120,60,140};
 			double mwidths[] = {0,  70, 70, 130, 60, 0};
+
+
+			//for (int j=0; j<cols->Length; j++) cols[j]->AutoResize(ColumnHeaderAutoResizeStyle::ColumnContent);
+			//return;
+
+
+			ListView::ColumnHeaderCollection ^chc = listview->Columns;
 
 			bool something_visible = false;
 			int ncols = cols->Length;
@@ -2802,10 +2813,18 @@ repeat:
 				String^ setting_name = type+"_Column"+j.ToString()+"Visible";
 				if (this->settings[setting_name] != "1") 
 				{
-					widths0[j]=0; mwidths[j]=0;
+					//widths0[j]=0; mwidths[j]=0;
+					//if (chc->Contains(cols[j]))
+					//	chc->Remove(cols[j]);
+
+
+
 				}
-				else
+				else{
 					something_visible=true;
+					//if (!chc->Contains(cols[j]))
+					//	chc->Add(cols[j]);
+				}
 			}
 
 			if (!something_visible) {widths0[0]=140;};
@@ -2863,20 +2882,19 @@ repeat:
 				cw2 = listView1->ClientSize.Width;
 				cw1 = cw1 < cw2 ? cw1 : cw2;
 
-				this->Arrange2a( this->topfieldHeaders, "PVR", (int) cw1);
+				this->Arrange2a( this->topfieldHeaders, "PVR", (int) cw1, listView1);
 
 
 				cw1 = listView2->Width;
 				cw2 = listView2->ClientSize.Width;
 				cw1 = cw1 < cw2 ? cw1 : cw2;
 
-				this->Arrange2a( this->computerHeaders, "PC", (int) cw1);
+				this->Arrange2a( this->computerHeaders, "PC", (int) cw1, listView2);
+
+
 
 				return;
-
-
-				//static const double widths0[] = {140, 60, 50, 120};
-				//static const double mwidths[] = {0,  60, 50, 120};
+				/*
 
 				static const double widths0[] = {140, 60, 0, 120};
 				static const double mwidths[] = {0,  70, 0, 130};
@@ -2893,34 +2911,35 @@ repeat:
 				if (tot0_ / tot0 * tot1  > tot0m)
 				{
 
-					this->topfieldSizeHeader->Width = (int) mwidths[1];
-					this->topfieldTypeHeader->Width = (int) mwidths[2];
-					this->topfieldDateHeader->Width = (int) mwidths[3];
-					this->topfieldNameHeader->Width = (int) (tot1 - tot0m-5);
+				this->topfieldSizeHeader->Width = (int) mwidths[1];
+				this->topfieldTypeHeader->Width = (int) mwidths[2];
+				this->topfieldDateHeader->Width = (int) mwidths[3];
+				this->topfieldNameHeader->Width = (int) (tot1 - tot0m-5);
 				}
 				else
 				{
-					this->topfieldNameHeader->Width =  (int) (widths0[0]/tot0 * tot1);
-					this->topfieldSizeHeader->Width =  (int) (widths0[1]/tot0 * tot1);
-					this->topfieldTypeHeader->Width =  (int) (widths0[2]/tot0 * tot1);
-					this->topfieldDateHeader->Width =  (int) (widths0[3]/tot0 * tot1);
+				this->topfieldNameHeader->Width =  (int) (widths0[0]/tot0 * tot1);
+				this->topfieldSizeHeader->Width =  (int) (widths0[1]/tot0 * tot1);
+				this->topfieldTypeHeader->Width =  (int) (widths0[2]/tot0 * tot1);
+				this->topfieldDateHeader->Width =  (int) (widths0[3]/tot0 * tot1);
 				}
 				if (tot0_ / tot0 * tot2  > tot0m)
 				{
 
-					this->computerSizeHeader->Width = (int) mwidths[1];
-					this->computerTypeHeader->Width = (int) mwidths[2];
-					this->computerDateHeader->Width = (int) mwidths[3];
-					this->computerNameHeader->Width = (int) (tot2 - tot0m-5);
+				this->computerSizeHeader->Width = (int) mwidths[1];
+				this->computerTypeHeader->Width = (int) mwidths[2];
+				this->computerDateHeader->Width = (int) mwidths[3];
+				this->computerNameHeader->Width = (int) (tot2 - tot0m-5);
 				}
 				else
 				{
-					this->computerNameHeader->Width =  (int) (widths0[0]/tot0 * tot2);
-					this->computerSizeHeader->Width =  (int) (widths0[1]/tot0 * tot2);
-					this->computerTypeHeader->Width =  (int) (widths0[2]/tot0 * tot2);
-					this->computerDateHeader->Width =  (int) (widths0[3]/tot0 * tot2);
+				this->computerNameHeader->Width =  (int) (widths0[0]/tot0 * tot2);
+				this->computerSizeHeader->Width =  (int) (widths0[1]/tot0 * tot2);
+				this->computerTypeHeader->Width =  (int) (widths0[2]/tot0 * tot2);
+				this->computerDateHeader->Width =  (int) (widths0[3]/tot0 * tot2);
 				}
 
+				*/
 			}
 			this->textBox2->Update();
 			this->textBox2->Select(0,0);
@@ -3184,7 +3203,7 @@ repeat:
 				this->transfer_in_progress=false;
 				this->firmware_transfer_in_progress=false;
 
-				
+
 				this->CheckConnection();
 
 				this->loadTopfieldDir();
@@ -3212,14 +3231,14 @@ repeat:
 				firmware_dialog->button1->Text="Please wait...";
 			}
 
-/*
+			/*
 			this->EnableComponents(true);
 			this->transfer_in_progress=false;
 			this->firmware_transfer_in_progress=false;
 
 			if (firmware_dialog) firmware_dialog->Close();
 			this->current_firmware_installer=nullptr;
-*/
+			*/
 
 		}
 
@@ -3263,7 +3282,7 @@ repeat:
 						}
 
 						firmware_dialog->update_status_text("The PVR is on and connected.\r\n\r\nTurn the PVR off (standby) and then on again.\r\n\r\nOr, click Reboot PVR.",true);
-					
+
 						if (firmware_dialog->reboot_requested)
 						{
 
@@ -3274,7 +3293,7 @@ repeat:
 
 
 						}
-					
+
 					}
 
 					continue;
@@ -3300,18 +3319,33 @@ repeat:
 
 
 			int perc = 0;
+			String^ error_message="";
+
 			while(r==0)
 			{
+
 				size_t len;
+
 				if (offset != fw_data.offset)
 				{
-					printf("Error:  offset=%d fs_data.offset=%d\n",(int) offset, (int) fw_data.offset);  // TODO: deal with this
-					//src_file->Seek(fw_data.offset,SeekOrigin::Begin); 
-					break;
+					printf("Warning:  offset=%d fs_data.offset=%d\n",(int) offset, (int) fw_data.offset);  
+					bool seek_success=false;
+					try{
+						src_file->Seek(fw_data.offset,SeekOrigin::Begin); 
+						seek_success=true;
+					}catch(...){}
+					if (!seek_success) 
+					{
+						firmware_dialog->error_str="Error reading from file (seeking). offset = " + offset.ToString() +", fw_data.offset="+fw_data.offset.ToString();
+						goto out;
+					}
+
 				}
 				if (fw_data.len > MAX_DATA_SIZE)
 				{
 					printf("Error: fw_data.len=%d, MAX_DATA_SIZE=%d\n",fw_data.len, MAX_DATA_SIZE);
+					error_message="Error during transfer: fw_data.len > MAX_DATA_SIZE";
+					r=-9;
 					break;
 				}
 
@@ -3326,7 +3360,8 @@ repeat:
 				if (w!=fw_data.len)
 				{
 					firmware_dialog->error_str="Error reading from file: "+firmware_dialog->path;
-					break;
+					goto out;
+
 				}
 
 				Marshal::Copy(inp_buffer,0,System::IntPtr( &buffer[0]),w);
@@ -3361,13 +3396,17 @@ repeat:
 				success=false;
 				//printf("Failed to upgrade firmware -- you must reboot\n");
 				firmware_dialog->cancel_text = "Close";
-				firmware_dialog->update_status_text("The firmware upgrade failed. Are you sure the file is the correct version for your PVR?"
+				if (!String::IsNullOrEmpty(error_message))
+					firmware_dialog->update_status_text(error_message+"\r\nAntares will attempt to automatically reboot the PVR.");
+				else
+					firmware_dialog->update_status_text("The firmware upgrade failed. Are you sure the file is the correct version for your PVR?"
 					+"\r\nAntares will attempt to automatically reboot the PVR.");
-				
+				Thread::Sleep(2000);
+
 
 			}
 
-			try{ src_file->Close();}catch(...){};
+
 
 			Thread::Sleep(500);
 			bool reboot_success=false;
@@ -3377,7 +3416,7 @@ repeat:
 				r=tf_fw_reboot(this->fd);
 				printf("tf_fw_reboot returned %d. fd=%ld\n",r,(long int) this->fd);
 				if (r==0) {reboot_success=true;reboot_successes++;}
-				
+
 				Thread::Sleep(200);
 
 				if (reboot_successes>1) break;
@@ -3385,19 +3424,19 @@ repeat:
 				if (!r) this->CheckConnection()
 				if (this->fd==null)
 				{
-					firmware_dialog->cancel_text="Close";
-					if (reboot_success)
-						firmware_dialog->update_status_text("The PVR is rebooting. You can close this window.");
-					else
-						firmware_dialog->update_status_text("When the firmware installation is complete, .");
-						break;
+				firmware_dialog->cancel_text="Close";
+				if (reboot_success)
+				firmware_dialog->update_status_text("The PVR is rebooting. You can close this window.");
+				else
+				firmware_dialog->update_status_text("When the firmware installation is complete, .");
+				break;
 				}
 				if (!r) break;
 				reboot_success=true;
 				*/
 
 			}
-		
+
 
 
 
@@ -3410,6 +3449,7 @@ repeat:
 
 
 out:
+			try{ src_file->Close();}catch(...){};
 			Monitor::Exit(this->locker);
 			this->firmware_transfer_ended();
 		}
@@ -3580,6 +3620,8 @@ out:
 			this->textBox2->Enabled=false;
 			this->checkBox2->Enabled=false;
 
+			Antares::disable_sleep_mode();
+
 		}
 
 
@@ -3637,6 +3679,7 @@ out:
 					copydialog->close_request_threadsafe();
 
 				this->current_copydialog = nullptr;
+				Antares::enable_sleep_mode();
 			}
 
 		}
@@ -5701,16 +5744,20 @@ abort:  // If the transfer was cancelled before it began
 
 			cli::interior_ptr<int> sortcolumn;
 			ListView^ listview = safe_cast<ListView^>(sender);
+			array<int> ^column_inds;
+
 
 			String^ type;
 			if (listview==this->listView2) {
 				sortcolumn=&this->listView2SortColumn;
 				type = "PC";
+				column_inds = FileItem::computer_column_inds;
 			}
 			else
 			{
 				sortcolumn = &this->listView1SortColumn; 
 				type = "PVR";
+				column_inds = FileItem::topfield_column_inds;
 			}
 			if (e->Column == *sortcolumn)
 			{
@@ -5732,10 +5779,12 @@ abort:  // If the transfer was cancelled before it began
 				listview->Sorting = SortOrder::Ascending;
 				settings->changeSetting(type+"_SortOrder","Ascending");
 			}
-			*sortcolumn = e->Column;
-			settings->changeSetting(type+"_SortColumn", e->Column.ToString());
+			int col;
+			col = column_inds[e->Column]; 
+			*sortcolumn = col;
+			settings->changeSetting(type+"_SortColumn", col.ToString());
 
-			listview->ListViewItemSorter = gcnew ListViewItemComparer(e->Column,listview->Sorting);
+			listview->ListViewItemSorter = gcnew ListViewItemComparer(col,listview->Sorting);
 
 			listview->Sort();
 			this->setListViewStyle(listview);
@@ -6367,8 +6416,7 @@ abort:  // If the transfer was cancelled before it began
 
 			if (!this->InvokeRequired)
 			{
-				item->SubItems[4]->Text = item->channel;
-				item->SubItems[5]->Text = item->description;
+				item->populate_subitems();
 			}
 
 			return ret;
@@ -6825,9 +6873,58 @@ abort:  // If the transfer was cancelled before it began
 			}
 			//Application::Exit();
 		}
+
+		void apply_columns_visible(void)
+		{
+			int ind;
+			this->clist->Columns->Clear();
+			ind=0;
+			for (int j=0; j<FileItem::num_computer_columns; j++)
+			{
+				String ^str = "PC_Column"+j.ToString()+"Visible";
+				bool vis = true;
+				try {
+					vis = this->settings[str]=="1";
+				} catch(...){};
+				FileItem::computer_column_visible[j]=vis;
+				if (vis)
+				{
+					this->clist->Columns->Add(this->computerHeaders[j]);
+					FileItem::computer_column_inds[ind]=j;
+					ind++;
+				}
+			}
+
+			this->tlist->Columns->Clear();
+			ind=0;
+			for (int j=0; j<FileItem::num_topfield_columns; j++)
+			{
+				String ^str = "PVR_Column"+j.ToString()+"Visible";
+				bool vis = true;
+				try {
+					vis = this->settings[str]=="1";
+				} catch(...){};
+				FileItem::topfield_column_visible[j]=vis;
+				if(vis)
+				{
+					this->tlist->Columns->Add(this->topfieldHeaders[j]);
+					FileItem::topfield_column_inds[ind]=j;
+					ind++;
+				}
+
+			}
+
+
+
+
+		}
+
+
 		System::Void toolStripButton13_Click(System::Object^  sender, System::EventArgs^  e) {
 			SettingsDialog^ sd = gcnew SettingsDialog(this->settings);
 			sd->ShowDialog();
+			this->apply_columns_visible();
+
 			this->loadComputerDir();
 			this->loadTopfieldDir();
 			this->Arrange2();
@@ -6936,6 +7033,24 @@ abort:  // If the transfer was cancelled before it began
 				 //this->save_location();
 			 }
 	private: System::Void contextMenuStrip1_Opening(System::Object^  sender, System::ComponentModel::CancelEventArgs^  e) {
+			 }
+	private: System::Void listView_ColumnWidthChanging(System::Object^  sender, System::Windows::Forms::ColumnWidthChangingEventArgs^  e) {
+
+
+				 ListView ^ listview = safe_cast<ListView^>(sender);
+				 printf("Resizing\n");
+				 if (false && e->ColumnIndex==1)
+				 {
+					 if (e->NewWidth>0)
+					 {
+						 int w = this->computerHeaders[1]->Width;
+						 this->computerHeaders[1]->Width=0;
+						 this->computerHeaders[0]->Width+=w;
+						 //e->NewWidth=0;
+						 //e->Cancel=true;
+
+					 }
+				 }
 			 }
 	};    // class form1
 };    // namespace antares

@@ -16,6 +16,7 @@ extern "C" {
 #include "commands.h"
 #include "FBLib_rec.h"
 #include <time.h>
+#include <windows.h>
 
 
 }
@@ -47,6 +48,14 @@ namespace Antares {
 
 	[DllImport("shell32.dll")]
 	DWORD_PTR SHGetFileInfo(LPCTSTR pszPath, DWORD dwFileAttributes, SHFILEINFO* psfi, UINT cbSizeFileInfo, UINT uFlags);
+
+	[DllImport("kernel32.dll")]
+	EXECUTION_STATE SetThreadExecutionState(EXECUTION_STATE esFlags);
+
+	void disable_sleep_mode(void);
+	void enable_sleep_mode(void);
+
+
 
 
 	enum OverwriteAction
@@ -471,11 +480,45 @@ namespace Antares {
 	};
 
 
-	public ref class FileItem : public System::Windows::Forms::ListViewItem{
+	public ref class FileItem abstract : public System::Windows::Forms::ListViewItem{
 	public:
+
+		static array<bool> ^topfield_column_visible = {true,true,true,true,true,true};
+		static array<bool> ^computer_column_visible = {true,true,true,true,true,true};
+		static array<int> ^topfield_column_inds={0,1,2,3,4,5};
+		static array<int> ^computer_column_inds={0,1,2,3,4,5};
+		static const int num_topfield_columns=6;
+		static const int num_computer_columns=6;
+
+		virtual bool get_column_visible(int col) {return false;}
+        virtual int get_num_columns(void) {return 0;}
+
+		//virtual bool set_column_visible(int col) = 0;
+
 		FileItem(void) : System::Windows::Forms::ListViewItem("",0)
 		{
+			int nc = num_topfield_columns < num_computer_columns ? num_computer_columns : num_topfield_columns;
+			for (int j=1; j<nc; j++)
+				this->SubItems->Add("");
 			return;
+		}
+
+		void populate_subitems(void)
+		{
+
+			int dest_ind=-1;
+			array<String^>^ data = gcnew array<String^>{this->filename, this->sizestring, this->file_type, this->datestring, this->channel, this->description};
+
+			int nc = this->get_num_columns();
+			for (int j=0; j<nc; j++)
+			{
+				if (this->get_column_visible(j))
+				{
+					dest_ind++;
+					this->SubItems[dest_ind]->Text=data[j];
+				}
+			}
+			for (dest_ind++ ; dest_ind<this->SubItems->Count; dest_ind++) this->SubItems[dest_ind]->Text="";
 		}
 
 		void update(FileItem^ item)
@@ -486,24 +529,34 @@ namespace Antares {
 			this->datetime=item->datetime;
 			this->datestring=item->datestring;
 			this->size=item->size;
+			this->sizestring=item->sizestring;
 			//this->file_type=item->file_type;
 
+			int nc = this->get_num_columns();
 
-			for (int j=0; j<5; j++)
-			{
-				this->SubItems[j]->Text = item->SubItems[j]->Text;
-			}
+			this->channel = item->channel;
+			this->description=item->description;
+			this->populate_subitems();
+
+		//	for (int j=0; j<nc; j++)
+		//	{
+		//		this->SubItems[j]->Text = item->SubItems[j]->Text;
+		//	}
+
 		}
 		
 		void update_program_information(void)
 		{
-			this->SubItems[4]->Text = this->channel;
-			this->SubItems[5]->Text = this->description;
+			//this->SubItems[4]->Text = this->channel;
+			//this->SubItems[5]->Text = this->description;
+			this->populate_subitems();
 		}
 		void update_icon(void)
 		{
 			this->ImageIndex = this->icon_index;
-			this->SubItems[2]->Text=this->file_type;
+			//this->SubItems[2]->Text=this->file_type;
+			this->populate_subitems();
+
 		}
 
 
@@ -513,6 +566,7 @@ namespace Antares {
 		System::String^ datestring;
 		System::String^ full_filename;
 		System::String^ recursion_offset;
+		System::String^ sizestring;
 
 		System::String^ file_type;
 
@@ -526,8 +580,6 @@ namespace Antares {
 		bool isdrive;
 		int icon_index;
 
-
-
 	};
 
 
@@ -537,26 +589,38 @@ namespace Antares {
 
 	public:
 		bool isdrive;
+		
+
+
+	virtual bool get_column_visible(int col) override
+		{
+			return computer_column_visible[col];
+		}
+	virtual int get_num_columns(void) override 
+	{
+		return num_computer_columns;
+	}
+
 
 		ComputerItem(int letter) : FileItem()    // Represents drive letter with letter-th letter of the alphabet
 		{
 			char dstr[2];
 			dstr[0]='A'+letter;
 			dstr[1]=0;
-			String^ namestring =  ( gcnew String(dstr) ) +":\\";
-			this->Text = namestring;
+			this->filename =  ( gcnew String(dstr) ) +":\\";
+			this->Text = this->filename;
 			this->isdir=true;
 			this->datestring = "";
 			this->size=0;
 			this->type='f';
-			this->filename=namestring;
-			this->full_filename = namestring;
-			this->Name = namestring;
+			this->full_filename = this->filename;
+			this->Name = this->filename;
 			this->recursion_offset="";
 			this->isdrive = true;
 			this->channel="";
 			this->description="";
 			this->file_type="";
+			this->sizestring="";
 
 		}
 
@@ -567,7 +631,7 @@ namespace Antares {
 			FileAttributes attr = f->Attributes::get();
 			this->filename = Path::GetFileName(path);
 			this->isdrive = false;
-			String^ sizestring="";
+			this->sizestring="";
 			this->recursion_offset="";
 			this->channel="";
 			this->description="";
@@ -577,38 +641,31 @@ namespace Antares {
 				this->isdir=true;
 				this->file_type = "Folder";
 				this->size=0;
-				//this->ImageIndex = 0;
 			}
 			else
 			{
 				this->isdir = false;
 				this->file_type="File";
 				this->size = f->Length::get();
-				sizestring = HumanReadableSize(this->size);
-				//if (this->filename->EndsWith(".rec"))
-				//	this->ImageIndex = 2;
-				//else
-				//	this->ImageIndex = 1;
-
-
+				this->sizestring = HumanReadableSize(this->size);
 
 			}
 			DateTime date = f->LastWriteTime;
 			this->datetime = date;
 			this->datestring = DateString(date);
-			this->Text = this->filename;
 			this->full_filename = path; 
 			this->Name=path;
-			this->SubItems->Add( sizestring );
+			
+			/*this->Text = this->filename;
+			this->SubItems->Add(this->sizestring );
 			this->SubItems->Add(this->file_type);
 			this->SubItems->Add(this->datestring);
 			this->SubItems->Add(this->channel);
-			this->SubItems->Add(this->description);
+			this->SubItems->Add(this->description);*/
+			this->populate_subitems();
 			this->safe_filename = Antares::safeString(filename);
 
 		}
-
-
 	};
 
 
@@ -619,30 +676,32 @@ namespace Antares {
 	public:
 
 
+		virtual bool get_column_visible(int col) override
+		{
+			return topfield_column_visible[col];
+		}
+		virtual int get_num_columns(void) override 
+		{
+			return num_topfield_columns;
+		}
+
 		TopfieldItem(typefile *entry, String^ containing_directory) : FileItem()
 		{
 
 			time_t timestamp;
-			String ^namestring = gcnew String( (char *) entry->name);
+			this->filename = gcnew String( (char *) entry->name);
 
-			//toolStripStatusLabel1->Text= " i= "+i.ToString();
-			//String ^typestring = gcnew String("");
 			switch (entry->filetype)
 			{
 			case 1:
 				this->type = 'd';
 				this->file_type = "Folder";
 				this->isdir = true;
-				//this->ImageIndex = 0;
 				break;
 
 			case 2:
 				this->type = 'f';
 				this->file_type = "File";
-				//if (namestring->EndsWith(".rec"))
-				//	this->ImageIndex=2;
-				//else
-				//	this->ImageIndex = 1;
 				this->isdir=false;
 				break;
 
@@ -653,57 +712,38 @@ namespace Antares {
 				this->isdir=false;
 			}
 
-			/* This makes the assumption that the timezone of the Toppy and the system
-			* that puppy runs on are the same. Given the limitations on the length of
-			* USB cables, this condition is likely to be satisfied. */
 			timestamp = tfdt_to_time(&entry->stamp);
-			//printf("%c %20llu %24.24s %s\n", type, get_u64(&entry->size),	ctime(&timestamp), entry->name);
+
 
 			String ^safe_namestring = safeString((char *) entry->name );
-			this->filename = namestring;
 			this->size = get_u64(&entry->size);
 			this->safe_filename = safe_namestring;
 			this->recursion_offset = "";
-			//char sizestr[100]; StrFormatByteSizeA( get_u64(&entries[i].size), sizestr, 99);
-			String ^sizestring =  HumanReadableSize((__u64) get_u64(&entry->size));
-			if (this->type=='d') sizestring="";
-			//Console::WriteLine(safe_namestring);
-			//String ^datestring = gcnew String( (char*) ctime(&timestamp));
-			//CTime t = new CTime(timestamp);
-			//DateTime^ dt =  gcnew DateTime(1970,1,1);
-			//dt->AddSeconds((double) timestamp);
 
-
+			
+			if (this->type=='d') this->sizestring=""; else this->sizestring =  HumanReadableSize((__u64) get_u64(&entry->size));
+			
 			this->channel="";
 			this->description="";
 
-			//newtime = localtime(&timestamp);
 			this->datetime = Time_T2DateTime(timestamp);
 			this->datestring = DateString(this->datetime);
 
 			this->directory = containing_directory;
 			this->full_filename = combineTopfieldPath(containing_directory, filename);
 			this->Name=this->full_filename;
-			//DateTime^ dt = DateTime::FromFileTimeUtc(timestamp * 10000000LL + 116444736000000000LL);
-
-
-
-			//printf("Seconds = %d \n",timestamp);
-			//String ^datestring = gcnew String( dt->ToString());
-
-			//item = (gcnew ListViewItem(namestring  ,0));   //entries[i].name 
-			this->Text = namestring;
-
-			this->SubItems->Add( sizestring );
+		
+			/*
+			this->Text =this->filename;
+			this->SubItems->Add(this->sizestring );
 			this->SubItems->Add(this->file_type);
 			this->SubItems->Add(this->datestring);
 			this->SubItems->Add(this->channel);
-			this->SubItems->Add(this->description);
+			this->SubItems->Add(this->description);*/
+			this->populate_subitems();
 
 
 		}
-
-
 
 	};
 
@@ -759,8 +799,6 @@ namespace Antares {
 
 		}
 
-
-
 	};
 
 
@@ -785,10 +823,7 @@ namespace Antares {
 		}
 		int CompareAscending(System::Object^x, System::Object^y)
 		{
-			//int returnVal = 0;
-
-			//returnVal = String::Compare(((ListViewItem)x).SubItems[col].Text,
-			//((ListViewItem)y).SubItems[col].Text);
+			
 			FileItem^ fx = safe_cast<FileItem^> (x);
 			FileItem^ fy = safe_cast<FileItem^> (y);
 

@@ -44,7 +44,7 @@ namespace Antares {
 
 
 
-			 for (int j=0; j<=num_columns; j++)
+			 for (int j=0; j<num_columns; j++)
 			 {
 				 String^ str = this->settings["PVR_Column"+j.ToString()+"Visible"];			 
 				 this->checkedListBox1->SetItemChecked(j,str=="1");
@@ -76,7 +76,7 @@ namespace Antares {
 
 	public:
 		Antares::Settings^ settings;
-		static int num_columns=5;
+		static int num_columns=6;
 
 
 	public: System::Windows::Forms::Button^  button2;
@@ -254,7 +254,7 @@ namespace Antares {
 				 // Collect the settings from the GUI before closing
 				 /////////////////////////////////////
 
-				 for (int j=0; j<=num_columns; j++)
+				 for (int j=0; j<num_columns; j++)
 				 {
 					 this->settings->changeSetting("PVR_Column"+j.ToString()+"Visible" ,  (  (int)  this->checkedListBox1->GetItemChecked(j) ).ToString() );
 

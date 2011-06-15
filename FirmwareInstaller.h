@@ -142,7 +142,7 @@ namespace Antares {
 			// 
 			this->label1->AutoSize = true;
 			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F));
-			this->label1->Location = System::Drawing::Point(12, 35);
+			this->label1->Location = System::Drawing::Point(12, 18);
 			this->label1->Name = L"label1";
 			this->label1->Size = System::Drawing::Size(67, 16);
 			this->label1->TabIndex = 1;
@@ -151,7 +151,7 @@ namespace Antares {
 			// textBox1
 			// 
 			this->textBox1->BackColor = System::Drawing::SystemColors::Control;
-			this->textBox1->Location = System::Drawing::Point(85, 31);
+			this->textBox1->Location = System::Drawing::Point(85, 18);
 			this->textBox1->Name = L"textBox1";
 			this->textBox1->ReadOnly = true;
 			this->textBox1->Size = System::Drawing::Size(594, 20);

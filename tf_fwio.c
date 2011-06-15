@@ -140,6 +140,81 @@ static int tf_send(libusb_device_handle *tf, const tf_packet_t *req)
 		unsigned char *data;
 		int len = PACKET_HEAD_SIZE + get_u16(&req->length) + 1;
 		int pad = 0;
+		const int rnd = 2;
+
+		// This version: always make len a multiple of rnd
+
+		int padded_len = (len+rnd-1)/rnd;
+		padded_len = rnd*padded_len;
+		//padded_len= 32768 > len ? len : 32768;
+		pad = padded_len - len;
+	
+		printf("len=%d  padded_len=%d  pad=%d\n",len,padded_len,pad);
+		/*
+		if (len % 2 != 0) {
+			pad = 1;
+		}
+		
+		
+	    */
+
+		if (((len + pad) % 0x200) == 0) {
+
+			if (pad + len != MAX_SEND_SIZE) {
+
+				pad += rnd;
+			}
+		}
+
+
+		if (pad) {
+			//DEBUG_LOG("Padding len=%d with %d bytes", len, pad);
+
+			len += pad;
+
+			/* Pad with zero bytes for safety */
+			/*memset(((unsigned char *)req->data) + len, 0, pad);*/
+		}
+		/* The bootloader will only accept 0x4000 bytes at a time */
+		error = 0;
+		data = (unsigned char *)req;
+		do {
+			size_t tosend = len;
+
+			if (tosend > MAX_SEND_SIZE) {
+				tosend = MAX_SEND_SIZE;
+			}
+			ret = usb_bulk_write(tf, 0x01, (void *)data, tosend, 1000);
+
+			//DEBUG_LOG("usb_bulk_write(endpoint=0x01, len=%d, timeout=%dms)", tosend, tf->timeout);
+#ifdef DEBUG_DUMP
+			dump_hex_buf(stderr, (__u8 *)data, tosend);
+#endif
+			//DEBUG_LOG("usb_bulk_write() returned %d", ret);
+			if (ret != tosend) {
+				error = -1;
+				break;
+			}
+			len -= tosend;
+			data += tosend;
+		} while (len);
+	}
+	else {
+		error = -2;
+	}
+
+	//DEBUG_LOG("tf_send() returning error %d", tf->error);
+
+	return error;
+}
+static int tf_send_old(libusb_device_handle *tf, const tf_packet_t *req)
+{
+	int error;
+	int ret;
+	if (tf) {
+		unsigned char *data;
+		int len = PACKET_HEAD_SIZE + get_u16(&req->length) + 1;
+		int pad = 0;
 
 		if (len % 2 != 0) {
 			/* Need to pad odd size packet */

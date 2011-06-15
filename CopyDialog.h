@@ -91,6 +91,7 @@ namespace Antares {
 			this->num_between_files=0;
 			this->time_between_files=0;
 			this->bytes_between_files=0;
+			this->comboBox1->SelectedIndex = 0;
 
 
 
@@ -721,6 +722,9 @@ namespace Antares {
 	private: System::Windows::Forms::Label^  label7;
 	private: System::Windows::Forms::Label^  label8;
 	public: System::Windows::Forms::CheckBox^  checkBox1;
+private: System::Windows::Forms::Label^  label9;
+public: 
+private: System::Windows::Forms::ComboBox^  comboBox1;
 	private: 
 
 
@@ -752,6 +756,8 @@ namespace Antares {
 			this->label7 = (gcnew System::Windows::Forms::Label());
 			this->label8 = (gcnew System::Windows::Forms::Label());
 			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
+			this->label9 = (gcnew System::Windows::Forms::Label());
+			this->comboBox1 = (gcnew System::Windows::Forms::ComboBox());
 			this->SuspendLayout();
 			// 
 			// progressBar1
@@ -779,6 +785,8 @@ namespace Antares {
 			// 
 			// label1
 			// 
+			this->label1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->label1->AutoSize = true;
 			this->label1->BackColor = System::Drawing::SystemColors::Control;
 			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
@@ -791,6 +799,8 @@ namespace Antares {
 			// 
 			// label2
 			// 
+			this->label2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->label2->AutoSize = true;
 			this->label2->BackColor = System::Drawing::SystemColors::Control;
 			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
@@ -822,9 +832,9 @@ namespace Antares {
 				static_cast<System::Byte>(0)));
 			this->label3->Location = System::Drawing::Point(9, 20);
 			this->label3->Name = L"label3";
-			this->label3->Size = System::Drawing::Size(45, 16);
+			this->label3->Size = System::Drawing::Size(293, 16);
 			this->label3->TabIndex = 5;
-			this->label3->Text = L"label3";
+			this->label3->Text = L"C:\\blah\\blah\\something\\blah\\Some TV show.rec";
 			// 
 			// label4
 			// 
@@ -876,6 +886,7 @@ namespace Antares {
 			// 
 			// label8
 			// 
+			this->label8->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->label8->AutoSize = true;
 			this->label8->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
@@ -897,6 +908,30 @@ namespace Antares {
 			this->checkBox1->UseVisualStyleBackColor = true;
 			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &CopyDialog::checkBox1_CheckedChanged);
 			// 
+			// label9
+			// 
+			this->label9->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Right));
+			this->label9->AutoSize = true;
+			this->label9->Location = System::Drawing::Point(563, 193);
+			this->label9->Name = L"label9";
+			this->label9->Size = System::Drawing::Size(78, 13);
+			this->label9->TabIndex = 12;
+			this->label9->Text = L"On completion:";
+			// 
+			// comboBox1
+			// 
+			this->comboBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Right));
+			this->comboBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->comboBox1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->comboBox1->FormattingEnabled = true;
+			this->comboBox1->Items->AddRange(gcnew cli::array< System::Object^  >(5) {L"(do nothing)", L"Quit", L"Sleep", L"Hibernate", 
+				L"Shutdown"});
+			this->comboBox1->Location = System::Drawing::Point(566, 209);
+			this->comboBox1->Name = L"comboBox1";
+			this->comboBox1->Size = System::Drawing::Size(90, 21);
+			this->comboBox1->TabIndex = 13;
+			// 
 			// CopyDialog
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
@@ -905,6 +940,8 @@ namespace Antares {
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->ClientSize = System::Drawing::Size(664, 248);
 			this->ControlBox = false;
+			this->Controls->Add(this->comboBox1);
+			this->Controls->Add(this->label9);
 			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->label8);
 			this->Controls->Add(this->label7);
