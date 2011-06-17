@@ -56,6 +56,27 @@ namespace Antares {
 			dic->Add("Width","896");
 			dic->Add("Height","640");
 
+			dic->Add("RescaleColumns","1");
+
+			dic->Add("PVR_Column0Width","140");
+			dic->Add("PVR_Column1Width","60");
+			dic->Add("PVR_Column2Width","60");
+			dic->Add("PVR_Column3Width","120");
+			dic->Add("PVR_Column4Width","60");
+			dic->Add("PVR_Column5Width","140");
+
+			dic->Add("PVR_ColumnScale","585");
+
+
+			dic->Add("PC_Column0Width","140");
+			dic->Add("PC_Column1Width","60");
+			dic->Add("PC_Column2Width","60");
+			dic->Add("PC_Column3Width","120");
+			dic->Add("PC_Column4Width","60");
+			dic->Add("PC_Column5Width","140");
+
+			dic->Add("PC_ColumnScale","585");
+
 
 			String ^folder = Path::Combine(Environment::GetFolderPath(Environment::SpecialFolder::ApplicationData) , "Antares\\");
 			

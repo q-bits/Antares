@@ -59,6 +59,8 @@ namespace Antares {
 			 else
 				 this->checkBox1->Checked=false;
 
+			 this->rescaleCheck->Checked = this->settings["RescaleColumns"]=="1";
+
 
 		}
 
@@ -89,6 +91,8 @@ namespace Antares {
 	private: System::Windows::Forms::Label^  label2;
 	private: System::Windows::Forms::GroupBox^  groupBox1;
 	private: System::Windows::Forms::CheckBox^  checkBox1;
+	private: System::Windows::Forms::CheckBox^  rescaleCheck;
+
 	protected: 
 
 	protected: 
@@ -115,6 +119,7 @@ namespace Antares {
 			this->label2 = (gcnew System::Windows::Forms::Label());
 			this->groupBox1 = (gcnew System::Windows::Forms::GroupBox());
 			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
+			this->rescaleCheck = (gcnew System::Windows::Forms::CheckBox());
 			this->groupBox1->SuspendLayout();
 			this->SuspendLayout();
 			// 
@@ -214,13 +219,23 @@ namespace Antares {
 			// checkBox1
 			// 
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->Location = System::Drawing::Point(12, 231);
+			this->checkBox1->Location = System::Drawing::Point(675, 352);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 4;
 			this->checkBox1->Text = L"Turbo mode";
 			this->checkBox1->UseVisualStyleBackColor = true;
 			this->checkBox1->Visible = false;
+			// 
+			// rescaleCheck
+			// 
+			this->rescaleCheck->AutoSize = true;
+			this->rescaleCheck->Location = System::Drawing::Point(12, 214);
+			this->rescaleCheck->Name = L"rescaleCheck";
+			this->rescaleCheck->Size = System::Drawing::Size(199, 17);
+			this->rescaleCheck->TabIndex = 5;
+			this->rescaleCheck->Text = L"Rescale column widths automatically";
+			this->rescaleCheck->UseVisualStyleBackColor = true;
 			// 
 			// SettingsDialog
 			// 
@@ -229,6 +244,7 @@ namespace Antares {
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->ClientSize = System::Drawing::Size(770, 381);
+			this->Controls->Add(this->rescaleCheck);
 			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->button2);
 			this->Controls->Add(this->button1);
@@ -268,6 +284,7 @@ namespace Antares {
 				 else
 					  this->settings->changeSetting("TurboMode","off");
 
+				 this->settings->changeSetting("RescaleColumns", (  (int)  this->rescaleCheck->Checked ).ToString() );
 
 
 			 }

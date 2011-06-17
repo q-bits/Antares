@@ -2792,8 +2792,84 @@ repeat:
 			   }
 
 	private:
-
 		System::Void Arrange2a(array<ColumnHeader^>^ cols, String^ type, int client_width, ListView^ listview)
+		{
+			//array<int> column_inds = type=="PC" ? FileItem::computer_column_inds : FileItem::topfield_column_inds;
+
+	
+
+			int nc = FileItem::num_computer_columns;
+			array<int> ^widths = gcnew array<int>(nc);
+			array<bool> ^visible = gcnew array<bool>(nc);
+			if (listview == this->tlist) nc=FileItem::num_topfield_columns;
+
+			for (int j=0; j<nc; j++)
+			{
+				String ^str = type+"_Column"+j.ToString()+"Width";
+				widths[j] = Convert::ToInt32(this->settings[str]);
+
+				str = type+"_Column"+j.ToString()+"Visible";
+				visible[j] = this->settings[str]=="1";
+			}
+			bool scaleit = this->settings["RescaleColumns"]=="1";
+
+			if (scaleit)
+			{
+				int sumw = 0;
+				for (int j=0; j<nc; j++)
+				{
+					if (visible[j]) sumw += widths[j];
+
+				}
+				double factor=1.0;
+				int scale = Convert::ToInt32(this->settings[type+"_ColumnScale"]);
+
+				if (sumw>scale)
+				{
+					if (scale<=client_width && client_width<= sumw) factor=1.0;
+
+					if (client_width > sumw) factor = (double) client_width / sumw;
+
+					if (client_width < scale) factor = (double) client_width / scale;
+
+				}
+				else
+				{
+					if (client_width >= sumw) factor=1.0;
+					else factor = (double) client_width / sumw;
+				}
+
+				if (factor != 1.0)
+				{
+					double err=0;
+					for (int j=0; j<nc; j++)
+					{
+						double w = factor *widths[j] - err;
+						int rw =   (int) ( w + .5) ; 
+						
+						err = rw - w;
+						widths[j]=rw;
+						
+
+					}
+				}
+
+
+
+
+			}
+
+			for (int j=0; j<nc; j++)
+			{
+				if (widths[j]<0) widths[j]=0;
+				cols[j]->Width = widths[j];
+			}
+
+
+
+		}
+
+		System::Void Arrange2a_old(array<ColumnHeader^>^ cols, String^ type, int client_width, ListView^ listview)
 		{
 
 			double widths0[] = {140, 60, 60, 120,60,140};
@@ -7038,20 +7114,50 @@ abort:  // If the transfer was cancelled before it began
 
 
 				 ListView ^ listview = safe_cast<ListView^>(sender);
-				 printf("Resizing\n");
-				 if (false && e->ColumnIndex==1)
+				 String ^type;
+				 array<int> ^ind_array;
+				 array<ColumnHeader^>^ cols;
+				 int nc;
+				 if (listview == this->clist)
 				 {
-					 if (e->NewWidth>0)
-					 {
-						 int w = this->computerHeaders[1]->Width;
-						 this->computerHeaders[1]->Width=0;
-						 this->computerHeaders[0]->Width+=w;
-						 //e->NewWidth=0;
-						 //e->Cancel=true;
-
-					 }
+					 type="PC";
+					 ind_array=FileItem::computer_column_inds;
+					 cols = this->computerHeaders;
+					 nc = FileItem::num_computer_columns;
 				 }
+				 else
+				 {
+					 type="PVR";
+					 ind_array=FileItem::topfield_column_inds;
+					 cols = this->topfieldHeaders;
+					 nc = FileItem::num_topfield_columns;
+				 }
+
+				 
+				 int col = -1;
+				 try{ col=ind_array[e->ColumnIndex];}catch(...){};
+				 if (col==-1) return;
+
+				 for (int j=0; j<nc; j++)
+				 {
+					 // printf("Resizing col %d. Newwidth=%d\n",col,e->NewWidth);
+					 String^ str = type+"_Column"+j.ToString()+"Width";
+					 String^ str2 = type+"_Column"+j.ToString()+"Visible";
+					 if (this->settings[str2]=="0") continue;
+					 int w = (j==col) ? e->NewWidth : cols[j]->Width; 
+					 this->settings->changeSetting(str,w.ToString());
+
+				 }
+				 String ^str3 = type+"_ColumnScale";
+				 int cw1 = listview->ClientSize.Width;
+				 int cw2 = listview->Width;
+				 cw1 = cw1<cw2 ? cw1 : cw2;
+				 this->settings->changeSetting(str3,cw1.ToString());
+
+
+
 			 }
-	};    // class form1
+
+};    // class form1
 };    // namespace antares
 
