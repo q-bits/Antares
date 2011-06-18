@@ -65,6 +65,19 @@ namespace Antares {
 		RESUME
 	};
 
+	
+    
+	public ref class OnCompletionAction
+	{
+	public:
+		static const int DO_NOTHING=0;
+		static const int SLEEP=1;
+		static const int HIBERNATE=2;
+		static const int SHUTDOWN=3;
+		static array<int> ^options={0,1,2,3};
+		static array<String^> ^option_strings={" - - ","Sleep","Hibernate","Shutdown"};
+	};
+
 	System::String^ HumanReadableSize(__u64 size);
 	System::String^ DateString(time_t time);
 	System::String^ DateString(System::DateTime time);

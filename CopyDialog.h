@@ -51,6 +51,7 @@ namespace Antares {
 			//TODO: Add the constructor code here
 			//
 			this->cancelled=false;
+			this->completed=false;
 			this->is_closed=false;
 			this->label3->Text = "";
 			this->label4->Text = "";
@@ -75,6 +76,8 @@ namespace Antares {
 			this->parent_form = nullptr;
 			this->settings=nullptr;
 
+			this->on_completion=0;
+
 			this->usb_error=false;
 			this->file_error="";
 			this->loaded = false;
@@ -91,11 +94,26 @@ namespace Antares {
 			this->num_between_files=0;
 			this->time_between_files=0;
 			this->bytes_between_files=0;
-			this->comboBox1->SelectedIndex = 0;
+			//this->comboBox1->SelectedIndex = 0;
+
+			this->max_success_index=-1;
+
+			this->comboBox1->Items->Clear();
+			for each (String^ str in OnCompletionAction::option_strings)
+				this->comboBox1->Items->Add(str);
+			this->comboBox1->SelectedIndex=0;
 
 
 
+		}
 
+		void success(int i)
+		{
+			this->max_success_index=i;
+			if (i==numfiles-1)
+			{
+				this->completed=true;
+			}
 		}
 
 		void file_began(void)
@@ -645,6 +663,8 @@ namespace Antares {
 		bool turbo_request;
 		bool^ turbo_mode;
 
+		int on_completion;
+
 
 		double rate_seconds;
 		long long rate_bytes;
@@ -704,6 +724,10 @@ namespace Antares {
 		System::Windows::Forms::CheckBox^ parent_checkbox;
 		Settings^ settings;
 		bool error_last_time;
+		bool completed;
+
+private:
+	int max_success_index;
 
 
 
@@ -925,12 +949,11 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->comboBox1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->comboBox1->FormattingEnabled = true;
-			this->comboBox1->Items->AddRange(gcnew cli::array< System::Object^  >(5) {L"(do nothing)", L"Quit", L"Sleep", L"Hibernate", 
-				L"Shutdown"});
 			this->comboBox1->Location = System::Drawing::Point(566, 209);
 			this->comboBox1->Name = L"comboBox1";
 			this->comboBox1->Size = System::Drawing::Size(90, 21);
 			this->comboBox1->TabIndex = 13;
+			this->comboBox1->SelectedIndexChanged += gcnew System::EventHandler(this, &CopyDialog::comboBox1_SelectedIndexChanged);
 			// 
 			// CopyDialog
 			// 
@@ -1015,5 +1038,8 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 				 if (FormWindowState::Minimized == this->WindowState)
 					 this->parent_form->WindowState = FormWindowState::Minimized;
 			 }
-	};
+	private: System::Void comboBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
+				 this->on_completion = this->comboBox1->SelectedIndex;
+			 }
+};
 }

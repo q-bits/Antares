@@ -3754,8 +3754,37 @@ out:
 				if (!copydialog->is_closed)
 					copydialog->close_request_threadsafe();
 
-				this->current_copydialog = nullptr;
 				Antares::enable_sleep_mode();
+				if (copydialog->completed && copydialog->file_error->Length==0)
+				{
+					int oc=-1;
+					try {oc=OnCompletionAction::options[copydialog->on_completion];}catch(...){};
+					if (oc>-1)
+					{
+						bool r;
+						switch(oc)
+						{
+						case OnCompletionAction::DO_NOTHING:
+							break;
+						case OnCompletionAction::SLEEP:
+							r=Application::SetSuspendState(PowerState::Suspend, false, false);     /// ..., force, disableWakeEvent)
+							printf("SetSuspendState returned %d\n",(int) r);
+							break;
+						case OnCompletionAction::HIBERNATE:
+							Application::SetSuspendState(PowerState::Hibernate, false, false);
+							break;
+						case OnCompletionAction::SHUTDOWN:
+							System::Diagnostics::Process::Start("shutdown.exe", "-s -t 00");
+							break;
+
+						}
+					}
+
+				}
+
+
+				this->current_copydialog = nullptr;
+
 			}
 
 		}
@@ -3838,6 +3867,7 @@ out:
 							if (dr>=0) source_deleted[i]=true;
 						}
 					}
+					copydialog->success(i);
 					continue;
 				}
 
@@ -3910,6 +3940,7 @@ restart_copy_to_pc:
 				if (this_overwrite_action==SKIP)
 				{
 					topfield_file_offset = src_sizes[i];
+					copydialog->success(i);
 					goto check_delete;	
 				}
 
@@ -4171,6 +4202,7 @@ restart_copy_to_pc:
 						//item->Selected = false;
 						//printf("DATA_HDD_FILE_END\n");
 						result = 0;
+						copydialog->success(i);
 						goto out;
 						break;
 
@@ -4792,7 +4824,7 @@ aborted:   // If the transfer was cancelled before it began
 
 
 
-
+					copydialog->success(i);
 					continue;
 				}
 
@@ -4871,6 +4903,7 @@ restart_copy_to_pvr:
 						}
 
 					}
+					copydialog->success(i);
 
 					continue;
 				}  
@@ -5219,6 +5252,7 @@ restart_copy_to_pvr:
 								goto out;
 							}
 							state = FINISHED;
+							copydialog->success(i);
 							//if (!was_cancelled) item->Selected = false;
 							break;
 
