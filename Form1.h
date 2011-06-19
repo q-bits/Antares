@@ -183,6 +183,9 @@ namespace Antares {
 			this->computer_background_enumerator = nullptr;
 			//this->close_request=false;
 
+
+
+
 			this->topfield_background_event = gcnew AutoResetEvent(false);
 			this->computer_background_event = gcnew AutoResetEvent(false);
 
@@ -1353,16 +1356,14 @@ repeat:
 
 				this->computer_background_enumerator = q->GetEnumerator();
 				this->computer_background_event->Set();
-				/*
-				if (this->settings["PC_Column4Visible"]=="1" || this->settings["PC_Column5Visible"]=="1")
-				{
-				//ComputerBackgroundCallback ^d = gcnew ComputerBackgroundCallback(this, &Form1::computerBackgroundWork);
-				//this->BeginInvoke(d);
-				this->computer_background_event->Set();
+	
+				try{
+				this->fileSystemWatcher1->Path = dir;
+				this->fileSystemWatcher1->NotifyFilter = NotifyFilters::LastWrite
+					| NotifyFilters::FileName | NotifyFilters::DirectoryName | NotifyFilters::Size;
+				}catch(...){};
 
-				}
-				*/
-
+				this->computer_needs_refreshing=false;
 
 
 
@@ -1757,6 +1758,8 @@ repeat:
 
 			this->topfield_background_enumerator = q->GetEnumerator();
 			this->topfield_background_event->Set();
+
+
 			/*
 			if (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1")
 			{
@@ -1838,6 +1841,9 @@ repeat:
 			int finished_constructing;
 			System::String^ topfieldCurrentDirectory;
 			System::String^ computerCurrentDirectory;
+
+
+			bool computer_needs_refreshing;
 
 
 			// "turbo_mode" is what we believe the actual current turbo mode of the PVR is
@@ -1978,6 +1984,7 @@ repeat:
 	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip1;
 	private: System::Windows::Forms::ToolStripMenuItem^  testToolStripMenuItem;
 	private: System::Windows::Forms::ToolStripMenuItem^  helloToolStripMenuItem;
+private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 
 
 
@@ -2068,6 +2075,7 @@ repeat:
 			this->basicIconsSmall = (gcnew System::Windows::Forms::ImageList(this->components));
 			this->notifyIcon1 = (gcnew System::Windows::Forms::NotifyIcon(this->components));
 			this->toolTip1 = (gcnew System::Windows::Forms::ToolTip(this->components));
+			this->fileSystemWatcher1 = (gcnew System::IO::FileSystemWatcher());
 			this->statusStrip1->SuspendLayout();
 			this->panel1->SuspendLayout();
 			this->panel3->SuspendLayout();
@@ -2077,6 +2085,7 @@ repeat:
 			this->panel4->SuspendLayout();
 			this->toolStrip1->SuspendLayout();
 			this->contextMenuStrip1->SuspendLayout();
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->fileSystemWatcher1))->BeginInit();
 			this->SuspendLayout();
 			// 
 			// statusStrip1
@@ -2659,6 +2668,15 @@ repeat:
 			this->notifyIcon1->Text = L"notifyIcon1";
 			this->notifyIcon1->Visible = true;
 			// 
+			// fileSystemWatcher1
+			// 
+			this->fileSystemWatcher1->EnableRaisingEvents = true;
+			this->fileSystemWatcher1->SynchronizingObject = this;
+			this->fileSystemWatcher1->Renamed += gcnew System::IO::RenamedEventHandler(this, &Form1::fileSystemWatcher1_Renamed);
+			this->fileSystemWatcher1->Deleted += gcnew System::IO::FileSystemEventHandler(this, &Form1::fileSystemWatcher1_Changed);
+			this->fileSystemWatcher1->Created += gcnew System::IO::FileSystemEventHandler(this, &Form1::fileSystemWatcher1_Changed);
+			this->fileSystemWatcher1->Changed += gcnew System::IO::FileSystemEventHandler(this, &Form1::fileSystemWatcher1_Changed);
+			// 
 			// Form1
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
@@ -2696,6 +2714,7 @@ repeat:
 			this->toolStrip1->ResumeLayout(false);
 			this->toolStrip1->PerformLayout();
 			this->contextMenuStrip1->ResumeLayout(false);
+			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->fileSystemWatcher1))->EndInit();
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -2728,6 +2747,13 @@ repeat:
 			{
 				if (this->fd==NULL)
 					this->CheckConnection();
+			}
+
+			if (this->computer_needs_refreshing)
+			{
+				this->computer_needs_refreshing=false;
+				this->loadComputerDir();
+				
 			}
 			// int conf,r,bus,address;
 			// if (this->fd==NULL)
@@ -7192,6 +7218,21 @@ abort:  // If the transfer was cancelled before it began
 
 			 }
 
+			 void watcher_event(String^ name, String^ fullpath)
+			 {
+				 //printf("Watcher event:  name=%s  fullpath=%s\n",name,fullpath);
+				 this->computer_needs_refreshing=true;
+
+			 }
+
+private: System::Void fileSystemWatcher1_Changed(System::Object^  sender, System::IO::FileSystemEventArgs^  e) {
+		this->watcher_event(e->Name, e->FullPath);
+		 }
+		 
+private: System::Void fileSystemWatcher1_Renamed(System::Object^  sender, System::IO::RenamedEventArgs^  e) {
+			 this->watcher_event(e->Name, e->FullPath);
+			 
+		 }
 };    // class form1
 };    // namespace antares
 
