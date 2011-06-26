@@ -1035,7 +1035,7 @@ repeat:
 							if (!item->isdir) item->file_type=info->file_type;
 							TopfieldBackgroundCallback ^d = gcnew TopfieldBackgroundCallback(item, &FileItem::update_icon);
 							this->Invoke(d);
-							printf("Invoke, ic=%d ext=",ic); Console::WriteLine(Path::GetExtension(safeString(item->directory)+"\\"+item->safe_filename));
+							//printf("Invoke, ic=%d ext=",ic); Console::WriteLine(Path::GetExtension(safeString(item->directory)+"\\"+item->safe_filename));
 							Application::DoEvents();  // why is this needed?
 
 						}
@@ -1901,7 +1901,9 @@ repeat:
 
 
 	private: System::Windows::Forms::StatusStrip^  statusStrip1;
-	private: System::Windows::Forms::Panel^  panel1;
+public: System::Windows::Forms::Panel^  panel1;
+private: 
+
 
 
 
@@ -2681,7 +2683,6 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->AutoSize = true;
 			this->ClientSize = System::Drawing::Size(880, 602);
 			this->Controls->Add(this->panel1);
 			this->Controls->Add(this->statusStrip1);
@@ -2690,7 +2691,7 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  0.8.2-test2";
+			this->Text = L"Antares  0.9";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -3634,6 +3635,7 @@ out:
 
 			if (item->full_filename->EndsWith(".tfd"))
 			{
+				if (this->transfer_in_progress) return;
 				if(::DialogResult::Yes == MessageBox::Show(this,"Do you want to install this firmware to your PVR?\n\n    "+item->filename,"Really install firmware?",MessageBoxButtons::YesNo))
 					this->install_firmware(item->full_filename);
 				return;
@@ -3702,16 +3704,25 @@ out:
 
 			copydialog->Location = System::Drawing::Point( (this->Width - copydialog->Width)/2, offset+(this->Height - copydialog->Height)/2);
 			copydialog->BringToFront();
+			this->panel1->Dock=DockStyle::Fill;
 		}
 
 		System::Void ShowCopyDialog(CopyDialog^ copydialog)
 		{
 			this->current_copydialog = copydialog;
 			copydialog->TopLevel = false;
-			//copydialog->Dock= DockStyle::Bottom;
+			copydialog->parent_panel1 = this->panel1;
+			//copydialog->Dock= DockStyle::Bottom;//copydialog->FormBorderStyle = Windows::Forms::FormBorderStyle::FixedToolWindow;
 			this->EnableComponents(false);
 			this->Controls->Add(copydialog);copydialog->Show();
+
 			this->CentreCopyDialog(copydialog,-100);
+
+			
+
+			//this->panel1->Dock = DockStyle::Top;
+			copydialog->BringToFront();
+			//this->panel1->BringToFront();
 
 		}
 
@@ -3847,6 +3858,9 @@ out:
 			array<FileItem^>^        src_items          = copydialog->src_items;
 			array<bool>^             source_deleted     = gcnew array<bool>(numitems); for (int i=0; i<numitems; i++) source_deleted[i]=false;
 
+			array<int>^              num_fails          = gcnew array<int>(numitems); for (int i=0; i<numitems; i++) num_fails[i]=0;
+			array<String^>^          failed_filenames   = gcnew array<String^>(0);
+
 			copydialog->maximum_successful_index=-1;
 			for (int i=0; i<numitems; i++)
 			{
@@ -3931,6 +3945,15 @@ restart_copy_to_pc:
 					has_restarted=true;
 					topfield_file_offset=0;
 					copydialog->reset_rate();
+
+					if (num_fails[i] > 3)
+					{
+						int nff = failed_filenames->Length;
+
+						Array::Resize(failed_filenames,nff+1);
+						failed_filenames[nff] = full_source_filename;
+						continue;
+					}
 
 					long long newsize = this->FileSize(full_dest_filename);
 					if (newsize>=0) dest_exists[i]=true;
@@ -4239,6 +4262,7 @@ restart_copy_to_pc:
 						send_cancel(fd);
 						state = ABORT;
 						copydialog->usb_error=true;
+						if ( get_u32(reply.data)==3) num_fails[i]++;
 						break;
 
 					case SUCCESS:
@@ -4390,6 +4414,24 @@ end_copy_to_pc:
 			this->set_turbo_mode(0);
 			this->TransferEnded();
 
+			int L = failed_filenames->Length;
+			if (L > 0)
+			{
+				if (copydialog->file_error->Length > 0) copydialog->file_error  += "\n";
+				copydialog->file_error+="The following file"; if (L>1) copydialog->file_error+="s";
+				copydialog->file_error+=" could not be accessed on the PVR:\n";
+				for (int i=0; i<L; i++)
+				{				
+					copydialog->file_error+=failed_filenames[i]+"\n";
+				   if (i>4)
+				   {
+					   copydialog->file_error+=" ... ("+ (L-i-1).ToString() +" more)\n";
+					   break;
+				   }
+				}
+			}
+
+
 		}
 
 
@@ -4427,12 +4469,15 @@ end_copy_to_pc:
 			copydialog->parent_form = this;
 			//copydialog->showCopyDialog();
 
+			
 			if (copymode==CopyMode::COPY)
-				copydialog->window_title="Copying File(s) ... [PVR --> PC]";
+				copydialog->window_title1="Copying File";
 			else
-				copydialog->window_title="Moving File(s) ... [PVR --> PC]";
+				copydialog->window_title1="Moving File";
 
-			copydialog->Text = copydialog->window_title;
+			copydialog->window_title2="[PVR --> PC]";
+			copydialog->Text = copydialog->window_title1 + "(s) ... "+copydialog->window_title2; 
+			//copydialog->Text = copydialog->window_title;
 
 			copydialog->tiny_size();
 			copydialog->label3->Text="Finding files...";
@@ -4511,6 +4556,7 @@ end_copy_to_pc:
 			array<int>^              overwrite_category=gcnew array<int>(numitems);
 			array<int>^              overwrite_action = gcnew array<int>(numitems);
 			array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
+			array<int>^              file_indices = gcnew array<int>(numitems);
 
 
 			array<int>^ num_cat = {0,0,0}; //numbers of existing files (divided by category)
@@ -4706,12 +4752,26 @@ end_copy_to_pc:
 			copydialog->copymode=copymode;
 			copydialog->action1_skipdelete = action1_skipdelete;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
+			copydialog->file_indices=file_indices;
+
+			for (int i=0, ind=0; i<numitems; i++) {if ( !(src_items[i]->isdir || overwrite_action[i]==SKIP) ) ind++; file_indices[i]=ind;};
 
 
-			if (numitems>1)
+
+		
+			//String ^window_title_bit2 = "";
+			if (file_indices[numitems-1]>1)
+			{
 				copydialog->normal_size();
+				//window_title_bit2="s";
+			}
 			else
 				copydialog->small_size();
+			
+			//copydialog->window_title=window_title_bit + " File"+window_title_bit2+" ... [PVR --> PC]"; 
+			//copydialog->Text = copydialog->window_title;
+		
+
 			//this->CentreCopyDialog(copydialog);
 
 			//this->ResumeDrawing(this);
@@ -4792,6 +4852,7 @@ aborted:   // If the transfer was cancelled before it began
 			array<FileItem^>^        src_items          = copydialog->src_items;
 			array<bool>^             source_deleted     = gcnew array<bool>(numitems); for (int i=0; i<numitems; i++) source_deleted[i]=false;
 			array<array<TopfieldItem^>^>^ topfield_items_by_folder = copydialog->topfield_items_by_folder;
+			array<String^>^          failed_filenames   = gcnew array<String^>(0);
 			TopfieldItem^ titem;
 			copydialog->maximum_successful_index=-1;
 			for (int i=0; i<numitems; i++)
@@ -4948,11 +5009,18 @@ restart_copy_to_pvr:
 				}
 				catch(...)
 				{
-					//TODO: better error handling?
-					//copydialog->close_request_threadsafe();
-					copydialog->file_error="The file "+full_src_filename+" could not be opened for reading. Aborting transfer.";
-					printf("%s\n",copydialog->file_error);
-					goto finish_transfer;
+					
+
+					int nff = failed_filenames->Length;
+
+					Array::Resize(failed_filenames, nff+1);
+					failed_filenames[nff] = full_src_filename;
+
+					//copydialog->file_error="The file "+full_src_filename+" could not be opened for reading. Aborting transfer.";
+					//printf("%s\n",copydialog->file_error);
+					continue;
+
+					//goto finish_transfer;
 				}
 
 				FileInfo^ src_file_info = gcnew FileInfo(full_src_filename);
@@ -5436,7 +5504,25 @@ finish_transfer:
 			this->absorb_late_packets(2,200);
 			this->set_turbo_mode(0);
 			this->TransferEnded();
-			//printf("!!!!!!! Transfer thread ended normally.\n");
+			
+	        int L = failed_filenames->Length;
+			if (L > 0)
+			{
+				if (copydialog->file_error->Length > 0) copydialog->file_error  += "\n";
+				copydialog->file_error+="The following file"; if (L>1) copydialog->file_error+="s";
+				copydialog->file_error+=" could not be accessed on the PC:\n";
+				for (int i=0; i<L; i++)
+				{				
+					copydialog->file_error+=failed_filenames[i]+"\n";
+				   if (i>4)
+				   {
+					   copydialog->file_error+=" ... ("+ (L-i-1).ToString() +" more)\n";
+					   break;
+				   }
+				}
+			}
+
+
 		}
 
 		////////////////////////////////////////////////////////////////////////////////////
@@ -5446,7 +5532,25 @@ finish_transfer:
 
 
 			if (this->transfer_in_progress) return;
-			if (this->fd==NULL) return;
+			if (this->fd==NULL) 
+			{
+#ifdef _DEBUG
+				ListView^ listview = this->listView2;
+
+			ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
+CopyDialog^ copydialog = gcnew CopyDialog();
+			copydialog->settings = this->settings;
+			copydialog->cancelled=false;
+			copydialog->parent_win = this;
+			copydialog->parent_form = this;
+			//copydialog->showCopyDialog();
+			
+
+			this->ShowCopyDialog(copydialog);
+			if (selected->Count>1) copydialog->normal_size(); else copydialog->small_size();
+#endif
+				return;
+			}
 
 			const int max_folders = 1000;
 
@@ -5478,12 +5582,15 @@ finish_transfer:
 			copydialog->parent_form = this;
 			//copydialog->showCopyDialog();
 
+			//String ^window_title_bit;
 			if (copymode==CopyMode::COPY)
-				copydialog->window_title="Copying File(s) ... [PC --> PVR]";
+				copydialog->window_title1="Copying File";
 			else
-				copydialog->window_title="Moving File(s) ... [PC --> PVR]";
+				copydialog->window_title1="Moving File";
 
-			copydialog->Text = copydialog->window_title;
+			copydialog->window_title2="[PC --> PVR]";
+			copydialog->Text=copydialog->window_title1 + "(s) ... "+copydialog->window_title2; 
+			//copydialog->Text = copydialog->window_title;
 
 			copydialog->tiny_size();
 			copydialog->label3->Text="Finding files...";
@@ -5603,6 +5710,7 @@ finish_transfer:
 			array<int>^              overwrite_category=gcnew array<int>(numitems);
 			array<int>^              overwrite_action = gcnew array<int>(numitems);
 			array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
+			array<int>^              file_indices = gcnew array<int>(numitems);
 
 			TopfieldItem^ titem;				 
 			array<int>^ num_cat={0,0,0}; //numbers of existing files (divided by category of destination file: 0=correct size,  1=undersized, 2=oversized).
@@ -5782,6 +5890,9 @@ finish_transfer:
 			copydialog->overwrite_action = overwrite_action;
 			copydialog->numfiles=numitems;
 			copydialog->current_index=0;
+			copydialog->file_indices=file_indices;
+
+			for (int i=0, ind=0; i<numitems; i++) {if ( !(src_items[i]->isdir || overwrite_action[i]==SKIP) ) ind++; file_indices[i]=ind;};
 
 
 			copydialog->turbo_mode = this->turbo_mode;
@@ -5791,14 +5902,19 @@ finish_transfer:
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 
 
-
-			if (numitems>1)
+		
+			//String ^window_title_bit2 = "";
+			if (file_indices[numitems-1]>1)
+			{
 				copydialog->normal_size();
+				//window_title_bit2="s";
+			}
 			else
 				copydialog->small_size();
 
-			//copydialog->TopLevel = false;this->panel1->Controls->Add(copydialog);copydialog->Show();copydialog->Visible=true;
-			//copydialog->Dock = DockStyle::Bottom;
+			//copydialog->window_title=window_title_bit + " File"+window_title_bit2+" ... [PC --> PVR]"; 
+			//copydialog->Text = copydialog->window_title;
+			
 
 
 			this->transfer_in_progress=true;

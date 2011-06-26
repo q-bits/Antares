@@ -54,13 +54,15 @@ namespace Antares {
 			this->completed=false;
 			this->is_closed=false;
 			this->label3->Text = "";
-			this->label4->Text = "";
+			this->label4->Text = "0.0 MB";
 
-			this->label6->Text = "";
-			this->label5->Text = "";
-			this->label7->Text = "";
+			this->label6->Text = "--:--:--";
+			this->label5->Text = "0.0 MB";
+			this->label7->Text = "--:--:--";
 			this->label8->Text = "";
-			this->window_title="";
+			this->label10->Text = "";
+			this->window_title1="";
+			this->window_title2="";
 			//this->full_src_filename="";
 			//this->full_dest_filename="";
 			this->current_file="";
@@ -75,6 +77,7 @@ namespace Antares {
 			this->parent_win = nullptr;
 			this->parent_form = nullptr;
 			this->settings=nullptr;
+			this->parent_panel1=nullptr;
 
 			this->on_completion=0;
 
@@ -102,6 +105,9 @@ namespace Antares {
 			for each (String^ str in OnCompletionAction::option_strings)
 				this->comboBox1->Items->Add(str);
 			this->comboBox1->SelectedIndex=0;
+			this->size_type=-1;
+			this->is_resizing=false;
+			this->resizing_was_docked=false;
 
 
 
@@ -382,14 +388,22 @@ namespace Antares {
 			this->button1->Visible=false;
 			this->checkBox1->Visible=false;
 
-			this->Height=100;
+			this->label9->Visible=false;
+			this->comboBox1->Visible=false;
+
+			int H=100;
+			this->Size = System::Drawing::Size(this->proper_width, H);
+			this->MaximumSize = System::Drawing::Size(this->proper_width, H);
+			this->MinimumSize = System::Drawing::Size(this->proper_width, H);
 			this->ResumeLayout();
+			this->size_type = 0;
 
 		}
 
 
 		void small_size(void)   // visual arrangement for transferring one file.
 		{
+
 			this->SuspendLayout();
 			this->label2->Visible=false;
 			this->label5->Visible=false;
@@ -406,8 +420,19 @@ namespace Antares {
 
 			this->progressBar1->Visible=true;
 
-			this->Height=225;
+			this->label9->Visible=true;
+			this->comboBox1->Visible=true;
+			int H = 216 - this->bottom_trim - this->bottom_trim2; 
+
+
+			
+			this->MaximumSize = System::Drawing::Size(2000,H);
+			this->MinimumSize = System::Drawing::Size(0,H);
+			this->Size = System::Drawing::Size(this->proper_width, H);
+
+
 			this->ResumeLayout();
+			this->size_type=1;
 		}
 
 		void normal_size(void) // visual arrangement for transferring several files
@@ -428,18 +453,60 @@ namespace Antares {
 
 			this->progressBar1->Visible=true;
 
-			this->Height=282;
+			this->label9->Visible=true;
+			this->comboBox1->Visible=true;
+
+			int H = 282-this->bottom_trim-this->bottom_trim2;
+
+			
+			this->MaximumSize = System::Drawing::Size(2000,H);
+			this->MinimumSize = System::Drawing::Size(0,H);
+			this->Size = System::Drawing::Size(this->proper_width, H);
 
 
 			this->ResumeLayout();
+			this->size_type=2;
 
 		}
+
+		void proper_size(void)
+		{
+
+			printf("(%d,%d) (%d,%d) -- ",this->Size.Width, this->Size.Height, this->ClientSize.Width, this->ClientSize.Height);
+			int W1 = this->Width;
+			switch(this->size_type)
+			{
+			case 0:
+				this->tiny_size();
+				break;
+			case 1:
+				this->small_size();
+				break;
+			case 2:
+				this->normal_size();
+				break;
+			default:
+				printf("Proper size!!??\n");
+
+			}
+			int W2 = this->Width;
+			if (W2!=W1)
+			{
+				Point p = this->Location;
+				p.X +=  (W1-W2)/2;
+				this->Location = p;
+			}
+			printf("(%d,%d) (%d,%d) \n",this->Size.Width, this->Size.Height, this->ClientSize.Width, this->ClientSize.Height);
+
+
+		}
+
 
 		void update_dialog(void)
 		{
 			if ( ! this->Visible) return;
 
-			this->Text = this->window_title;
+		
 
 			if (this->current_error->Length >  0)
 			{
@@ -452,7 +519,7 @@ namespace Antares {
 			else
 			{
 				this->label3->Text = current_file;
-				this->label3->ForeColor = System::Drawing::SystemColors::ControlText;
+				this->label3->ForeColor = System::Drawing::Color::DarkBlue;
 
 				if (error_last_time)
 				{
@@ -506,10 +573,10 @@ namespace Antares {
 
 				/*
 				if (this->numfiles<=1)				
-				  this->small_size();
+				this->small_size();
 				else
-					this->normal_size();
-					*/
+				this->normal_size();
+				*/
 
 			};
 			if (*this->turbo_mode != this->turbo_request && this->current_error->Length == 0)
@@ -547,7 +614,23 @@ namespace Antares {
 			long long int total_offset_MB = total_offset / 1024LL/1024LL;
 			int total_offset_dec_MB = (int)  ( (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024 );
 			String^ total_offset_int_MB = (total_offset_MB).ToString("#,#,#"); if (total_offset_int_MB->Length==0) total_offset_int_MB="0";
-			this->label5->Text = total_offset_int_MB+"."+total_offset_dec_MB.ToString()+" MB / "+(total_size/1024/1024).ToString("#,#,#")+" MB";
+			int ind = this->file_indices[i];
+			int indmax = this->file_indices[this->numfiles-1];
+			this->label5->Text = 
+				total_offset_int_MB+"."+total_offset_dec_MB.ToString()+" MB / "
+				 + (total_size/1024/1024).ToString("#,#,#")+" MB"
+				 + "  Total";
+			if (indmax>1)
+			{
+				//this->label10->Text= ind.ToString()+" / "+indmax.ToString();
+				//this->label10->Text="File "+ind.ToString()+" of "+indmax.ToString();
+
+				this->label10->Text="";
+				//this->Text = this->window_title + "                  "+" ("+ind.ToString()+" / "+indmax.ToString()+")";
+				this->Text = this->window_title1 + "  " + ind.ToString()+" of "+indmax.ToString()+ "   " + this->window_title2;
+			}
+			else
+				this->Text = this->window_title1 + "  " + this->window_title2;
 
 			if (size>0)
 			{
@@ -582,18 +665,18 @@ namespace Antares {
 					if (current_rate<0 )
 					{
 
-						if (this->time_between_files>0)
-						{
-						     double current_rate2 = this->bytes_between_files / this->time_between_files;
-                             if (current_rate2>0.0 && current_rate<20.0)
-                                 ratestring = (current_rate/1024.0/1024.0).ToString("F2");
-						}
+					if (this->time_between_files>0)
+					{
+					double current_rate2 = this->bytes_between_files / this->time_between_files;
+					if (current_rate2>0.0 && current_rate<20.0)
+					ratestring = (current_rate/1024.0/1024.0).ToString("F2");
+					}
 
-						
+
 					}
 					else
 					{
-						ratestring = (current_rate/1024.0/1024.0).ToString("F2");
+					ratestring = (current_rate/1024.0/1024.0).ToString("F2");
 					}
 					*/
 
@@ -607,9 +690,7 @@ namespace Antares {
 					this->label7->Text = time_remaining_string(current_rate, (double) ( total_size - total_offset ),(double) files_remaining , this->get_avg_time_between_files());
 				}
 
-
 			}
-
 
 
 			if (total_size>0)
@@ -622,18 +703,6 @@ namespace Antares {
 			}
 
 
-			//if ( total_delta > 3.0)
-			//{
-			//	if (current_delta > this->last_current_delta)
-			//	{
-			//		
-			//
-			//					}
-			//				}
-			//				else
-			//					this->label7->Text = "--:--:--";
-			//		}
-			// }
 			int perc1 = ((int)(100.00 * (double) offset / (double) size));
 			int perc2 = ((int)(100.00 * (double) total_offset / (double) total_size));
 			perc1 = perc1<0 ? 0 : perc1;
@@ -644,6 +713,8 @@ namespace Antares {
 			this->label1->Text =  perc1.ToString() + "%";
 			this->label2->Text =  perc2.ToString() + "%";
 			this->last_current_delta = current_delta;
+
+			this->arrange_centred_labels();
 
 		}
 	protected:
@@ -691,7 +762,8 @@ namespace Antares {
 		int numfiles;
 
 		time_t current_start_time, total_start_time;
-		String^ window_title;
+		String^ window_title1;
+		String^ window_title2;
 		String^ current_file;
 		double last_current_delta;
 		bool has_initialised;
@@ -705,6 +777,7 @@ namespace Antares {
 		array<long long int>^ current_offsets;
 		array<String^>^       dest_filename;
 		array<FileItem^>^     src_items;
+		array<int>^           file_indices; 
 		array<array<TopfieldItem^>^>^ topfield_items_by_folder;
 		bool usb_error; 
 		String^ file_error; 
@@ -723,11 +796,20 @@ namespace Antares {
 		System::Threading::Thread^ thread;
 		System::Windows::Forms::CheckBox^ parent_checkbox;
 		Settings^ settings;
+		Panel^ parent_panel1;
 		bool error_last_time;
 		bool completed;
 
-private:
-	int max_success_index;
+		int size_type;
+
+		static const int proper_width = 648;
+		static const int bottom_trim = 5 + 5+5;
+		static const int bottom_trim2 = 5+5+5;
+		bool is_resizing;
+		bool resizing_was_docked;
+
+	private:
+		int max_success_index;
 
 
 
@@ -746,9 +828,15 @@ private:
 	private: System::Windows::Forms::Label^  label7;
 	private: System::Windows::Forms::Label^  label8;
 	public: System::Windows::Forms::CheckBox^  checkBox1;
-private: System::Windows::Forms::Label^  label9;
-public: 
-private: System::Windows::Forms::ComboBox^  comboBox1;
+
+	public: 
+	private: System::Windows::Forms::ComboBox^  comboBox1;
+	private: System::Windows::Forms::Label^  label9;
+private: System::Windows::Forms::Label^  label10;
+
+
+
+
 	private: 
 
 
@@ -780,15 +868,16 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->label7 = (gcnew System::Windows::Forms::Label());
 			this->label8 = (gcnew System::Windows::Forms::Label());
 			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
-			this->label9 = (gcnew System::Windows::Forms::Label());
 			this->comboBox1 = (gcnew System::Windows::Forms::ComboBox());
+			this->label9 = (gcnew System::Windows::Forms::Label());
+			this->label10 = (gcnew System::Windows::Forms::Label());
 			this->SuspendLayout();
 			// 
 			// progressBar1
 			// 
 			this->progressBar1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
-			this->progressBar1->Location = System::Drawing::Point(12, 75);
+			this->progressBar1->Location = System::Drawing::Point(12, 58);
 			this->progressBar1->MarqueeAnimationSpeed = 0;
 			this->progressBar1->Maximum = 1000;
 			this->progressBar1->Name = L"progressBar1";
@@ -800,7 +889,7 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			// 
 			this->progressBar2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
 				| System::Windows::Forms::AnchorStyles::Right));
-			this->progressBar2->Location = System::Drawing::Point(12, 141);
+			this->progressBar2->Location = System::Drawing::Point(12, 124);
 			this->progressBar2->MarqueeAnimationSpeed = 0;
 			this->progressBar2->Maximum = 1000;
 			this->progressBar2->Name = L"progressBar2";
@@ -815,11 +904,12 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->label1->BackColor = System::Drawing::SystemColors::Control;
 			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label1->Location = System::Drawing::Point(335, 82);
+			this->label1->Location = System::Drawing::Point(319, 65);
 			this->label1->Name = L"label1";
 			this->label1->Size = System::Drawing::Size(27, 16);
 			this->label1->TabIndex = 2;
 			this->label1->Text = L"0%";
+			this->label1->TextAlign = System::Drawing::ContentAlignment::TopCenter;
 			// 
 			// label2
 			// 
@@ -829,19 +919,19 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->label2->BackColor = System::Drawing::SystemColors::Control;
 			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label2->Location = System::Drawing::Point(335, 148);
+			this->label2->Location = System::Drawing::Point(319, 131);
 			this->label2->Name = L"label2";
 			this->label2->Size = System::Drawing::Size(27, 16);
 			this->label2->TabIndex = 3;
 			this->label2->Text = L"0%";
+			this->label2->TextAlign = System::Drawing::ContentAlignment::TopCenter;
 			// 
 			// button1
 			// 
-			this->button1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left) 
-				| System::Windows::Forms::AnchorStyles::Right));
+			this->button1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->button1->Location = System::Drawing::Point(270, 196);
+			this->button1->Location = System::Drawing::Point(270, 198);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(124, 31);
 			this->button1->TabIndex = 4;
@@ -852,20 +942,23 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			// label3
 			// 
 			this->label3->AutoSize = true;
+			this->label3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(245)), static_cast<System::Int32>(static_cast<System::Byte>(245)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label3->Location = System::Drawing::Point(9, 20);
+			this->label3->ForeColor = System::Drawing::Color::DarkBlue;
+			this->label3->Location = System::Drawing::Point(9, 9);
 			this->label3->Name = L"label3";
-			this->label3->Size = System::Drawing::Size(293, 16);
+			this->label3->Size = System::Drawing::Size(464, 16);
 			this->label3->TabIndex = 5;
-			this->label3->Text = L"C:\\blah\\blah\\something\\blah\\Some TV show.rec";
+			this->label3->Text = L"C:\\blah\\blah\\something\\blah\\a very long path\\some more\\Some TV show.rec";
 			// 
 			// label4
 			// 
 			this->label4->AutoSize = true;
 			this->label4->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label4->Location = System::Drawing::Point(9, 56);
+			this->label4->Location = System::Drawing::Point(9, 39);
 			this->label4->Name = L"label4";
 			this->label4->Size = System::Drawing::Size(45, 16);
 			this->label4->TabIndex = 6;
@@ -876,7 +969,7 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->label5->AutoSize = true;
 			this->label5->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label5->Location = System::Drawing::Point(8, 122);
+			this->label5->Location = System::Drawing::Point(8, 105);
 			this->label5->Name = L"label5";
 			this->label5->Size = System::Drawing::Size(45, 16);
 			this->label5->TabIndex = 7;
@@ -888,7 +981,7 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->label6->AutoSize = true;
 			this->label6->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label6->Location = System::Drawing::Point(585, 56);
+			this->label6->Location = System::Drawing::Point(596, 39);
 			this->label6->Margin = System::Windows::Forms::Padding(5, 0, 15, 0);
 			this->label6->Name = L"label6";
 			this->label6->Size = System::Drawing::Size(45, 16);
@@ -901,7 +994,7 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->label7->AutoSize = true;
 			this->label7->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->label7->Location = System::Drawing::Point(585, 122);
+			this->label7->Location = System::Drawing::Point(596, 105);
 			this->label7->Margin = System::Windows::Forms::Padding(5, 0, 15, 0);
 			this->label7->Name = L"label7";
 			this->label7->Size = System::Drawing::Size(45, 16);
@@ -912,9 +1005,8 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			// 
 			this->label8->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->label8->AutoSize = true;
-			this->label8->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
-			this->label8->Location = System::Drawing::Point(574, 20);
+			this->label8->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F));
+			this->label8->Location = System::Drawing::Point(611, 9);
 			this->label8->Name = L"label8";
 			this->label8->Size = System::Drawing::Size(45, 16);
 			this->label8->TabIndex = 10;
@@ -924,23 +1016,13 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			// 
 			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->Location = System::Drawing::Point(11, 209);
+			this->checkBox1->Location = System::Drawing::Point(11, 211);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 11;
 			this->checkBox1->Text = L"Turbo mode";
 			this->checkBox1->UseVisualStyleBackColor = true;
 			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &CopyDialog::checkBox1_CheckedChanged);
-			// 
-			// label9
-			// 
-			this->label9->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Right));
-			this->label9->AutoSize = true;
-			this->label9->Location = System::Drawing::Point(563, 193);
-			this->label9->Name = L"label9";
-			this->label9->Size = System::Drawing::Size(78, 13);
-			this->label9->TabIndex = 12;
-			this->label9->Text = L"On completion:";
 			// 
 			// comboBox1
 			// 
@@ -949,11 +1031,34 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->comboBox1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->comboBox1->FormattingEnabled = true;
-			this->comboBox1->Location = System::Drawing::Point(566, 209);
+			this->comboBox1->Location = System::Drawing::Point(577, 209);
 			this->comboBox1->Name = L"comboBox1";
-			this->comboBox1->Size = System::Drawing::Size(90, 21);
+			this->comboBox1->Size = System::Drawing::Size(79, 21);
 			this->comboBox1->TabIndex = 13;
 			this->comboBox1->SelectedIndexChanged += gcnew System::EventHandler(this, &CopyDialog::comboBox1_SelectedIndexChanged);
+			// 
+			// label9
+			// 
+			this->label9->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Right));
+			this->label9->AutoSize = true;
+			this->label9->Location = System::Drawing::Point(574, 193);
+			this->label9->Name = L"label9";
+			this->label9->Size = System::Drawing::Size(78, 13);
+			this->label9->TabIndex = 14;
+			this->label9->Text = L"On completion:";
+			// 
+			// label10
+			// 
+			this->label10->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
+			this->label10->AutoSize = true;
+			this->label10->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			this->label10->Location = System::Drawing::Point(310, 105);
+			this->label10->Name = L"label10";
+			this->label10->Size = System::Drawing::Size(52, 16);
+			this->label10->TabIndex = 15;
+			this->label10->Text = L"label10";
 			// 
 			// CopyDialog
 			// 
@@ -961,12 +1066,13 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->ClientSize = System::Drawing::Size(664, 248);
+			this->ClientSize = System::Drawing::Size(664, 282);
 			this->ControlBox = false;
-			this->Controls->Add(this->comboBox1);
-			this->Controls->Add(this->label9);
-			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->label8);
+			this->Controls->Add(this->label10);
+			this->Controls->Add(this->label9);
+			this->Controls->Add(this->comboBox1);
+			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->label7);
 			this->Controls->Add(this->label6);
 			this->Controls->Add(this->label5);
@@ -979,7 +1085,9 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->Controls->Add(this->progressBar1);
 			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::SizableToolWindow;
 			this->KeyPreview = true;
-			this->MaximumSize = System::Drawing::Size(680, 282);
+			this->MaximizeBox = false;
+			this->MinimizeBox = false;
+			this->MinimumSize = System::Drawing::Size(16, 282);
 			this->Name = L"CopyDialog";
 			this->Padding = System::Windows::Forms::Padding(5);
 			this->ShowIcon = false;
@@ -989,9 +1097,13 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 			this->Text = L"CopyDialog";
 			this->TransparencyKey = System::Drawing::Color::Fuchsia;
 			this->Load += gcnew System::EventHandler(this, &CopyDialog::CopyDialog_Load);
+			this->ResizeBegin += gcnew System::EventHandler(this, &CopyDialog::CopyDialog_ResizeBegin);
+			this->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &CopyDialog::CopyDialog_Layout);
+			this->Move += gcnew System::EventHandler(this, &CopyDialog::CopyDialog_Move);
 			this->FormClosing += gcnew System::Windows::Forms::FormClosingEventHandler(this, &CopyDialog::CopyDialog_FormClosing);
 			this->Resize += gcnew System::EventHandler(this, &CopyDialog::CopyDialog_Resize);
 			this->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &CopyDialog::CopyDialog_KeyDown);
+			this->ResizeEnd += gcnew System::EventHandler(this, &CopyDialog::CopyDialog_ResizeEnd);
 			this->ResumeLayout(false);
 			this->PerformLayout();
 
@@ -1041,5 +1153,198 @@ private: System::Windows::Forms::ComboBox^  comboBox1;
 	private: System::Void comboBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
 				 this->on_completion = this->comboBox1->SelectedIndex;
 			 }
-};
+
+	private: System::Void CopyDialog_ResizeBegin(System::Object^  sender, System::EventArgs^  e) {
+				 printf("CopyDialog resizebegin\n");
+				 this->is_resizing=true;
+
+
+
+				 if (this->Dock == DockStyle::Bottom || this->Dock == DockStyle::Top)
+				 {
+					 this->resizing_was_docked=true;
+					 this->SuspendLayout();
+					 this->BringToFront();
+					 this->Dock = DockStyle::None;
+					 this->FormBorderStyle = Windows::Forms::FormBorderStyle::SizableToolWindow;
+					 this->proper_size();
+					 this->ResumeLayout();
+					 this->proper_size();
+
+				 }
+				 else this->resizing_was_docked=false;
+
+			 }
+
+			 System::Void CentreInParent(int offset)
+			 {
+
+				 this->Location = System::Drawing::Point(
+					 (this->parent_form->Width - this->Width)/2, offset+(this->parent_form->Height - this->Height)/2);
+				 this->BringToFront();
+
+				 //this->panel1->Dock=DockStyle::Fill;
+			 }
+			 /*
+
+	private: System::Void button4_Click(System::Object^  sender, System::EventArgs^  e) {
+				 this->Dock = DockStyle::Bottom;
+				 this->parent_panel1->BringToFront();
+				 this->FormBorderStyle = Windows::Forms::FormBorderStyle::FixedToolWindow;
+
+				 this->button4->Visible = false;
+				 this->button3->Visible = true;
+				 this->button2->Visible = true;
+
+
+			 }
+	private: System::Void button3_Click(System::Object^  sender, System::EventArgs^  e) {
+				 this->Dock = DockStyle::Top;
+				 this->parent_panel1->BringToFront();
+				 this->FormBorderStyle = Windows::Forms::FormBorderStyle::None;
+
+
+				 this->button4->Visible = true;
+				 this->button3->Visible = false;
+				 this->button2->Visible = true;
+
+
+			 }
+			 */
+
+			 void arrange_centred_labels(void)
+			 {
+
+				 Point p = this->label1->Location;
+				 p.X = this->Width/2 - this->label1->Width/2;// + 5;
+				 this->label1->Location=p;
+
+				
+				 p = this->label2->Location;
+				 p.X = this->Width/2 - this->label2->Width/2;// + 5;
+				 this->label2->Location=p;
+
+				// p = this->label8->Location;
+				// p.X = this->Width/2 - this->label8->Width/2;//-5;
+				// this->label8->Location=p;
+
+				 p = this->label8->Location;
+				p.X = this->Width - this->label8->Width-27;
+				 this->label8->Location=p;
+
+
+				 p = this->label10->Location;
+				 p.X = this->Width/2 - this->label10->Width/2;//-10;
+				 this->label10->Location=p;
+			 }
+	private: System::Void CopyDialog_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
+
+				 // Arrange cancel button
+				 int W=124;
+				 this->button1->Width=W;
+				 Point p = this->button1->Location;
+				 p.X = this->Width/2 - W/2;
+				 p.Y = this->Height - 91 + bottom_trim;
+				 this->button1->Location=p;
+
+	
+				 this->arrange_centred_labels();
+
+
+				 // "on completion..."
+				 p=this->comboBox1->Location;
+
+				 p.Y = this->Height - 95 + 16    + bottom_trim - 8;
+				 p.X = this->Width - 103;
+				 int X = p.X;
+				 this->comboBox1->Location=p;
+
+				 p=this->label9->Location;
+				 p.Y = this->Height - 90 - 3   + bottom_trim - 8;
+				 p.X = X;
+				 this->label9->Location = p;
+
+				 p = this->checkBox1->Location;
+				 p.Y = this->Height - 85 + bottom_trim;
+				 this->checkBox1->Location=p;
+
+
+
+
+
+			 }
+
+
+			 void test(void)
+			 {
+				 bool low = this->Location.Y + this->Height > this->parent_panel1->Height;
+				 bool high = this->Location.Y < 0;
+				 if (low && !high)
+				 {
+					 printf("Dock low\n");
+
+					 this->Dock = DockStyle::Bottom;
+					 this->parent_panel1->BringToFront();
+
+				 }
+				 else if (high && !low)
+				 {
+					 printf("Dock high\n");
+
+					 this->Dock = DockStyle::Top;
+					 this->parent_panel1->BringToFront();
+
+				 }
+				 else
+				 {
+					 this->Dock = DockStyle::None;
+					 this->BringToFront();
+					 
+					 if (this->resizing_was_docked)
+						 this->proper_size();
+
+					 //this->CenterToParent();
+					 
+				 }
+			 }
+
+	private: System::Void CopyDialog_Move(System::Object^  sender, System::EventArgs^  e) {
+				// printf ("CD move. \n");
+				 if (this->is_resizing)
+				 {
+					 //this->test();
+				 }
+
+			 }
+	private: System::Void CopyDialog_ResizeEnd(System::Object^  sender, System::EventArgs^  e) {
+				 //printf ("CD resize end\n");
+
+
+				 
+				 this->test();
+
+				 this->is_resizing=false;
+			 }
+
+
+	protected:  virtual void OnPaint(PaintEventArgs ^e) override
+				{
+					//baseOnPaint(e);
+
+					//Graphics ^g = e->Graphics;
+					//g->DrawString("www.java2s.com", Font, Brushes::Black, 5, 5);
+
+				}
+
+	protected: virtual void OnPaintBackground(PaintEventArgs  ^ e) override
+			   {
+				   Form::OnPaintBackground(e);
+
+
+			   }
+
+
+
+
+	};
 }

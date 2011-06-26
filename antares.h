@@ -75,7 +75,7 @@ namespace Antares {
 		static const int HIBERNATE=2;
 		static const int SHUTDOWN=3;
 		static array<int> ^options={0,1,2,3};
-		static array<String^> ^option_strings={"  -  -  ","Sleep","Hibernate","Shutdown"};
+		static array<String^> ^option_strings={" ","Sleep","Hibernate","Shutdown"};
 	};
 
 	System::String^ HumanReadableSize(__u64 size);
