@@ -525,6 +525,10 @@ namespace Antares {
 						this->topfield_background_enumerator=nullptr;
 					}
 				}
+
+
+				this->textBox2->Enabled = (this->fd != NULL);
+
 			}
 		}
 
@@ -1984,8 +1988,8 @@ private:
 	public: System::Windows::Forms::ComboBox^  textBox1;
 	private: System::Windows::Forms::CheckBox^  checkBox2;
 	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip1;
-	private: System::Windows::Forms::ToolStripMenuItem^  testToolStripMenuItem;
-	private: System::Windows::Forms::ToolStripMenuItem^  helloToolStripMenuItem;
+
+
 private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 
 
@@ -2071,8 +2075,6 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 			this->toolStripButton12 = (gcnew System::Windows::Forms::ToolStripButton());
 			this->listView2 = (gcnew System::Windows::Forms::ListView());
 			this->contextMenuStrip1 = (gcnew System::Windows::Forms::ContextMenuStrip(this->components));
-			this->testToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
-			this->helloToolStripMenuItem = (gcnew System::Windows::Forms::ToolStripMenuItem());
 			this->timer1 = (gcnew System::Windows::Forms::Timer(this->components));
 			this->basicIconsSmall = (gcnew System::Windows::Forms::ImageList(this->components));
 			this->notifyIcon1 = (gcnew System::Windows::Forms::NotifyIcon(this->components));
@@ -2086,7 +2088,6 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 			this->panel7->SuspendLayout();
 			this->panel4->SuspendLayout();
 			this->toolStrip1->SuspendLayout();
-			this->contextMenuStrip1->SuspendLayout();
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->fileSystemWatcher1))->BeginInit();
 			this->SuspendLayout();
 			// 
@@ -2633,23 +2634,9 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 			// 
 			// contextMenuStrip1
 			// 
-			this->contextMenuStrip1->Items->AddRange(gcnew cli::array< System::Windows::Forms::ToolStripItem^  >(2) {this->testToolStripMenuItem, 
-				this->helloToolStripMenuItem});
 			this->contextMenuStrip1->Name = L"contextMenuStrip1";
-			this->contextMenuStrip1->Size = System::Drawing::Size(103, 48);
+			this->contextMenuStrip1->Size = System::Drawing::Size(61, 4);
 			this->contextMenuStrip1->Opening += gcnew System::ComponentModel::CancelEventHandler(this, &Form1::contextMenuStrip1_Opening);
-			// 
-			// testToolStripMenuItem
-			// 
-			this->testToolStripMenuItem->Name = L"testToolStripMenuItem";
-			this->testToolStripMenuItem->Size = System::Drawing::Size(102, 22);
-			this->testToolStripMenuItem->Text = L"Test";
-			// 
-			// helloToolStripMenuItem
-			// 
-			this->helloToolStripMenuItem->Name = L"helloToolStripMenuItem";
-			this->helloToolStripMenuItem->Size = System::Drawing::Size(102, 22);
-			this->helloToolStripMenuItem->Text = L"Hello";
 			// 
 			// timer1
 			// 
@@ -2714,7 +2701,6 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 			this->panel4->ResumeLayout(false);
 			this->toolStrip1->ResumeLayout(false);
 			this->toolStrip1->PerformLayout();
-			this->contextMenuStrip1->ResumeLayout(false);
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^  >(this->fileSystemWatcher1))->EndInit();
 			this->ResumeLayout(false);
 			this->PerformLayout();
@@ -2862,8 +2848,12 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 				}
 				else
 				{
-					if (client_width >= sumw) factor=1.0;
-					else factor = (double) client_width / sumw;
+					if (client_width >= scale) 
+						factor = (double) client_width / scale;
+					else 
+						if (client_width>sumw) factor = 1.0;
+					else 
+						factor = (double) client_width / sumw;
 				}
 
 				if (factor != 1.0)
@@ -3733,7 +3723,10 @@ out:
 			this->textBox2->Enabled=false;
 			this->checkBox2->Enabled=false;
 
-			Antares::disable_sleep_mode();
+			try{
+			if (this->settings["prevent_sleep_mode"]=="1")
+			    Antares::disable_sleep_mode();
+			} catch(...){};
 
 		}
 

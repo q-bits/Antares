@@ -36,6 +36,7 @@ namespace Antares {
 
 	void disable_sleep_mode(void)
 	{
+
 		try
 		{
 			SetThreadExecutionState(ES_SYSTEM_REQUIRED | ES_CONTINUOUS);
