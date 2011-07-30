@@ -193,6 +193,7 @@ namespace Antares {
 			this->locker = gcnew Object();
 			this->last_topfield_freek = -1;
 			this->last_topfield_freek_time = 0;
+			this->computer_new_folder_time = 0;
 			this->pid=0;this->ndev=0;
 
 			this->current_copydialog = nullptr;
@@ -1879,6 +1880,7 @@ repeat:
 
 			int last_topfield_freek;
 			time_t last_topfield_freek_time;
+			time_t computer_new_folder_time;
 			long long bytes_sent_since_last_freek;
 			TopfieldFreeSpace last_topfield_freespace;
 
@@ -2678,7 +2680,7 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  0.9";
+			this->Text = L"Antares  0.9.test";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2738,9 +2740,11 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 
 			if (this->computer_needs_refreshing)
 			{
-				this->computer_needs_refreshing=false;
-				this->loadComputerDir();
-				
+				if (  (time(NULL) - this->computer_new_folder_time)>60)
+				{
+					this->computer_needs_refreshing=false;
+					this->loadComputerDir();
+				}
 			}
 			// int conf,r,bus,address;
 			// if (this->fd==NULL)
@@ -3460,7 +3464,7 @@ private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 				Marshal::Copy(inp_buffer,0,System::IntPtr( &buffer[0]),w);
 
 				offset += w;
-				int next_perc = 100*offset/file_size;
+				int next_perc = (int)  ( 100*offset/file_size );
 				if (next_perc/5 > perc/5)
 				{
 					firmware_dialog->update_status_text("Tansferring firmware:   " + next_perc.ToString() + "%");
@@ -4867,13 +4871,25 @@ aborted:   // If the transfer was cancelled before it began
 					{
 						r = this->newTopfieldFolder(dest_filename[i]);
 					}
-					// Abort if required destination folder is already a file name, or any other error creating folder.
-					if (r<0 || (titem!=nullptr && !titem->isdir) )
+					// Abort if required destination folder is already a file name
+					if (titem!=nullptr && !titem->isdir)
 					{
-						//copydialog->close_request_threadsafe();
-						//MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);							
-						copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
+                        copydialog->file_error="The folder "+dest_filename[i]+" could not be created because there exists a file of the same name.";
 						goto finish_transfer;
+					}
+
+					// If there was some other error creating the folder...
+					// ... perhaps it was really successful. Try loading the folder contents to find out.
+					if (r<0)
+					{
+						array<TopfieldItem^> ^check = this->loadTopfieldDirArrayOrNull(dest_filename[i]);
+                        printf("Double checking %s\n",dest_filename[i]);
+
+						if (check==nullptr)
+						{
+							copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
+							goto finish_transfer;
+						}
 					}
 
 
@@ -6004,7 +6020,10 @@ abort:  // If the transfer was cancelled before it began
 				type = "PVR";
 				column_inds = FileItem::topfield_column_inds;
 			}
-			if (e->Column == *sortcolumn)
+
+			int col;
+			col = column_inds[e->Column]; 
+			if (col == *sortcolumn)
 			{
 				if (listview->Sorting == SortOrder::Ascending)
 				{
@@ -6024,8 +6043,8 @@ abort:  // If the transfer was cancelled before it began
 				listview->Sorting = SortOrder::Ascending;
 				settings->changeSetting(type+"_SortOrder","Ascending");
 			}
-			int col;
-			col = column_inds[e->Column]; 
+		
+			printf("--- col = %d   sortcolumn=%d \n",col,*sortcolumn);
 			*sortcolumn = col;
 			settings->changeSetting(type+"_SortColumn", col.ToString());
 
@@ -6190,6 +6209,7 @@ abort:  // If the transfer was cancelled before it began
 						try {
 							if (item->isdir)
 							{
+								this->computer_new_folder_time = 0;
 								Directory::Move(old_full_filename, new_full_filename);
 							}
 							else
@@ -6677,10 +6697,11 @@ abort:  // If the transfer was cancelled before it began
 			array<Byte>^ buffer = gcnew array<Byte>(readsize);
 			FileStream^ file;
 			try{
-				file = File::Open(item->full_filename,System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
+				file = File::Open(item->full_filename,System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::ReadWrite);
 			}
 			catch(...)
 			{
+				printf("Error opening file for reading rec header info.\n");
 
 				return false;
 			}
@@ -7081,6 +7102,7 @@ abort:  // If the transfer was cancelled before it began
 
 			}
 
+			this->computer_new_folder_time = time(NULL);
 
 
 			this->loadComputerDir(foldername);
