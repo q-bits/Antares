@@ -586,6 +586,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cog.ico"
+				>
+			</File>
+			<File
 				RelativePath=".\delete.ico"
 				>
 			</File>
@@ -614,6 +618,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\left-arrow_orange_small.ico"
+				>
+			</File>
+			<File
+				RelativePath=".\left-arrow_small.ico"
+				>
+			</File>
+			<File
 				RelativePath=".\new-folder.ico"
 				>
 			</File>
@@ -635,6 +647,10 @@
 			</File>
 			<File
 				RelativePath=".\right-arrow.ico"
+				>
+			</File>
+			<File
+				RelativePath=".\show_file.ico"
 				>
 			</File>
 			<File

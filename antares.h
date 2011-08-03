@@ -358,7 +358,7 @@ namespace Antares {
                      return extension_dic[ext];
 				}
 
-				if (path->EndsWith(".rec")) 
+				if (path->EndsWith(".rec",StringComparison::CurrentCultureIgnoreCase)) 
 				{
 					return this->play_info;
 				}
