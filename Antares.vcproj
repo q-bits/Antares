@@ -650,6 +650,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\right-arrow_orange_small.ico"
+				>
+			</File>
+			<File
+				RelativePath=".\right-arrow_small.ico"
+				>
+			</File>
+			<File
 				RelativePath=".\show_file.ico"
 				>
 			</File>

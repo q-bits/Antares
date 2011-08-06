@@ -2359,6 +2359,7 @@ repeat:
 			this->listView1->UseCompatibleStateImageBehavior = false;
 			this->listView1->View = System::Windows::Forms::View::Details;
 			this->listView1->ItemActivate += gcnew System::EventHandler(this, &Form1::listView1_ItemActivate);
+			this->listView1->MouseClick += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView_MouseClick);
 			this->listView1->AfterLabelEdit += gcnew System::Windows::Forms::LabelEditEventHandler(this, &Form1::listView_AfterLabelEdit);
 			this->listView1->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView1_SelectedIndexChanged);
 			this->listView1->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView1_Layout);
@@ -2664,7 +2665,7 @@ repeat:
 			this->listView2->UseCompatibleStateImageBehavior = false;
 			this->listView2->View = System::Windows::Forms::View::Details;
 			this->listView2->ItemActivate += gcnew System::EventHandler(this, &Form1::listView2_ItemActivate);
-			this->listView2->MouseClick += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView2_MouseClick);
+			this->listView2->MouseClick += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView_MouseClick);
 			this->listView2->AfterLabelEdit += gcnew System::Windows::Forms::LabelEditEventHandler(this, &Form1::listView_AfterLabelEdit);
 			this->listView2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView2_SelectedIndexChanged);
 			this->listView2->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView2_Layout);
@@ -2675,7 +2676,7 @@ repeat:
 			// contextMenuStrip2
 			// 
 			this->contextMenuStrip2->Name = L"contextMenuStrip2";
-			this->contextMenuStrip2->Size = System::Drawing::Size(153, 26);
+			this->contextMenuStrip2->Size = System::Drawing::Size(61, 4);
 			this->contextMenuStrip2->ItemClicked += gcnew System::Windows::Forms::ToolStripItemClickedEventHandler(this, &Form1::contextMenuStrip2_ItemClicked);
 			this->contextMenuStrip2->Opening += gcnew System::ComponentModel::CancelEventHandler(this, &Form1::contextMenuStrip2_Opening);
 			// 
@@ -2696,6 +2697,8 @@ repeat:
 			this->basicIconsSmall->Images->SetKeyName(4, L"left-arrow_small.ico");
 			this->basicIconsSmall->Images->SetKeyName(5, L"left-arrow_orange_small.ico");
 			this->basicIconsSmall->Images->SetKeyName(6, L"cog.ico");
+			this->basicIconsSmall->Images->SetKeyName(7, L"right-arrow_orange_small.ico");
+			this->basicIconsSmall->Images->SetKeyName(8, L"right-arrow_small.ico");
 			// 
 			// notifyIcon1
 			// 
@@ -3034,52 +3037,7 @@ repeat:
 
 
 				return;
-				/*
 
-				static const double widths0[] = {140, 60, 0, 120};
-				static const double mwidths[] = {0,  70, 0, 130};
-
-				double tot0 = widths0[0]+widths0[1]+widths0[2]+widths0[3];
-				double tot0_ = widths0[1]+widths0[2]+widths0[3];
-				double tot0m = mwidths[1]+mwidths[2]+mwidths[3];
-				double tot1 = listView1->ClientSize.Width;
-				double tot2 = listView2->ClientSize.Width;
-
-				double tot1_ = listView1->Width;
-				tot1 = tot1_<tot1 ? tot1_ : tot1;
-
-				if (tot0_ / tot0 * tot1  > tot0m)
-				{
-
-				this->topfieldSizeHeader->Width = (int) mwidths[1];
-				this->topfieldTypeHeader->Width = (int) mwidths[2];
-				this->topfieldDateHeader->Width = (int) mwidths[3];
-				this->topfieldNameHeader->Width = (int) (tot1 - tot0m-5);
-				}
-				else
-				{
-				this->topfieldNameHeader->Width =  (int) (widths0[0]/tot0 * tot1);
-				this->topfieldSizeHeader->Width =  (int) (widths0[1]/tot0 * tot1);
-				this->topfieldTypeHeader->Width =  (int) (widths0[2]/tot0 * tot1);
-				this->topfieldDateHeader->Width =  (int) (widths0[3]/tot0 * tot1);
-				}
-				if (tot0_ / tot0 * tot2  > tot0m)
-				{
-
-				this->computerSizeHeader->Width = (int) mwidths[1];
-				this->computerTypeHeader->Width = (int) mwidths[2];
-				this->computerDateHeader->Width = (int) mwidths[3];
-				this->computerNameHeader->Width = (int) (tot2 - tot0m-5);
-				}
-				else
-				{
-				this->computerNameHeader->Width =  (int) (widths0[0]/tot0 * tot2);
-				this->computerSizeHeader->Width =  (int) (widths0[1]/tot0 * tot2);
-				this->computerTypeHeader->Width =  (int) (widths0[2]/tot0 * tot2);
-				this->computerDateHeader->Width =  (int) (widths0[3]/tot0 * tot2);
-				}
-
-				*/
 			}
 			this->textBox2->Update();
 			this->textBox2->Select(0,0);
@@ -5599,8 +5557,8 @@ finish_transfer:
 			if (this->transfer_in_progress) return;
 			if (this->fd==NULL) 
 			{
-/*
-#ifdef _DEBUG
+				/*
+				#ifdef _DEBUG
 				ListView^ listview = this->listView2;
 
 				ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
@@ -5614,7 +5572,7 @@ finish_transfer:
 
 				this->ShowCopyDialog(copydialog);
 				if (selected->Count>1) copydialog->normal_size(); else copydialog->small_size();
-#endif
+				#endif
 				*/
 				return;
 			}
@@ -6129,6 +6087,10 @@ abort:  // If the transfer was cancelled before it began
 
 		System::Void toolStripButton7_Click(System::Object^  sender, System::EventArgs^  e) {
 
+			this->delete_PVR_selection();
+		}
+		System::Void delete_PVR_selection(void)
+		{
 			// Delete files on the Topfield
 
 			if (this->transfer_in_progress) return;
@@ -7039,7 +7001,7 @@ abort:  // If the transfer was cancelled before it began
 		}
 		/////////////////////////////
 		System::Void toolStripButton3_Click(System::Object^  sender, System::EventArgs^  e) {
-		    this->delete_PC_selection();
+			this->delete_PC_selection();
 		}
 		void delete_PC_selection (void)
 		{
@@ -7244,6 +7206,7 @@ abort:  // If the transfer was cancelled before it began
 
 			}
 
+			this->Arrange2();
 
 
 
@@ -7431,22 +7394,35 @@ abort:  // If the transfer was cancelled before it began
 			 {
 				 if (this->mi_pvr_copy != nullptr) return;
 
-				 this->mi_pvr_copy = gcnew ToolStripMenuItem("Copy to PC");
-				 this->mi_pvr_proginfo = gcnew ToolStripMenuItem("Show program information");
 
-				 this->mi_pvr_move = gcnew ToolStripMenuItem("Move to PC");
-				 this->mi_pvr_delete = gcnew ToolStripMenuItem("Delete");
+				 System::ComponentModel::ComponentResourceManager^  resources = (gcnew System::ComponentModel::ComponentResourceManager(Form1::typeid));
+
+				 this->mi_pvr_copy = gcnew ToolStripMenuItem("Copy to PC",this->basicIconsSmall->Images["right-arrow_small.ico"]);
+				 this->mi_pvr_proginfo = gcnew ToolStripMenuItem("Show program information",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton11.Image"))));
+
+				 this->mi_pvr_move = gcnew ToolStripMenuItem("Move to PC",this->basicIconsSmall->Images["right-arrow_orange_small.ico"]);
+				 this->mi_pvr_delete = gcnew ToolStripMenuItem("Delete",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image"))));
 
 				 System::Windows::Forms::ContextMenuStrip ^cm = this->contextMenuStrip1;
 
 				 ToolStripItemCollection ^ic = cm->Items;
 
-				 ic->Clear();
 				 ic->Add(mi_pvr_copy);
 				 ic->Add(mi_pvr_move);
 				 ic->Add(mi_pvr_proginfo);
 				 ic->Add(mi_pvr_delete);
 
+				 int ind=0;
+				 for each (String^ str in headerNames) 
+				 {
+
+					 ToolStripMenuItem ^mi = gcnew ToolStripMenuItem(str);
+					 this->mi_pvr_choose_columns_array[ind]=mi;
+					 ic->Add(mi);
+					 ind++;
+				 }
+
+				 printf("init_contextMenuStrip1\n");
 
 
 
@@ -7508,16 +7484,43 @@ abort:  // If the transfer was cancelled before it began
 
 
 				 this->init_contextMenuStrip1();
-				 printf ("Context menu opening...\n");
-				 System::Windows::Forms::ContextMenuStrip ^cm = this->contextMenuStrip1;
-				 Control ^c = cm->SourceControl;
+				 double dt =   this->stopwatch->Elapsed.TotalSeconds - this->listview_click_time;
+				 printf("dt=%f\n",dt);
 
-				 //cm->Items->Clear();
-				 // cm->Items->Add(gcnew ToolStripMenuItem("Hello World"));
-				 //	 ToolStripMenuItem^ t = gcnew ToolStripMenuItem("Hello again");
-				 //	 if (time(NULL)%2==0)
-				 //		 t->Available = false;
-				 //	 cm->Items->Add(t);
+
+				 ListView::SelectedListViewItemCollection^ selected = this->listView1->SelectedItems;
+				 int numdir=0, numfile=0, numtfd=0, numrec=0;
+				 for each (ListViewItem^ item in selected)
+				 {
+					 TopfieldItem^ citem = safe_cast<TopfieldItem^>(item);
+					 printf("%s\n",citem->filename);
+					 if (citem->isdir) numdir++; else numfile++;
+					 if (!citem->isdir && citem->filename->EndsWith(".tfd",StringComparison::CurrentCultureIgnoreCase) )
+						 numtfd++;
+					 if (!citem->isdir && citem->filename->EndsWith(".rec",StringComparison::CurrentCultureIgnoreCase) )
+						 numrec++;
+				 }
+
+				 bool choose_columns = (dt>.1) || (numdir + numfile + numtfd == 0);
+
+				 this->mi_pvr_copy->Available=!choose_columns;
+				 this->mi_pvr_delete->Available=!choose_columns;
+				 this->mi_pvr_move->Available=!choose_columns;
+				 this->mi_pvr_proginfo->Available=numrec>0 && !choose_columns;
+
+				 for (int ind =0; ind<this->headerNames->Length; ind++)
+				 {
+					 this->mi_pvr_choose_columns_array[ind]->Available=choose_columns;
+					 if (choose_columns)
+					 {
+						 this->mi_pvr_choose_columns_array[ind]->Checked = this->settings["PVR_Column"+ind.ToString()+"Visible"]=="1";
+
+					 }
+
+
+				 }
+
+
 
 				 e->Cancel=false;
 
@@ -7549,10 +7552,7 @@ abort:  // If the transfer was cancelled before it began
 				 this->mi_pc_move->Available=!choose_columns;
 				 this->mi_pc_show_in_explorer->Available=!choose_columns;
 				 this->mi_pc_proginfo->Available=numrec>0 && !choose_columns;
-				 //this->mi_pc_choose_columns->Available=choose_columns;
 
-				 //if (choose_columns)
-				 //{
 				 this->mi_pc_install_firmware->Available=false;
 				 for (int ind =0; ind<this->headerNames->Length; ind++)
 				 {
@@ -7565,8 +7565,6 @@ abort:  // If the transfer was cancelled before it began
 
 
 				 }
-
-				 //}
 
 				 if (!choose_columns)
 				 {
@@ -7582,13 +7580,45 @@ abort:  // If the transfer was cancelled before it began
 			 }
 	private: System::Void contextMenuStrip1_ItemClicked(System::Object^  sender, System::Windows::Forms::ToolStripItemClickedEventArgs^  e) {
 				 ToolStripMenuItem^ mi = safe_cast<ToolStripMenuItem^>(e->ClickedItem);
-				 printf("%s \n",mi->ToString());
+
+				 for (int i=0; i<this->mi_pvr_choose_columns_array->Length; i++)
+				 {
+					 if (mi == this->mi_pvr_choose_columns_array[i])
+					 {
+						 printf(" Column %d !!! \n",i);
+
+
+						 String^ str = "PVR_Column"+i.ToString()+"Visible";
+						 this->settings->changeSetting(str, this->settings[str]=="1" ? "0" : "1");
+						 this->apply_columns_visible();
+						 return;
+					 }
+				 }
+				 if (mi == this->mi_pvr_copy)
+				 {
+					 this->transfer_selection_to_PC(CopyMode::COPY);
+				 }
+				 else if (mi == this->mi_pvr_delete)
+				 {
+					 this->delete_PVR_selection();
+
+				 } 
+				 else if (mi == this->mi_pvr_move)
+				 {
+					 this->transfer_selection_to_PC(CopyMode::MOVE);
+				 }
+				 else if (mi == this->mi_pvr_proginfo)
+				 {
+					 if (this->transfer_in_progress) return;
+					 this->ViewInfo(this->listView1);
+
+				 }
+
 
 
 			 }
 
-	private: System::Void listView2_MouseClick(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e) {
-				 printf("listview2_mouseclick\n");
+	private: System::Void listView_MouseClick(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e) {
 				 this->listview_click_time = this->stopwatch->Elapsed.TotalSeconds;
 			 }
 	private: System::Void contextMenuStrip2_ItemClicked(System::Object^  sender, System::Windows::Forms::ToolStripItemClickedEventArgs^  e) {
@@ -7620,7 +7650,7 @@ abort:  // If the transfer was cancelled before it began
 				 }
 				 else if (mi == this->mi_pc_delete)
 				 {
-					this->delete_PC_selection();
+					 this->delete_PC_selection();
 
 				 } 
 				 else if (mi == this->mi_pc_install_firmware)
