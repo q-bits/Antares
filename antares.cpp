@@ -5,6 +5,7 @@
 #include "copydialog.h"
 #include "Settings.h"
 #include "antares.h"
+#include "commandline.h"
 
 extern "C" 
 {
@@ -279,12 +280,20 @@ int main(array<System::String ^> ^args)
 	if (args->Length > 0)
 	{
 		//InitConsoleHandles();
-		Console::CursorTop = Console::CursorTop-2;
-		//Console::SetIn(TextReader::Null);
-		printf("Hi There!\n");
-		fprintf(stderr,"Error something\n");
-		System::Console::WriteLine("Hello again!\n");
+		//Console::CursorTop = Console::CursorTop-2;
+		///Console::SetIn(TextReader::Null);
+		//printf("Hi There!\n");
+		//fprintf(stderr,"Error something\n");
+		//System::Console::WriteLine("Hello again!\n");
 		//Console::WindowHeight = 10;
+
+		//for each (String^ str in args)
+		//{
+		//	printf("Argument: %s\n",str);
+		//}
+		//printf("cmdline: %s\n",Environment::CommandLine);
+
+		
 
 
 
@@ -298,6 +307,7 @@ int main(array<System::String ^> ^args)
 #endif
 	}
 
+	
 
 	//Thread::Sleep(20000);
 

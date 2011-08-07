@@ -443,6 +443,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\commandline.h"
+				>
+			</File>
+			<File
 				RelativePath=".\commands.h"
 				>
 			</File>

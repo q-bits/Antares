@@ -56,6 +56,11 @@ namespace Antares {
 	void enable_sleep_mode(void);
 
 
+#ifdef _DEBUG
+#define dprintf(...) printf(__VA_ARGS__)
+#else
+#define dprintf(...) do {} while(0)
+#endif
 
 
 	enum OverwriteAction
@@ -669,12 +674,7 @@ namespace Antares {
 			this->full_filename = path; 
 			this->Name=path;
 			
-			/*this->Text = this->filename;
-			this->SubItems->Add(this->sizestring );
-			this->SubItems->Add(this->file_type);
-			this->SubItems->Add(this->datestring);
-			this->SubItems->Add(this->channel);
-			this->SubItems->Add(this->description);*/
+
 			this->populate_subitems();
 			this->safe_filename = Antares::safeString(filename);
 
@@ -746,13 +746,6 @@ namespace Antares {
 			this->full_filename = combineTopfieldPath(containing_directory, filename);
 			this->Name=this->full_filename;
 		
-			/*
-			this->Text =this->filename;
-			this->SubItems->Add(this->sizestring );
-			this->SubItems->Add(this->file_type);
-			this->SubItems->Add(this->datestring);
-			this->SubItems->Add(this->channel);
-			this->SubItems->Add(this->description);*/
 			this->populate_subitems();
 
 

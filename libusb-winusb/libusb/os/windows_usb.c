@@ -609,14 +609,14 @@ int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_le
 		//dev_interface_details = get_interface_details(ctx, &dev_info, &dev_info_data, guid[pass], i);
 		if (!pSetupDiEnumDeviceInfo(dev_info, i, &dev_info_data)) 
 		{
-			printf("%s\n",windows_error_str(0));
+			//printf("%s\n",windows_error_str(0));
 			break;
 		}
 
 		dev_interface_data.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
 		if (!pSetupDiEnumDeviceInterfaces(dev_info, NULL, &GUID_DEVINTERFACE_USB_DEVICE, i, &dev_interface_data)) 
 		{
-			printf("%s\n",windows_error_str(0));
+			//printf("%s\n",windows_error_str(0));
 			break;
 		}
 
@@ -628,7 +628,7 @@ int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_le
 		length=requiredLength;
 		if (!pSetupDiGetDeviceInterfaceDetailA(dev_info, &dev_interface_data, dev_interface_details, length, &requiredLength, NULL)) 
 		{
-			printf("%s\n",windows_error_str(0));
+			//printf("%s\n",windows_error_str(0));
 			continue;
 		}
 
@@ -647,7 +647,7 @@ int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_le
 		pids[nfound]=pid;
 		_snprintf(&dev_paths[nfound*paths_max_length],paths_max_length,"%s", dev_interface_details->DevicePath);
 		nfound++;
-		printf("%s\n",dev_interface_details->DevicePath);
+		//printf("%s\n",dev_interface_details->DevicePath);
 		//continue;
 
 		/// below: finds driver
@@ -655,7 +655,7 @@ int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_le
 		driver_names[nfound*paths_max_length] = 0;
 
 		if (CR_SUCCESS != CM_Get_Device_IDA(dev_info_data.DevInst, path, sizeof(path),0)) continue;
-		printf("%s\n",path);
+		//printf("%s\n",path);
 
 
 		if ( (!pSetupDiGetDeviceRegistryPropertyA(dev_info, &dev_info_data, SPDRP_INSTALL_STATE,

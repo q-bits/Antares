@@ -10,10 +10,10 @@
 
 /* Debug message logging (forced) */
 
-#define ENABLE_DEBUG_LOGGING 1
+//#define ENABLE_DEBUG_LOGGING 1
 
 /* Debug message logging (toggable) */
-#define INCLUDE_DEBUG_LOGGING 1
+//#define INCLUDE_DEBUG_LOGGING 1
 
 /* Message logging */
 #define ENABLE_LOGGING 1

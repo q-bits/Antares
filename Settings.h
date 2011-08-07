@@ -16,6 +16,8 @@ namespace Antares {
 	public:
 		Dictionary<String^, String^> ^dic;
 
+		Dictionary<String^, String^> ^backup_dic;
+
 		String^ filename;
 
 		static int maximum_history_length = 12;
@@ -23,9 +25,21 @@ namespace Antares {
         System::Configuration::Configuration^ config;
 		System::Configuration::KeyValueConfigurationCollection^ settings;
 
+		void backup_settings(void)
+		{
+			backup_dic = gcnew Dictionary<String^,String^>(dic);
+		}
+		void restore_settings(void)
+		{
+			if (backup_dic != nullptr)
+				dic = gcnew Dictionary<String^, String^>(backup_dic);
+		}
+
+
 		Settings(void)
 		{
 			dic = gcnew Dictionary<String^,String^>();
+			backup_dic = nullptr;
 
 			//////////////////////////
 			// Apply default settings

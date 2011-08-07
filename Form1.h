@@ -20,6 +20,7 @@ extern "C" {
 #include "commctrl.h"
 #include <time.h>
 #include "FBLib_rec.h"
+#include "commandline.h"
 
 
 	//TODO: put these prototypes somewhere better
@@ -73,6 +74,7 @@ namespace Antares {
 	using namespace System::IO;
 	using namespace System::Threading;
 	using namespace System::Runtime::InteropServices; // for class Marshal
+	using namespace System::Text::RegularExpressions;
 
 
 	delegate void ListViewSelectionDelegate(void);
@@ -179,6 +181,10 @@ namespace Antares {
 		Form1(void)
 		{
 
+
+			this->commandline = gcnew CommandLine(Environment::CommandLine);
+
+
 			this->topfield_background_enumerator = nullptr;
 			this->computer_background_enumerator = nullptr;
 			//this->close_request=false;
@@ -253,7 +259,7 @@ namespace Antares {
 
 			//this->ResumeLayout(false);
 
-			printf("-----------  %d  %d ----------\n",Convert::ToInt32(this->settings["Width"]), Convert::ToInt32(this->settings["Height"]));
+			//printf("-----------  %d  %d ----------\n",Convert::ToInt32(this->settings["Width"]), Convert::ToInt32(this->settings["Height"]));
 
 			this->clist = this->listView2;
 			this->tlist = this->listView1;
@@ -376,7 +382,7 @@ namespace Antares {
 			{
 				this->WindowState = FormWindowState::Maximized;
 			}
-			this->listView2->Focus();
+		
 
 
 
@@ -390,13 +396,25 @@ namespace Antares {
 			this->tbthread->Start();
 
 			//this->ResumeDrawing(this);
-			this->Opacity=1.0;
+			
 
 			this->ResumeLayout(false);
 
-			Console::WriteLine("Constructed Form.");
+			//Console::WriteLine("Constructed Form.");
 
-			this->Show();
+
+			if (this->commandline->showgui)
+			{
+				this->listView2->Focus();
+				this->Show();
+				this->Opacity=1.0;
+			}
+			else
+			{
+				this->Visible=false;
+			}
+
+
 			this->loadTopfieldDir();
 			this->loadComputerDir();
 			//this->ResizeRedraw = true;
@@ -455,7 +473,7 @@ namespace Antares {
 				if (this->fd != NULL) 
 				{
 					//MessageBox::Show(" husb_free,  "+( (int) this->fd).ToString());
-					printf("husb_free, %ld \n",(long int) this->fd);
+					//printf("husb_free, %ld \n",(long int) this->fd);
 					husb_free((husb_device_handle*) (void*) this->fd);
 					this->fd=NULL;
 				};
@@ -496,8 +514,9 @@ namespace Antares {
 
 						continue;
 					}
-					else
-						printf("  CreateFile seemed to return successfully.\n");
+				//	else
+				//
+				//		printf("  CreateFile seemed to return successfully.\n");
 
 
 					if (driver_name->Equals("winusb"))
@@ -519,7 +538,7 @@ namespace Antares {
 				}
 
 				//this->fd=NULL;
-				printf("this->fd = %ld   fdtemp=%ld  \n",(long int) this->fd, (long int) fdtemp);
+				//printf("this->fd = %ld   fdtemp=%ld  \n",(long int) this->fd, (long int) fdtemp);
 				this->fd = (libusb_device_handle *) (void*) fdtemp;
 
 				if (!this->firmware_transfer_in_progress)
@@ -1111,7 +1130,7 @@ repeat:
 			catch (...)    //Todo: find out why there is an exception here when you close window while bkgnd work pending.
 			{
 
-				printf("The topfieldBackgroundWork thread stopped!!!!!!!!!!!\n");
+				//printf("The topfieldBackgroundWork thread stopped!!!!!!!!!!!\n");
 			}
 
 
@@ -1202,7 +1221,7 @@ repeat:
 			int j;
 			ComputerItem^ item;
 			array<ComputerItem^>^ items = {};
-			Console::WriteLine("Load computer dir");
+			//Console::WriteLine("Load computer dir");
 
 
 			String^ dir = this->computerCurrentDirectory;
@@ -1859,6 +1878,7 @@ repeat:
 			array<ToolStripMenuItem^>^ mi_pvr_choose_columns_array;
 
 
+			CommandLine^ commandline;
 
 			array<System::Windows::Forms::ColumnHeader^>^ computerHeaders;
 
@@ -2726,7 +2746,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  0.9.test";
+			this->Text = L"Antares  0.9.1";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -2755,8 +2775,192 @@ repeat:
 
 		}
 #pragma endregion
+
+		double is_topfield_path(String^ path)
+		{
+			if (path->StartsWith("TF:",StringComparison::InvariantCultureIgnoreCase))
+			  return 1.0;
+
+			  int ind = path->IndexOf(':');
+			  if (ind != 1) return 0.0;
+
+			  String ^ drv = path->Substring(0,2);
+			  if (Directory::Exists(drv)) return -1.0; else return 0.0;
+
+		}
+
+		System::Void cmdline_error(String^ err)
+		{
+			Console::WriteLine(err);
+			if (this->commandline->exit_on_completion)
+				Application::Exit();
+
+		}
+
+		String^ normalize_pvr_commandline_path(String^ path)
+		{
+			int ind = path->IndexOf(':');
+			if (ind==1 || ind==2)
+			{
+				path = path->Substring(ind+1,path->Length - ind - 1);
+			}
+			if (!path->StartsWith("\\") )
+				path = "\\" + path;
+			while(path->EndsWith("\\"))
+			{
+				path=path->Substring(0, path->Length-1);
+			}
+
+			return path;
+		}
+		String^ normalize_pc_commandline_path(String^ path)
+		{
+			while(path->EndsWith("\\"))
+			{
+				path=path->Substring(0, path->Length-1);
+			}
+			try {
+			path = Path::GetFullPath(path);
+			}
+			catch(...)
+			{
+				return nullptr;
+			}
+			return path;
+		}
+		
+		String ^WildcardToRegex(String ^pattern)   //http://www.codeproject.com/KB/recipes/wildcardtoregex.aspx
+		{
+			return "^" + Regex::Escape(pattern)->
+				Replace("\\*", ".*")->
+				Replace("\\?", ".") + "$";
+		}
+
+		int select_pattern(ListView ^listview, String ^ pattern)
+		{
+			 Regex^ re = gcnew Regex( this->WildcardToRegex(pattern),RegexOptions::IgnoreCase);
+			 int num=0;
+			for each (ListViewItem^ item in listview->Items )
+			{
+			     String^ filename;
+				 if (listview == this->listView1)
+					 filename = (safe_cast<TopfieldItem^>(item))->filename;
+				 else
+					 filename = (safe_cast<ComputerItem^>(item))->filename;
+
+				 if (re->IsMatch(filename))
+				 {
+					 num ++; 
+					 item->Selected=true;
+				 }
+				 else
+					 item->Selected=false;
+				
+
+			}
+			return num;
+		}
+
+		System::Void run_command(CommandLine^ cmdline)
+		{
+	
+			String^ cmd = cmdline->the_command;
+
+			if (cmd=="cp" || cmd=="mv")
+			{
+
+				String^ path1 = cmdline->cmd_param1;
+				String^ path2 = cmdline->cmd_param2;
+				
+				double d1 = this->is_topfield_path(path1);
+				double d2 = this->is_topfield_path(path2);
+				//Console::WriteLine("path1 = "+path1+" d1="+d1.ToString());
+				//Console::WriteLine("path2 = "+path2+" d2="+d2.ToString());
+
+
+				if (d1==d2)
+				{
+					this->cmdline_error("ERROR: the parameters to the "+cmd+" command could not be understood.");
+					return;
+				}
+
+				if (d1< d2)   // From PC to PVR
+				{
+					String^ pvr_path = this->normalize_pvr_commandline_path(path1);
+					String ^src_folder, ^src_pattern;
+
+					try{
+						String^ pc_path = Path::Combine(Environment::CurrentDirectory,path1);
+						while(pc_path->EndsWith("\\"))
+						   pc_path = pc_path->Substring(0,pc_path->Length-1);
+						int ind = pc_path->LastIndexOf("\\");
+					
+						if (ind>2)
+						     src_folder = pc_path->Substring(0,ind);
+						else
+							src_folder = pc_path->Substring(0,ind+1);
+
+						src_pattern = pc_path->Substring(ind+1,pc_path->Length-ind-1);
+					}
+					catch(...)
+					{
+						this->cmdline_error("ERROR: The following path could not accessed on the PC: "+path1);
+					}
+
+					this->setComputerDir(src_folder);
+					this->loadComputerDir();
+					int num = this->select_pattern(this->listView2, src_pattern);
+					if (num==0) this->cmdline_error("ERROR: File not found! ("+path1+")");
+
+					if (this->fd == NULL)
+						this->cmdline_error("ERROR: Could not connect to PVR.");
+
+
+					// remember, set turbo mode
+					
+					this->transfer_selection_to_PVR(cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE);
+
+
+
+				}
+				else         // From PVR to PC
+				{
+
+				}
+
+
+
+
+
+			}
+			
+
+
+		}
+
+
 		System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
-			Console::WriteLine("Loaded Form.");
+
+
+			//Console::WriteLine(Path::GetFullPath("*.txt"));
+			//String ^a1 = Path::Combine(Environment::CurrentDirectory, this->commandline->cmd_param1);
+			//Console::WriteLine("COMBINED: " +a1);
+			//String ^a2 = Path::GetFullPath(a1);
+			//Console::WriteLine("Full:  "+a2);
+
+			if (this->commandline->the_command->Length>0)
+			{
+				this->settings->backup_settings();
+				this->run_command(this->commandline);
+
+				if (this->commandline->exit_on_completion)
+				{
+					this->settings->restore_settings();
+					Application::Exit();
+				}
+			}
+
+
 		}
 		System::Void splitContainer1_Panel1_Paint(System::Object^  sender, System::Windows::Forms::PaintEventArgs^  e) {
 		}
@@ -3143,7 +3347,7 @@ repeat:
 		}
 
 		System::Void Form1_Layout(System::Object^  sender, System::Windows::Forms::LayoutEventArgs^  e) {
-			Console::WriteLine("Layout");
+			//Console::WriteLine("Layout");
 
 			//this->Arrange();
 
@@ -3186,8 +3390,8 @@ repeat:
 
 			if (this->finished_constructing==0) return;
 
-			Console::WriteLine(this->Size);
-			Console::WriteLine(this->Location);
+			//Console::WriteLine(this->Size);
+			//Console::WriteLine(this->Location);
 
 
 			//Console::WriteLine(System::Windows::Forms::Screen::PrimaryScreen);
@@ -3224,7 +3428,7 @@ repeat:
 			if (this->WindowState != FormWindowState::Minimized)
 				this->Arrange2();
 			//this->Arrange();			
-			Console::WriteLine("Resize");
+			//Console::WriteLine("Resize");
 			this->save_location();
 
 		}
@@ -3611,7 +3815,7 @@ out:
 
 		System::Void listView2_ItemActivate(System::Object^  sender, System::EventArgs^  e) {
 			ListView^ listview = (ListView^) sender;
-			Console::WriteLine("Activated (2)");
+			//Console::WriteLine("Activated (2)");
 			//ComputerItem^ item = (ComputerItem^) sender;
 			//Console::WriteLine(item->Text);
 
@@ -5968,7 +6172,7 @@ abort:  // If the transfer was cancelled before it began
 			if (this->transfer_in_progress) return;
 
 			ListView^ listview = (ListView^) sender;
-			Console::WriteLine("Activated (1)");
+			//Console::WriteLine("Activated (1)");
 			//ComputerItem^ item = (ComputerItem^) sender;
 			//Console::WriteLine(item->Text);
 
@@ -6722,7 +6926,7 @@ abort:  // If the transfer was cancelled before it began
 			}
 			catch(...)
 			{
-				printf("Error opening file for reading rec header info.\n");
+				//printf("Error opening file for reading rec header info.\n");
 
 				return false;
 			}
@@ -7624,13 +7828,13 @@ abort:  // If the transfer was cancelled before it began
 	private: System::Void contextMenuStrip2_ItemClicked(System::Object^  sender, System::Windows::Forms::ToolStripItemClickedEventArgs^  e) {
 
 				 ToolStripMenuItem^ mi = safe_cast<ToolStripMenuItem^>(e->ClickedItem);
-				 printf("%s \n",mi->ToString());
+				 //printf("%s \n",mi->ToString());
 
 				 for (int i=0; i<this->mi_pc_choose_columns_array->Length; i++)
 				 {
 					 if (mi == this->mi_pc_choose_columns_array[i])
 					 {
-						 printf(" Column %d !!! \n",i);
+						 //printf(" Column %d !!! \n",i);
 
 
 						 String^ str = "PC_Column"+i.ToString()+"Visible";
