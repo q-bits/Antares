@@ -540,7 +540,7 @@ namespace Antares {
 		}
 #pragma endregion
 	private: System::Void OverwriteConfirmation_Shown(System::Object^  sender, System::EventArgs^  e) {
-				  printf("%d %d (%d) %d (%d) %d (%d) %d\n",this->Height, this->panel1->Height,this->files1->Height, this->panel2->Height,this->files2->Height,  this->panel3->Height, this->files3->Height,this->panel4->Height);
+				  //printf("%d %d (%d) %d (%d) %d (%d) %d\n",this->Height, this->panel1->Height,this->files1->Height, this->panel2->Height,this->files2->Height,  this->panel3->Height, this->files3->Height,this->panel4->Height);
 			     this->Height = this->panel1->Visible * (this->panel1->Height+this->files1->Height+1) + 
 					this->panel2->Visible*( this->panel2->Height+this->files2->Height  +1) + 
 					this->panel3->Visible*( this->panel3->Height+this->files3->Height+1) + 

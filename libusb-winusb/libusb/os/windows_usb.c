@@ -421,7 +421,7 @@ int husb_bulk_write_winusb(struct husb_device_handle *fd,  int ep,  char *bytes,
                              NULL);
 	if (!r)
 	{
-		printf("WinUsb_WritePipe, %s.  bytes_written=%d.\n",windows_error_str(0),bytes_written);
+		//printf("WinUsb_WritePipe, %s.  bytes_written=%d.\n",windows_error_str(0),bytes_written);
 		return -( (int) GetLastError());
 	}
     return bytes_written;
@@ -549,7 +549,7 @@ struct husb_device_handle* open_winusb_device(HANDLE hdev)
 			USB_ENDPOINT_DIRECTION_IN(pipeInfo.PipeId))
 		{
 			fd.bulkInPipe = pipeInfo.PipeId;
-			printf("Found bulkInPipe %02x\n",pipeInfo.PipeId);
+			//printf("Found bulkInPipe %02x\n",pipeInfo.PipeId);
 
 
 
@@ -560,12 +560,12 @@ struct husb_device_handle* open_winusb_device(HANDLE hdev)
 			USB_ENDPOINT_DIRECTION_OUT(pipeInfo.PipeId))
 		{
 			fd.bulkOutPipe = pipeInfo.PipeId;
-			printf("Found bulkOutPipe %02x\n",pipeInfo.PipeId);
+			//printf("Found bulkOutPipe %02x\n",pipeInfo.PipeId);
 		}
 		else if(pipeInfo.PipeType == UsbdPipeTypeInterrupt)
 		{
 			fd.interruptPipe = pipeInfo.PipeId;
-			printf("Found interrputPipe \n");
+			//printf("Found interrputPipe \n");
 		}
 		else
 		{

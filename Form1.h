@@ -183,6 +183,8 @@ namespace Antares {
 
 
 			this->commandline = gcnew CommandLine(Environment::CommandLine);
+			this->exit_on_completion=false;
+			this->no_prompt = false;
 
 
 			this->topfield_background_enumerator = nullptr;
@@ -486,7 +488,7 @@ namespace Antares {
 					device_path = &dev_paths[j][0];
 					String^ driver_name = gcnew String( &driver_names[j][0]);
 					driver_name = driver_name->ToLowerInvariant();
-					Console::WriteLine("Driver: " + driver_name);
+					//Console::WriteLine("Driver: " + driver_name);
 					if (driver_name->Equals("winusb"))
 					{
 						hdev = CreateFileA(device_path, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
@@ -801,9 +803,9 @@ check_freespace:
 				TopfieldFreeSpace freespace = this->getTopfieldFreeSpace();
 				if (freespace.freek<0) goto wait_again;
 
-				printf("freek = %d\n",freespace.freek);
+				//printf("freek = %d\n",freespace.freek);
 				if (freespace.freek < this->topfield_minimum_free_megs*1024.0) {
-					printf("copydialog->cancelled %d \n",copydialog->cancelled);
+					//printf("copydialog->cancelled %d \n",copydialog->cancelled);
 					copydialog->set_error( " NO SPACE LEFT ON PVR. Retrying . . . ");
 					copydialog->reset_rate();
 					copydialog->update_dialog_threadsafe();
@@ -836,7 +838,7 @@ check_freespace:
 			//turbo_on=0;
 			*this->turbo_mode = (turbo_on!=0);
 			int r;
-			printf("\nSetting turbo mode: %d\n",turbo_on);  
+			printf("Setting turbo mode: %d\n",turbo_on);  
 			struct tf_packet reply;
 
 			if (this->fd == NULL) return -1;
@@ -1053,9 +1055,10 @@ repeat:
 repeat:
 
 					this->topfield_background_event->WaitOne();
-					printf("topfieldBackgroundWork iter.\n");
+					//printf("topfieldBackgroundWork iter.\n");
 					System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
 					if (en==nullptr) continue;
+					if (this->Visible==false) continue;
 
 
 					while(en->MoveNext())
@@ -1092,9 +1095,10 @@ repeat:
 						if (!item->isdir && this->proginfo_cache->query(item)==nullptr)
 						{
 							ri.readsize=0;
+							if (this->transfer_in_progress) break;
 							this->loadInfo(item,&ri);
-							Console::WriteLine(item->full_filename);
-							printf(" item->size = %d,  readsize=%d\n",(int)item->size, (int)ri.readsize);
+							//Console::WriteLine(item->full_filename);
+							//printf(" item->size = %d,  readsize=%d\n",(int)item->size, (int)ri.readsize);
 							//if (!(item->size > 2048 && ri.readsize<2048))
 							this->proginfo_cache->add(item);
 							if (! (item->channel == "")  || ! (item->description == "") )
@@ -1879,6 +1883,9 @@ repeat:
 
 
 			CommandLine^ commandline;
+			bool exit_on_completion;
+			bool no_prompt;
+			
 
 			array<System::Windows::Forms::ColumnHeader^>^ computerHeaders;
 
@@ -2886,7 +2893,7 @@ repeat:
 
 				if (d1< d2)   // From PC to PVR
 				{
-					String^ pvr_path = this->normalize_pvr_commandline_path(path1);
+					String^ pvr_path = this->normalize_pvr_commandline_path(path2);
 					String ^src_folder, ^src_pattern;
 
 					try{
@@ -2905,15 +2912,28 @@ repeat:
 					catch(...)
 					{
 						this->cmdline_error("ERROR: The following path could not accessed on the PC: "+path1);
+						return;
 					}
 
 					this->setComputerDir(src_folder);
 					this->loadComputerDir();
+
+					this->setTopfieldDir(pvr_path);
+					array<TopfieldItem^> ^arr = this->loadTopfieldDirArrayOrNull(pvr_path);
+					if (arr==nullptr)
+					{
+						this->cmdline_error("ERROR: The destination path could not be found: "+path2);
+						return;
+					}
+
 					int num = this->select_pattern(this->listView2, src_pattern);
 					if (num==0) this->cmdline_error("ERROR: File not found! ("+path1+")");
 
 					if (this->fd == NULL)
+					{
 						this->cmdline_error("ERROR: Could not connect to PVR.");
+						return;
+					}
 
 
 					// remember, set turbo mode
@@ -2925,6 +2945,62 @@ repeat:
 				}
 				else         // From PVR to PC
 				{
+
+					String^ pvr_path = this->normalize_pvr_commandline_path(path1);
+					
+
+					try{
+						String^ pc_path = Path::Combine(Environment::CurrentDirectory,path2);
+						while(pc_path->EndsWith("\\"))
+						   pc_path = pc_path->Substring(0,pc_path->Length-1);
+						
+
+					}
+					catch(...)
+					{
+						this->cmdline_error("ERROR: The following path could not accessed on the PC: "+path2);
+						return;
+					}
+
+					while(pvr_path->EndsWith("\\"))
+						pvr_path = pvr_path->Substring(0,pvr_path->Length-1);
+
+					if (!pvr_path->StartsWith("\\"))
+						pvr_path = pvr_path + "\\";
+
+					int ind = pvr_path->LastIndexOf("\\");
+					String ^src_folder, ^src_pattern;				
+					
+					src_folder = pvr_path->Substring(0,ind);
+					src_pattern = pvr_path->Substring(ind+1,pvr_path->Length-ind-1);
+
+					if (src_pattern->Length==0)
+					{
+						this->cmdline_error("ERROR: The source path is invalid ("+path1+")");
+						return;
+					}
+
+
+
+					this->setTopfieldDir(src_folder);
+					this->loadTopfieldDir();
+					int num = this->select_pattern(this->listView1, src_pattern);
+					if (num==0) 
+					{
+						this->cmdline_error("ERROR: File not found! ("+path1+")");
+						return;
+					}
+
+					if (this->fd == NULL)
+					{
+						this->cmdline_error("ERROR: Could not connect to PVR.");
+						return;
+					}
+
+
+					// remember, set turbo mode
+					
+					this->transfer_selection_to_PC(cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE);
 
 				}
 
@@ -2950,14 +3026,12 @@ repeat:
 
 			if (this->commandline->the_command->Length>0)
 			{
+				this->exit_on_completion = this->commandline->exit_on_completion;
+				this->no_prompt = this->commandline->no_prompt;
 				this->settings->backup_settings();
 				this->run_command(this->commandline);
 
-				if (this->commandline->exit_on_completion)
-				{
-					this->settings->restore_settings();
-					Application::Exit();
-				}
+				
 			}
 
 
@@ -3951,7 +4025,7 @@ out:
 			if (this->InvokeRequired)
 			{
 				Monitor::Exit(this->locker);
-				printf("0. Transfer ended.\n");
+				//printf("0. Transfer ended.\n");
 				TransferEndedCallback^ d = gcnew TransferEndedCallback(this, &Form1::TransferEnded);
 				this->BeginInvoke(d);
 
@@ -3964,16 +4038,16 @@ out:
 				this->textBox2->Enabled=true;
 				this->checkBox2->Enabled=true;
 
-				Antares::TaskbarState::setNoProgress(this);
+			    Antares::TaskbarState::setNoProgress(this);
 
 
 				this->Update();
 
-				printf("1. Enable components\n");
+				//printf("1. Enable components\n");
 
 				CopyDialog^ copydialog = this->current_copydialog;
 				if (copydialog==nullptr) return;
-				printf("2. Enable components\n");
+				//printf("2. Enable components\n");
 
 
 
@@ -3984,7 +4058,10 @@ out:
 
 				if (copydialog->file_error->Length > 0)
 				{
-					MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);						
+					if (this->Visible)
+						MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);
+					else
+						Console::WriteLine(copydialog->file_error);
 				}
 
 				if (copydialog->copydirection == CopyDirection::PVR_TO_PC || copydialog->copymode == CopyMode::MOVE)
@@ -4028,7 +4105,16 @@ out:
 
 				this->current_copydialog = nullptr;
 
+
+				if (this->exit_on_completion)
+				{
+					this->settings->restore_settings();
+					Application::Exit();
+				}
+
+
 			}
+		
 
 		}
 
@@ -4866,7 +4952,8 @@ end_copy_to_pc:
 				}
 				if (num_cat[2]>1) oc->label3->Text = "These existing files are larger!"; else oc->label3->Text = "This existing file is larger!";
 
-				if (::DialogResult::Cancel == oc->ShowDialog() ) goto aborted;
+				if (!this->no_prompt)
+					if (::DialogResult::Cancel == oc->ShowDialog() ) goto aborted;
 
 				int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
 				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
@@ -4920,10 +5007,11 @@ end_copy_to_pc:
 
 				alert->required_label->Text = "Required: " + HumanReadableSize(space_required);
 				alert->available_label->Text = "Available: " + HumanReadableSize(freespaceArray[0]);
-				if (::DialogResult::Cancel ==  alert->ShowDialog())
-				{
+				if (!this->no_prompt)
+				  if (::DialogResult::Cancel ==  alert->ShowDialog())
+				  {
 					goto aborted;
-				}
+				  }
 			}
 
 			if (this->settings["TurboMode"] == "on")//(this->checkBox1->Checked)
@@ -5096,7 +5184,7 @@ aborted:   // If the transfer was cancelled before it began
 					if (r<0)
 					{
 						array<TopfieldItem^> ^check = this->loadTopfieldDirArrayOrNull(dest_filename[i]);
-						printf("Double checking %s\n",dest_filename[i]);
+						//printf("Double checking %s\n",dest_filename[i]);
 
 						if (check==nullptr)
 						{
@@ -5155,7 +5243,7 @@ restart_copy_to_pvr:
 					TopfieldItem^ reloaded = this->reloadTopfieldItem(full_dest_filename);
 					if (reloaded==nullptr)
 					{
-						printf("reloaded == nullptr\n");
+						//printf("reloaded == nullptr\n");
 						this_overwrite_action = OVERWRITE;
 
 					}
@@ -5168,7 +5256,7 @@ restart_copy_to_pvr:
 							// just because an error has occurred.
 							if  (dest_exists[i])   
 							{
-								printf("reloaded->size = %lld  probable_minimum_received_offset=%lld\n",reloaded->size,probable_minimum_received_offset);
+								//printf("reloaded->size = %lld  probable_minimum_received_offset=%lld\n",reloaded->size,probable_minimum_received_offset);
 								if (reloaded->size > 1000000 && reloaded->size <= (probable_minimum_received_offset + 65537))
 								{
 									this_overwrite_action=RESUME;
@@ -5193,7 +5281,7 @@ restart_copy_to_pvr:
 				}
 
 				if (this_overwrite_action==SKIP) {
-					printf("Skipping.\n");
+					printf("Skipping %s\n",item->full_filename);
 
 					if (copydialog->copymode == CopyMode::MOVE && copydialog->action1_skipdelete)
 					{
@@ -5218,7 +5306,7 @@ restart_copy_to_pvr:
 				}  
 
 				if (this_overwrite_action==RESUME && dest_size[i]>=src_sizes[i]) {
-					printf("Not resuming.\n");
+					printf("Not resuming %s\n",item->full_filename);
 					if (dest_size[i]==src_sizes[i]) topfield_file_offset = dest_size[i];
 					goto check_delete;
 				} // TODO: Handle this case better
@@ -5289,7 +5377,7 @@ restart_copy_to_pvr:
 
 						int overlap = existing_bytes_count_PC < existing_bytes_count_PVR ? existing_bytes_count_PC : existing_bytes_count_PVR;
 						overlap_failed=false;
-						printf("dest_size[i]=%lld    existing_bytes_count PVR=%d PC=%d   overlap=%d\n",dest_size[i],existing_bytes_count_PVR, existing_bytes_count_PC, overlap);  
+						//printf("dest_size[i]=%lld    existing_bytes_count PVR=%d PC=%d   overlap=%d\n",dest_size[i],existing_bytes_count_PVR, existing_bytes_count_PC, overlap);  
 						if (overlap<resume_granularity)
 						{
 							overlap_failed=true;
@@ -5313,7 +5401,7 @@ restart_copy_to_pvr:
 
 					if (!overlap_failed)
 					{
-						printf("Overlap success.\n");
+						//printf("Overlap success.\n");
 						topfield_file_offset = existing_bytes_start; 
 						src_file->Seek(existing_bytes_start,SeekOrigin::Begin);
 						current_offsets[i]=topfield_file_offset;
@@ -5329,7 +5417,7 @@ restart_copy_to_pvr:
 
 				int r;
 
-				printf("topfield_file_offset=%lld   = %f MB\n",topfield_file_offset,((double)topfield_file_offset)/1024.0/1024.0);
+				//printf("topfield_file_offset=%lld   = %f MB\n",topfield_file_offset,((double)topfield_file_offset)/1024.0/1024.0);
 				copydialog->file_began();
 				if (topfield_file_offset==0)
 					r = send_cmd_hdd_file_send(this->fd, PUT, dstPath);
@@ -5367,6 +5455,9 @@ restart_copy_to_pvr:
 				int result = -EPROTO;
 				int nextw;
 				bool have_next_packet=false;
+
+
+				printf("%s\n",item->full_filename);
 
 
 				int update=0;
@@ -5443,7 +5534,7 @@ restart_copy_to_pvr:
 										(((((PACKET_HEAD_SIZE + 8 + w) +
 										1) & ~1) % 0x200) == 0))
 									{
-										printf("\n -- SEEK CORRECTION ---\n");
+										//printf("\n -- SEEK CORRECTION ---\n");
 										src_file->Seek(-4, System::IO::SeekOrigin::Current);
 										w -= 4;
 										payloadSize -= 4;
@@ -5479,7 +5570,7 @@ restart_copy_to_pvr:
 								/* Detect EOF and transition to END */
 								if((w < 0) || (topfield_file_offset >= fileSize))
 								{
-									printf("\nEOF conditition. w=%d  bytes_sent=%f  fileSize=%f topfield_file_offset=%f\n",w,(double) bytes_sent,(double) fileSize,(double)topfield_file_offset);
+									//printf("\nEOF conditition. w=%d  bytes_sent=%f  fileSize=%f topfield_file_offset=%f\n",w,(double) bytes_sent,(double) fileSize,(double)topfield_file_offset);
 									state = END;
 								}
 
@@ -5535,7 +5626,7 @@ restart_copy_to_pvr:
 										(((((PACKET_HEAD_SIZE + 8 + nextw) +
 										1) & ~1) % 0x200) == 0))
 									{
-										printf("\n -- SEEK CORRECTION ---\n");
+										//printf("\n -- SEEK CORRECTION ---\n");
 										src_file->Seek(-4, System::IO::SeekOrigin::Current);
 										nextw -= 4;
 										payloadSize -= 4;
@@ -5670,22 +5761,22 @@ out:
 				}
 
 check_delete:
-				Console::WriteLine(item->full_filename);
-				printf("  topfield_file_offset =%ld   src_sizes=%ld  \n",topfield_file_offset, src_sizes[i]);
+				//Console::WriteLine(item->full_filename);
+				//printf("  topfield_file_offset =%ld   src_sizes=%ld  \n",topfield_file_offset, src_sizes[i]);
 
 				if (copydialog->copymode==CopyMode::MOVE  && topfield_file_offset == src_sizes[i])
 				{
 					try{
 						if (overwrite_action[i]!=SKIP || copydialog->action1_skipdelete)
 						{
-							Console::WriteLine(item->full_filename);
+							//Console::WriteLine(item->full_filename);
 							File::Delete(item->full_filename);
 							source_deleted[i]=true;
 						}
 					}
 					catch(...)
 					{
-						Console::WriteLine("Didn't delete.");
+						printf("Didn't delete %s at source.",item->full_filename);
 
 					}
 
@@ -6033,7 +6124,8 @@ finish_transfer:
 				}
 				if (num_cat[2]>1) oc->label3->Text = "These exising files are larger!!"; else oc->label3->Text = "This existing file is larger!!";
 
-				if (::DialogResult::Cancel == oc->ShowDialog() ) goto abort;
+				if (!this->no_prompt)
+					if (::DialogResult::Cancel == oc->ShowDialog() ) goto abort;
 
 				int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
 				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
@@ -6059,7 +6151,11 @@ finish_transfer:
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
 			}
-			if (num_skip==numitems && copymode == CopyMode::COPY) goto abort;
+			if (num_skip==numitems && copymode == CopyMode::COPY) 
+			{
+				if (num_skip>0) printf("Skipping all %d items. Nothing to do.\n",numitems);
+				goto abort;
+			}
 
 
 			long long space_required=0;
@@ -6088,6 +6184,7 @@ finish_transfer:
 						alert->label4->Visible = false;
 						alert->button1->Visible = false;
 					}
+					if (!this->no_prompt)
 					if (::DialogResult::Cancel ==  alert->ShowDialog())
 					{
 						goto abort;
@@ -6353,10 +6450,11 @@ abort:  // If the transfer was cancelled before it began
 
 			confirmation->Height = min( confirmation->Height +(numfiles+numdirs-1)*confirmation->listBox1->ItemHeight,700);
 			Console::WriteLine(confirmation->Size);
-			result = confirmation->ShowDialog();
-
-			if (result!=Windows::Forms::DialogResult::Yes) return;
-
+			if (!this->no_prompt)
+			{
+				result = confirmation->ShowDialog();
+				if (result!=Windows::Forms::DialogResult::Yes) return;
+			}
 
 			myEnum = selected->GetEnumerator();
 			long long total_bytes_received=0;
@@ -7164,7 +7262,7 @@ abort:  // If the transfer was cancelled before it began
 					break;
 
 				case SUCCESS:
-					printf("SUCCESS\n");
+					//printf("SUCCESS\n");
 
 					break;
 
@@ -7256,10 +7354,11 @@ abort:  // If the transfer was cancelled before it began
 
 			confirmation->Height = min( confirmation->Height +(numfiles+numdirs-1)*confirmation->listBox1->ItemHeight,700);
 			Console::WriteLine(confirmation->Size);
-			result = confirmation->ShowDialog();
-
-			if (result!=Windows::Forms::DialogResult::Yes) return;
-
+			if (!this->no_prompt)
+			{
+				result = confirmation->ShowDialog();
+				if (result!=Windows::Forms::DialogResult::Yes) return;
+			}
 
 			myEnum = selected->GetEnumerator();
 

@@ -23,8 +23,8 @@ namespace Antares {
 		bool e;
 		bool showgui;
 		bool showgui_specified;
-		bool prompt;
 		bool exit_on_completion;
+		bool no_prompt;
 
 		void error(String ^ str)
 		{
@@ -41,7 +41,7 @@ namespace Antares {
 			this->cmd_param2="";
 			this->showgui=true;
 			this->showgui_specified=false;
-			this->prompt = true;
+			this->no_prompt = false;
 			this->exit_on_completion=false;
 
 		}
@@ -54,7 +54,7 @@ namespace Antares {
 			{
 				String^ tok = this->tokens[ind];
 
-				if (tok=="-cp" || tok=="-mv")
+				if (tok=="-cp" || tok=="-mv" || tok=="/cp" || tok=="/mv")
 
 				{
 				   String^ cmd = tok->Substring(1,2);
@@ -79,7 +79,7 @@ namespace Antares {
 				   continue;
 				}
 
-				if (tok=="-g")
+				if (tok=="-g" || tok=="/g")
 				{
 					this->showgui_specified=true;
 					ind++;
@@ -93,7 +93,7 @@ namespace Antares {
 			if (this->the_command->Length>0)
 			{
 				this->showgui= this->showgui_specified;
-				this->prompt = false;
+				this->no_prompt = true;
 				this->exit_on_completion = !this->showgui;
 			}
 			

@@ -222,6 +222,7 @@ namespace Antares {
 		{
 			if (error_count<max_error_count)
 			{
+				if (!form->Visible) return;
 
 				init();
 				try{

@@ -331,7 +331,7 @@ namespace Antares {
 			else
 			{
 				this->close_requested=true;
-				printf("Actually called close.\n");
+				//printf("Actually called close.\n");
 				this->Close();
 			}
 		}
@@ -472,7 +472,7 @@ namespace Antares {
 		void proper_size(void)
 		{
 
-			printf("(%d,%d) (%d,%d) -- ",this->Size.Width, this->Size.Height, this->ClientSize.Width, this->ClientSize.Height);
+			//printf("(%d,%d) (%d,%d) -- ",this->Size.Width, this->Size.Height, this->ClientSize.Width, this->ClientSize.Height);
 			int W1 = this->Width;
 			switch(this->size_type)
 			{
@@ -496,7 +496,7 @@ namespace Antares {
 				p.X +=  (W1-W2)/2;
 				this->Location = p;
 			}
-			printf("(%d,%d) (%d,%d) \n",this->Size.Width, this->Size.Height, this->ClientSize.Width, this->ClientSize.Height);
+			//printf("(%d,%d) (%d,%d) \n",this->Size.Width, this->Size.Height, this->ClientSize.Width, this->ClientSize.Height);
 
 
 		}
@@ -1126,7 +1126,7 @@ private: System::Windows::Forms::Label^  label10;
 
 			 }
 	private: System::Void CopyDialog_Load(System::Object^  sender, System::EventArgs^  e) {
-				 printf("CopyDialog loaded\n");
+				 //printf("CopyDialog loaded\n");
 				 this->loaded=true;
 			 }
 
@@ -1138,7 +1138,7 @@ private: System::Windows::Forms::Label^  label10;
 				 }
 			 }
 	private: System::Void CopyDialog_FormClosing(System::Object^  sender, System::Windows::Forms::FormClosingEventArgs^  e) {
-				 printf("Form closing, for some reason.\n");
+				 //printf("Form closing, for some reason.\n");
 				 this->button1->Enabled=false;
 				 this->cancelled=true;
 				 if (!this->close_requested)
@@ -1155,7 +1155,7 @@ private: System::Windows::Forms::Label^  label10;
 			 }
 
 	private: System::Void CopyDialog_ResizeBegin(System::Object^  sender, System::EventArgs^  e) {
-				 printf("CopyDialog resizebegin\n");
+				// printf("CopyDialog resizebegin\n");
 				 this->is_resizing=true;
 
 
@@ -1281,7 +1281,7 @@ private: System::Windows::Forms::Label^  label10;
 				 bool high = this->Location.Y < 0;
 				 if (low && !high)
 				 {
-					 printf("Dock low\n");
+					 //printf("Dock low\n");
 
 					 this->Dock = DockStyle::Bottom;
 					 this->parent_panel1->BringToFront();
@@ -1289,7 +1289,7 @@ private: System::Windows::Forms::Label^  label10;
 				 }
 				 else if (high && !low)
 				 {
-					 printf("Dock high\n");
+					// printf("Dock high\n");
 
 					 this->Dock = DockStyle::Top;
 					 this->parent_panel1->BringToFront();

@@ -259,9 +259,9 @@ int send_cmd_hdd_file_send_with_offset(libusb_device_handle* fd, __u8 dir, char 
 
     packetSize = PACKET_HEAD_SIZE + 1 + 2 + pathLen   +8;
 	pad =  ((packetSize + 1) & ~1 ) - packetSize;
-	printf("Packet padding: %d\n",pad);
+	//printf("Packet padding: %d\n",pad);
 	pad =  0;//((packetSize + 1) & ~1 ) - packetSize;
-	printf("Packet padding: %d\n",pad);
+	//printf("Packet padding: %d\n",pad);
 
 
 

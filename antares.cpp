@@ -142,8 +142,8 @@ namespace Antares {
 		TimeSpan dt = datetime - startTime;   
 
 		time_t t = (time_t) (dt.TotalSeconds);
-		printf("\n  time_t=%d  totalseconds=%g   \n",(int) t, dt.TotalSeconds);
-		Console::WriteLine(datetime.ToString());
+		//printf("\n  time_t=%d  totalseconds=%g   \n",(int) t, dt.TotalSeconds);
+		//Console::WriteLine(datetime.ToString());
 		return t;
 
 	}

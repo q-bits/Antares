@@ -149,7 +149,7 @@ int do_cancel(libusb_device_handle* fd)
     switch (get_u32(&reply.cmd))
     {
         case SUCCESS:
-            printf("In progress operation cancelled\n");
+            //printf("In progress operation cancelled\n");
             return 0;
             break;
 
@@ -358,7 +358,7 @@ int do_hdd_file_put(libusb_device_handle* fd, char *srcPath, char *dstPath)
                         r = send_tf_packet(fd, &packet);
                         if(r < 0)
                         {
-                            fprintf(stderr, "ERROR: Incomplete send.\n");
+                            //fprintf(stderr, "ERROR: Incomplete send.\n");
                             goto out;
                         }
                         state = DATA;
@@ -401,7 +401,7 @@ int do_hdd_file_put(libusb_device_handle* fd, char *srcPath, char *dstPath)
                             r = send_tf_packet(fd, &packet);
                             if(r < w)
                             {
-                                fprintf(stderr, "ERROR: Incomplete send.\n");
+                                //fprintf(stderr, "ERROR: Incomplete send.\n");
                                 goto out;
                             }
                         }
@@ -423,7 +423,7 @@ int do_hdd_file_put(libusb_device_handle* fd, char *srcPath, char *dstPath)
                         r = send_tf_packet(fd, &packet);
                         if(r < 0)
                         {
-                            fprintf(stderr, "ERROR: Incomplete send.\n");
+                            //fprintf(stderr, "ERROR: Incomplete send.\n");
                             goto out;
                         }
                         state = FINISHED;
