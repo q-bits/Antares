@@ -65,6 +65,7 @@ namespace Antares {
 
 	enum OverwriteAction
 	{
+		ACTION_UNDEFINED,
 		OVERWRITE,
 		SKIP,
 		RESUME

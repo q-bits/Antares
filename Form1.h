@@ -384,7 +384,7 @@ namespace Antares {
 			{
 				this->WindowState = FormWindowState::Maximized;
 			}
-		
+
 
 
 
@@ -398,7 +398,7 @@ namespace Antares {
 			this->tbthread->Start();
 
 			//this->ResumeDrawing(this);
-			
+
 
 			this->ResumeLayout(false);
 
@@ -516,9 +516,9 @@ namespace Antares {
 
 						continue;
 					}
-				//	else
-				//
-				//		printf("  CreateFile seemed to return successfully.\n");
+					//	else
+					//
+					//		printf("  CreateFile seemed to return successfully.\n");
 
 
 					if (driver_name->Equals("winusb"))
@@ -767,7 +767,10 @@ namespace Antares {
 
 			//Antares::TaskbarState::setError(this);
 			if (copydialog->usb_error)
+			{
 				copydialog->set_error( " ERROR CONNECTING TO THE PVR. Retrying . . . ");
+				Console::WriteLine("ERROR CONNECTING TO THE PVR. Retrying . . .");
+			}
 			if (copydialog->freespace_check_needed)
 			{
 				copydialog->current_file = "Checking free space on PVR...";
@@ -795,7 +798,7 @@ wait_again:
 			}
 
 check_freespace:
-
+			bool printed=false;
 			if (ret==0 && copydialog->copydirection == CopyDirection::PC_TO_PVR)
 			{
 
@@ -807,6 +810,7 @@ check_freespace:
 				if (freespace.freek < this->topfield_minimum_free_megs*1024.0) {
 					//printf("copydialog->cancelled %d \n",copydialog->cancelled);
 					copydialog->set_error( " NO SPACE LEFT ON PVR. Retrying . . . ");
+					if (!printed) {printed=true; Console::WriteLine("NO SPACE left on PVR. Retrying . . .");};
 					copydialog->reset_rate();
 					copydialog->update_dialog_threadsafe();
 					this->set_turbo_mode(0);
@@ -1528,8 +1532,7 @@ repeat:
 					break;
 
 				case FAIL:
-					fprintf(stderr, "ERROR: Device reports %s in loadTopfieldDirArray, path %s\n",
-						decode_error(&reply),path);
+					//fprintf(stderr, "ERROR: Device reports %s in loadTopfieldDirArray, path %s\n",decode_error(&reply),path);
 					this->connection_error_occurred();
 					return nullptr;//items;
 
@@ -1885,7 +1888,7 @@ repeat:
 			CommandLine^ commandline;
 			bool exit_on_completion;
 			bool no_prompt;
-			
+
 
 			array<System::Windows::Forms::ColumnHeader^>^ computerHeaders;
 
@@ -2786,13 +2789,13 @@ repeat:
 		double is_topfield_path(String^ path)
 		{
 			if (path->StartsWith("TF:",StringComparison::InvariantCultureIgnoreCase))
-			  return 1.0;
+				return 1.0;
 
-			  int ind = path->IndexOf(':');
-			  if (ind != 1) return 0.0;
+			int ind = path->IndexOf(':');
+			if (ind != 1) return 0.0;
 
-			  String ^ drv = path->Substring(0,2);
-			  if (Directory::Exists(drv)) return -1.0; else return 0.0;
+			String ^ drv = path->Substring(0,2);
+			if (Directory::Exists(drv)) return -1.0; else return 0.0;
 
 		}
 
@@ -2827,7 +2830,7 @@ repeat:
 				path=path->Substring(0, path->Length-1);
 			}
 			try {
-			path = Path::GetFullPath(path);
+				path = Path::GetFullPath(path);
 			}
 			catch(...)
 			{
@@ -2835,7 +2838,7 @@ repeat:
 			}
 			return path;
 		}
-		
+
 		String ^WildcardToRegex(String ^pattern)   //http://www.codeproject.com/KB/recipes/wildcardtoregex.aspx
 		{
 			return "^" + Regex::Escape(pattern)->
@@ -2845,24 +2848,24 @@ repeat:
 
 		int select_pattern(ListView ^listview, String ^ pattern)
 		{
-			 Regex^ re = gcnew Regex( this->WildcardToRegex(pattern),RegexOptions::IgnoreCase);
-			 int num=0;
+			Regex^ re = gcnew Regex( this->WildcardToRegex(pattern),RegexOptions::IgnoreCase);
+			int num=0;
 			for each (ListViewItem^ item in listview->Items )
 			{
-			     String^ filename;
-				 if (listview == this->listView1)
-					 filename = (safe_cast<TopfieldItem^>(item))->filename;
-				 else
-					 filename = (safe_cast<ComputerItem^>(item))->filename;
+				String^ filename;
+				if (listview == this->listView1)
+					filename = (safe_cast<TopfieldItem^>(item))->filename;
+				else
+					filename = (safe_cast<ComputerItem^>(item))->filename;
 
-				 if (re->IsMatch(filename))
-				 {
-					 num ++; 
-					 item->Selected=true;
-				 }
-				 else
-					 item->Selected=false;
-				
+				if (re->IsMatch(filename))
+				{
+					num ++; 
+					item->Selected=true;
+				}
+				else
+					item->Selected=false;
+
 
 			}
 			return num;
@@ -2870,15 +2873,23 @@ repeat:
 
 		System::Void run_command(CommandLine^ cmdline)
 		{
-	
+
 			String^ cmd = cmdline->the_command;
 
 			if (cmd=="cp" || cmd=="mv")
 			{
 
+
+				if (this->fd == NULL)
+				{
+					this->cmdline_error("ERROR: Could not connect to PVR.");
+					return;
+				}
+
+
 				String^ path1 = cmdline->cmd_param1;
 				String^ path2 = cmdline->cmd_param2;
-				
+
 				double d1 = this->is_topfield_path(path1);
 				double d2 = this->is_topfield_path(path2);
 				//Console::WriteLine("path1 = "+path1+" d1="+d1.ToString());
@@ -2899,11 +2910,11 @@ repeat:
 					try{
 						String^ pc_path = Path::Combine(Environment::CurrentDirectory,path1);
 						while(pc_path->EndsWith("\\"))
-						   pc_path = pc_path->Substring(0,pc_path->Length-1);
+							pc_path = pc_path->Substring(0,pc_path->Length-1);
 						int ind = pc_path->LastIndexOf("\\");
-					
+
 						if (ind>2)
-						     src_folder = pc_path->Substring(0,ind);
+							src_folder = pc_path->Substring(0,ind);
 						else
 							src_folder = pc_path->Substring(0,ind+1);
 
@@ -2929,15 +2940,10 @@ repeat:
 					int num = this->select_pattern(this->listView2, src_pattern);
 					if (num==0) this->cmdline_error("ERROR: File not found! ("+path1+")");
 
-					if (this->fd == NULL)
-					{
-						this->cmdline_error("ERROR: Could not connect to PVR.");
-						return;
-					}
 
 
 					// remember, set turbo mode
-					
+
 					this->transfer_selection_to_PVR(cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE);
 
 
@@ -2947,13 +2953,13 @@ repeat:
 				{
 
 					String^ pvr_path = this->normalize_pvr_commandline_path(path1);
-					
+
 
 					try{
 						String^ pc_path = Path::Combine(Environment::CurrentDirectory,path2);
 						while(pc_path->EndsWith("\\"))
-						   pc_path = pc_path->Substring(0,pc_path->Length-1);
-						
+							pc_path = pc_path->Substring(0,pc_path->Length-1);
+
 
 					}
 					catch(...)
@@ -2970,7 +2976,7 @@ repeat:
 
 					int ind = pvr_path->LastIndexOf("\\");
 					String ^src_folder, ^src_pattern;				
-					
+
 					src_folder = pvr_path->Substring(0,ind);
 					src_pattern = pvr_path->Substring(ind+1,pvr_path->Length-ind-1);
 
@@ -2991,15 +2997,9 @@ repeat:
 						return;
 					}
 
-					if (this->fd == NULL)
-					{
-						this->cmdline_error("ERROR: Could not connect to PVR.");
-						return;
-					}
-
 
 					// remember, set turbo mode
-					
+
 					this->transfer_selection_to_PC(cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE);
 
 				}
@@ -3009,7 +3009,7 @@ repeat:
 
 
 			}
-			
+
 
 
 		}
@@ -3031,7 +3031,7 @@ repeat:
 				this->settings->backup_settings();
 				this->run_command(this->commandline);
 
-				
+
 			}
 
 
@@ -4038,7 +4038,7 @@ out:
 				this->textBox2->Enabled=true;
 				this->checkBox2->Enabled=true;
 
-			    Antares::TaskbarState::setNoProgress(this);
+				Antares::TaskbarState::setNoProgress(this);
 
 
 				this->Update();
@@ -4114,7 +4114,7 @@ out:
 
 
 			}
-		
+
 
 		}
 
@@ -4282,6 +4282,7 @@ restart_copy_to_pc:
 				{
 					topfield_file_offset = src_sizes[i];
 					copydialog->success(i);
+					//Console::WriteLine(item->full_filename + "   [Skipping]");
 					goto check_delete;	
 				}
 
@@ -4346,6 +4347,12 @@ restart_copy_to_pc:
 					copydialog->usb_error=true;
 					goto out;
 				}
+				int file_ind = copydialog->file_indices[i];
+				int max_file_ind = copydialog->file_indices[numitems-1];
+				if (topfield_file_offset==0)
+					printf("  %2d / %2d : %s\n",file_ind,max_file_ind,item->full_filename);
+				else
+					printf("  %2d / %2d : %s       [Resuming]\n",file_ind,max_file_ind,item->full_filename);
 
 				state = START;
 
@@ -4857,8 +4864,11 @@ end_copy_to_pc:
 
 			array<int>^ num_cat = {0,0,0}; //numbers of existing files (divided by category)
 			int num_exist=0;
+			int num_dir_exist=0;
+			int num_dir_missing=0;
 			array<String^>^ files_cat = {"","",""};
 
+			for (int i=0; i<numitems; i++) overwrite_action[i]=ACTION_UNDEFINED;
 
 			for (ind=0; ind<numitems; ind++)
 			{
@@ -4874,8 +4884,14 @@ end_copy_to_pc:
 				if (item->isdir)
 				{
 
+					if( Directory::Exists(dest_filename[ind]))
+						num_dir_exist++;
+					else
+						num_dir_missing++;
+
 					continue;
 				}
+
 
 				src_sizes[ind]=item->size;
 
@@ -4981,7 +4997,28 @@ end_copy_to_pc:
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
 			}
-			if (num_skip==numitems && copymode == CopyMode::COPY) goto aborted;
+			if ( (num_skip+num_dir_exist)==numitems && copymode == CopyMode::COPY) 
+			{
+				if (num_skip>0) printf("Skipping all %d items. Nothing to do.\n",numitems);
+				goto aborted;
+			}
+
+
+			int num_overwrite=0;
+			int num_resume=0;
+			for (int i=0; i<numitems; i++)
+			{
+				if (overwrite_action[i]==OVERWRITE && !src_items[i]->isdir) num_overwrite++;			
+				if (overwrite_action[i]==RESUME) num_resume++;
+			}
+			String ^ p;
+			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("Found %d file%s on the PVR. To do:  ",num_files,p);
+			p = num_skip==1 ? "" : "s"; if (num_skip>0) printf("Skip %d file%s   ",num_skip,p);
+			String ^q="";
+			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("Resume %d file%s   ", num_resume,p);q=" whole";};
+			p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) printf("Transfer %d%s file%s   ",num_overwrite,q,p);
+			p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("Create %d folder%s",num_dir_missing, p);
+			printf("\n");
 
 			for (int i=0; i<numitems; i++)
 			{
@@ -5008,10 +5045,10 @@ end_copy_to_pc:
 				alert->required_label->Text = "Required: " + HumanReadableSize(space_required);
 				alert->available_label->Text = "Available: " + HumanReadableSize(freespaceArray[0]);
 				if (!this->no_prompt)
-				  if (::DialogResult::Cancel ==  alert->ShowDialog())
-				  {
-					goto aborted;
-				  }
+					if (::DialogResult::Cancel ==  alert->ShowDialog())
+					{
+						goto aborted;
+					}
 			}
 
 			if (this->settings["TurboMode"] == "on")//(this->checkBox1->Checked)
@@ -5281,7 +5318,7 @@ restart_copy_to_pvr:
 				}
 
 				if (this_overwrite_action==SKIP) {
-					printf("Skipping %s\n",item->full_filename);
+					//printf("%s   [Skipping]\n",item->full_filename);
 
 					if (copydialog->copymode == CopyMode::MOVE && copydialog->action1_skipdelete)
 					{
@@ -5306,7 +5343,7 @@ restart_copy_to_pvr:
 				}  
 
 				if (this_overwrite_action==RESUME && dest_size[i]>=src_sizes[i]) {
-					printf("Not resuming %s\n",item->full_filename);
+					//printf("Not resuming %s\n",item->full_filename);
 					if (dest_size[i]==src_sizes[i]) topfield_file_offset = dest_size[i];
 					goto check_delete;
 				} // TODO: Handle this case better
@@ -5457,7 +5494,12 @@ restart_copy_to_pvr:
 				bool have_next_packet=false;
 
 
-				printf("%s\n",item->full_filename);
+				int file_ind = copydialog->file_indices[i];
+				int max_file_ind = copydialog->file_indices[numitems-1];
+				if (topfield_file_offset==0)
+					printf("  %2d / %2d : %s\n",file_ind,max_file_ind,item->full_filename);
+				else
+					printf("  %2d / %2d : %s       [Resuming]\n",file_ind,max_file_ind,item->full_filename);
 
 
 				int update=0;
@@ -5648,9 +5690,9 @@ restart_copy_to_pvr:
 							/* Send end */
 							put_u16(&packet.length, PACKET_HEAD_SIZE);
 							put_u32(&packet.cmd, DATA_HDD_FILE_END);
-							trace(3,
-								fprintf(stderr, "%s: DATA_HDD_FILE_END\n",
-								__FUNCTION__));
+							//trace(3,
+							//	fprintf(stderr, "%s: DATA_HDD_FILE_END\n",
+							//	__FUNCTION__));
 							r = send_tf_packet(fd, &packet);
 							if(r < 0)
 							{
@@ -6033,9 +6075,13 @@ finish_transfer:
 			array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
 			array<int>^              file_indices = gcnew array<int>(numitems);
 
+			for (int i=0; i<numitems; i++) overwrite_action[i]=ACTION_UNDEFINED;
+
 			TopfieldItem^ titem;				 
 			array<int>^ num_cat={0,0,0}; //numbers of existing files (divided by category of destination file: 0=correct size,  1=undersized, 2=oversized).
 			int num_exist=0;
+			int num_dir_exist=0;
+			int num_dir_missing=0;
 			array<String^>^ files_cat = {"","",""};
 			for (ind=0; ind<numitems; ind++)
 			{
@@ -6048,7 +6094,15 @@ finish_transfer:
 					dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
 					dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
 				}
-				if (item->isdir) {continue;}   
+				if (item->isdir) {
+					if (nullptr != this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]))
+						num_dir_exist++;
+					else
+						num_dir_missing++;
+					continue;
+				}   
+				else
+					num_files++;
 
 				src_sizes[ind]=item->size;
 
@@ -6151,11 +6205,28 @@ finish_transfer:
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
 			}
-			if (num_skip==numitems && copymode == CopyMode::COPY) 
+			if ( (num_dir_exist+num_skip)==numitems && copymode == CopyMode::COPY) 
 			{
 				if (num_skip>0) printf("Skipping all %d items. Nothing to do.\n",numitems);
 				goto abort;
 			}
+
+			int num_overwrite=0;
+			int num_resume=0;
+			for (int i=0; i<numitems; i++)
+			{
+				if (overwrite_action[i]==OVERWRITE && !src_items[i]->isdir) num_overwrite++;			
+				if (overwrite_action[i]==RESUME) num_resume++;
+			}
+			String ^ p;
+			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("Found %d file%s on the PC. To do:  ",num_files,p);
+			p = num_skip==1 ? "" : "s"; if (num_skip>0) printf("Skip %d file%s   ",num_skip,p);
+			String ^q="";
+			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("Resume %d file%s   ", num_resume,p);q=" whole";};
+			p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) printf("Transfer %d%s file%s   ",num_overwrite,q,p);
+			p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("Create %d folder%s",num_dir_missing, p);
+			printf("\n");
+
 
 
 			long long space_required=0;
@@ -6185,10 +6256,10 @@ finish_transfer:
 						alert->button1->Visible = false;
 					}
 					if (!this->no_prompt)
-					if (::DialogResult::Cancel ==  alert->ShowDialog())
-					{
-						goto abort;
-					}
+						if (::DialogResult::Cancel ==  alert->ShowDialog())
+						{
+							goto abort;
+						}
 				}
 			}
 
@@ -7246,7 +7317,7 @@ abort:  // If the transfer was cancelled before it began
 				case DATA_HDD_FILE_END:
 					send_success(fd);
 
-					printf("DATA_HDD_FILE_END\n");
+					//printf("DATA_HDD_FILE_END\n");
 
 					state=ABORT;
 

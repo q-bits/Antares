@@ -532,6 +532,21 @@ namespace Antares {
 			}
 
 
+			if (Console::KeyAvailable)
+			{
+				System::ConsoleKeyInfo key = Console::ReadKey(true);
+
+				if (key.Key == ConsoleKey::Escape)
+
+				{
+					Console::WriteLine("ESC key pressed. Cancelling...");
+					this->button1->Enabled=false;
+					this->cancelled=true;
+				}
+				
+			}
+
+
 			//double current_delta = (double) (time(NULL) - this->current_start_time);
 			//double total_delta = (double) (time(NULL) - this->total_start_time);
 			double current_delta = (double) this->rate_stopwatch->GetTimestamp() / (double) this->rate_stopwatch->Frequency;

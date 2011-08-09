@@ -54,6 +54,8 @@ namespace Antares {
 			{
 				String^ tok = this->tokens[ind];
 
+				if (tok=="cp" || tok=="mv") tok="-"+tok;
+
 				if (tok=="-cp" || tok=="-mv" || tok=="/cp" || tok=="/mv")
 
 				{
