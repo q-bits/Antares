@@ -370,7 +370,17 @@ int main(array<System::String ^> ^args)
 
 	//form->Focus();
 	//form->textBox1->Select(0,0);
-	Application::Run(form);
+	//Console::WriteLine(form->Visible);
+	//Console::WriteLine(form->WindowState);
+	//Application::Run(form);
+
+	//form->Form1_Load(nullptr,nullptr);
+	//Console::WriteLine("Application::Run");
+	if (form->commandline->showgui)
+		Application::Run(form);
+	else
+		Application::Run();
+	//Console::WriteLine("End.");
 	form->topfield_background_enumerator=nullptr;
 
 

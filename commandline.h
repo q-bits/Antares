@@ -25,6 +25,8 @@ namespace Antares {
 		bool showgui_specified;
 		bool exit_on_completion;
 		bool no_prompt;
+		bool turbo_specified;
+		int turbo_mode;
 
 		void error(String ^ str)
 		{
@@ -43,6 +45,9 @@ namespace Antares {
 			this->showgui_specified=false;
 			this->no_prompt = false;
 			this->exit_on_completion=false;
+			this->turbo_specified=false;
+			
+			
 
 		}
 		void analyse(void)
@@ -87,6 +92,18 @@ namespace Antares {
 					ind++;
 					continue;
 				}
+				if (tok=="-t" || tok=="/t" || tok == "\t1" || tok=="-t1")
+				{
+					this->turbo_specified=true;
+					this->turbo_mode=1;
+				}
+				if (tok == "\t0" || tok=="-t0")
+				{
+					this->turbo_specified=true;
+					this->turbo_mode=0;
+				}
+
+
 
 				this->error("ERROR: Unknown command line option: "+tok);
 				return;

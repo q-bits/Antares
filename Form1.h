@@ -185,6 +185,8 @@ namespace Antares {
 			this->commandline = gcnew CommandLine(Environment::CommandLine);
 			this->exit_on_completion=false;
 			this->no_prompt = false;
+			this->idle_count = 0;
+			Application::Idle += gcnew EventHandler(this, &Form1::Application_Idle);
 
 
 			this->topfield_background_enumerator = nullptr;
@@ -379,13 +381,14 @@ namespace Antares {
 			this->setListViewStyle(listView2);
 
 
-			this->Focus();
+			
 			if (this->settings["Maximized"]=="1") 
 			{
 				this->WindowState = FormWindowState::Maximized;
 			}
 
 
+			if (this->commandline->showgui) this->Focus();
 
 
 			this->cbthread = gcnew Thread(gcnew ThreadStart(this,&Form1::computerBackgroundWork));
@@ -414,6 +417,9 @@ namespace Antares {
 			else
 			{
 				this->Visible=false;
+				this->ShowInTaskbar=false;
+				this->WindowState = FormWindowState::Minimized;
+				this->Hide();
 			}
 
 
@@ -422,6 +428,7 @@ namespace Antares {
 			//this->ResizeRedraw = true;
 
 
+			
 
 
 		}
@@ -1886,6 +1893,7 @@ repeat:
 
 
 			CommandLine^ commandline;
+			int idle_count;
 			bool exit_on_completion;
 			bool no_prompt;
 
@@ -2873,8 +2881,15 @@ repeat:
 
 		System::Void run_command(CommandLine^ cmdline)
 		{
+			
 
 			String^ cmd = cmdline->the_command;
+
+			if (cmdline->turbo_specified)
+			{
+
+				this->settings->changeSetting("TurboMode",  cmdline->turbo_mode==1 ? "on" : "off" );
+			}
 
 			if (cmd=="cp" || cmd=="mv")
 			{
@@ -3011,19 +3026,20 @@ repeat:
 			}
 
 
+			
 
 		}
 
 
-		System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
+		System::Void Application_Idle(System::Object^  sender, System::EventArgs^  e)
+		{
 
+			//Console::WriteLine("Idle");
+			this->idle_count++;
+			if (this->idle_count > 1 ) return;
 
-			//Console::WriteLine(Path::GetFullPath("*.txt"));
-			//String ^a1 = Path::Combine(Environment::CurrentDirectory, this->commandline->cmd_param1);
-			//Console::WriteLine("COMBINED: " +a1);
-			//String ^a2 = Path::GetFullPath(a1);
-			//Console::WriteLine("Full:  "+a2);
-
+			Application::Idle -= gcnew EventHandler(this, &Form1::Application_Idle);
+			
 			if (this->commandline->the_command->Length>0)
 			{
 				this->exit_on_completion = this->commandline->exit_on_completion;
@@ -3033,6 +3049,16 @@ repeat:
 
 
 			}
+
+
+
+		}
+
+
+		System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
+
+
+
 
 
 		}
@@ -3980,6 +4006,7 @@ out:
 		{
 
 			copydialog->Location = System::Drawing::Point( (this->Width - copydialog->Width)/2, offset+(this->Height - copydialog->Height)/2);
+			if (this->commandline->showgui)
 			copydialog->BringToFront();
 			this->panel1->Dock=DockStyle::Fill;
 		}
@@ -3991,13 +4018,19 @@ out:
 			copydialog->parent_panel1 = this->panel1;
 			//copydialog->Dock= DockStyle::Bottom;//copydialog->FormBorderStyle = Windows::Forms::FormBorderStyle::FixedToolWindow;
 			this->EnableComponents(false);
-			this->Controls->Add(copydialog);copydialog->Show();
+			this->Controls->Add(copydialog);
+			
+			
+			//if (this->commandline->showgui)
+			copydialog->Show();
+		
 
 			this->CentreCopyDialog(copydialog,-100);
 
 
 
 			//this->panel1->Dock = DockStyle::Top;
+			if (this->commandline->showgui)
 			copydialog->BringToFront();
 			//this->panel1->BringToFront();
 
@@ -4130,10 +4163,11 @@ out:
 			//////////////
 			Monitor::Enter(this->locker);
 			//////////////
-			while(copydialog->loaded==false)
-			{
-				Thread::Sleep(100);
-			}
+			if (this->commandline->showgui)
+				while(copydialog->loaded==false)
+				{
+					Thread::Sleep(100);
+				}
 			copydialog->copydirection = CopyDirection::PVR_TO_PC;
 			copydialog->update_dialog_threadsafe();
 			int numitems = copydialog->numfiles;
@@ -4512,7 +4546,7 @@ restart_copy_to_pc:
 
 							if (copydialog->cancelled == true)
 							{
-								printf("CANCELLING\n");
+								//printf("CANCELLING\n");
 								send_cancel(fd);
 								//was_cancelled=true;
 								state = ABORT;
@@ -4770,6 +4804,7 @@ end_copy_to_pc:
 			copydialog->cancelled=false;
 			copydialog->parent_win = this;
 			copydialog->parent_form = this;
+			copydialog->commandline=this->commandline;
 			//copydialog->showCopyDialog();
 
 
@@ -4868,7 +4903,7 @@ end_copy_to_pc:
 			int num_dir_missing=0;
 			array<String^>^ files_cat = {"","",""};
 
-			for (int i=0; i<numitems; i++) overwrite_action[i]=ACTION_UNDEFINED;
+			for (int i=0; i<numitems; i++) overwrite_action[i]=OVERWRITE;
 
 			for (ind=0; ind<numitems; ind++)
 			{
@@ -5012,13 +5047,15 @@ end_copy_to_pc:
 				if (overwrite_action[i]==RESUME) num_resume++;
 			}
 			String ^ p;
-			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("Found %d file%s on the PVR. To do:  ",num_files,p);
-			p = num_skip==1 ? "" : "s"; if (num_skip>0) printf("Skip %d file%s   ",num_skip,p);
+			String ^c0=", ";
+			String ^ c="";
+			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PVR.  To do: ",num_files,p);
+			p = num_skip==1 ? "" : "s"; if (num_skip>0) {printf(" Skip %d file%s",num_skip,p);c=c0;};
 			String ^q="";
-			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("Resume %d file%s   ", num_resume,p);q=" whole";};
-			p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) printf("Transfer %d%s file%s   ",num_overwrite,q,p);
-			p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("Create %d folder%s",num_dir_missing, p);
-			printf("\n");
+			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("%s Resume %d file%s", c,num_resume,p);q=" whole";c=c0;};
+			p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) {printf("%s Transfer %d%s file%s",c,num_overwrite,q,p);c=c0;}
+			p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("%s Create %d folder%s",c,num_dir_missing, p);
+			printf(".\n*\n");
 
 			for (int i=0; i<numitems; i++)
 			{
@@ -5166,11 +5203,12 @@ aborted:   // If the transfer was cancelled before it began
 			CopyDialog^ copydialog = safe_cast<CopyDialog^>(input);
 			///////
 			Monitor::Enter(this->locker);
-			//////
-			while(copydialog->loaded==false)
-			{
-				Thread::Sleep(100);
-			}
+			if (this->commandline->showgui)
+				while(copydialog->loaded==false)
+				{
+					Thread::Sleep(100);
+				}
+
 			copydialog->copydirection=CopyDirection::PC_TO_PVR;
 			copydialog->update_dialog_threadsafe();
 			int numitems = copydialog->numfiles;
@@ -5542,7 +5580,7 @@ restart_copy_to_pvr:
 								r = send_tf_packet(this->fd, &packet);
 								if(r < 0)
 								{
-									fprintf(stderr, "ERROR: Incomplete send.\n");
+									//fprintf(stderr, "ERROR: Incomplete send.\n");
 									copydialog->usb_error=true;
 									goto out;
 								}
@@ -5596,7 +5634,7 @@ restart_copy_to_pvr:
 
 								if (copydialog->cancelled == true)
 								{
-									printf("CANCELLING\n");
+									//printf("CANCELLING\n");
 									//send_cancel(fd);
 									//was_cancelled=true;
 									state = END;
@@ -5737,7 +5775,9 @@ out:
 				{
 				}
 
-				if (copydialog->cancelled==true)  {printf("Cancelled.\n");goto finish_transfer;}
+				if (copydialog->cancelled==true)  {
+					//printf("Cancelled.\n");
+					goto finish_transfer;}
 
 				//if (was_cancelled) break;
 
@@ -5943,6 +5983,7 @@ finish_transfer:
 			copydialog->cancelled=false;
 			copydialog->parent_win = this;
 			copydialog->parent_form = this;
+			copydialog->commandline = this->commandline;
 			//copydialog->showCopyDialog();
 
 			//String ^window_title_bit;
@@ -5960,6 +6001,7 @@ finish_transfer:
 			this->ShowCopyDialog(copydialog);
 
 			copydialog->Update();
+
 
 
 			array<ComputerItem^>^ items = gcnew array<ComputerItem^>(selected->Count);
@@ -6075,7 +6117,7 @@ finish_transfer:
 			array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
 			array<int>^              file_indices = gcnew array<int>(numitems);
 
-			for (int i=0; i<numitems; i++) overwrite_action[i]=ACTION_UNDEFINED;
+			for (int i=0; i<numitems; i++) overwrite_action[i]=OVERWRITE;
 
 			TopfieldItem^ titem;				 
 			array<int>^ num_cat={0,0,0}; //numbers of existing files (divided by category of destination file: 0=correct size,  1=undersized, 2=oversized).
@@ -6219,16 +6261,17 @@ finish_transfer:
 				if (overwrite_action[i]==RESUME) num_resume++;
 			}
 			String ^ p;
-			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("Found %d file%s on the PC. To do:  ",num_files,p);
-			p = num_skip==1 ? "" : "s"; if (num_skip>0) printf("Skip %d file%s   ",num_skip,p);
+			String ^c0=", ";
+			String ^c="";
+			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PC.  To do: ",num_files,p);
+			p = num_skip==1 ? "" : "s"; if (num_skip>0) {printf(" Skip %d file%s",num_skip,p);c=c0;};
 			String ^q="";
-			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("Resume %d file%s   ", num_resume,p);q=" whole";};
-			p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) printf("Transfer %d%s file%s   ",num_overwrite,q,p);
-			p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("Create %d folder%s",num_dir_missing, p);
-			printf("\n");
+			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("%s Resume %d file%s", c,num_resume,p);q=" whole";};
+			p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) {printf("%s Transfer %d%s file%s",c,num_overwrite,q,p);c=c0;};
+			p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("%s Create %d folder%s",c,num_dir_missing, p);
+			printf(".\n*\n");
 
-
-
+			
 			long long space_required=0;
 			for (int i=0; i<numitems; i++)
 			{
@@ -6320,11 +6363,16 @@ finish_transfer:
 			Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_to_PVR));
 			thread->Name = "transfer_to_PVR";
 			copydialog->thread = thread;
+
+
+			
+
+
 			thread->Start(copydialog);
 
 			Monitor::Exit(this->locker);
 
-			//this->ShowCopyDialog(copydialog);
+			
 
 
 			return;
@@ -6679,7 +6727,7 @@ abort:  // If the transfer was cancelled before it began
 
 			if (e->KeyCode == Keys::Delete)
 			{
-				Console::WriteLine("Delete pressed!");
+				//Console::WriteLine("Delete pressed!");
 				if (selected->Count >0)
 				{
 					if (listview == this->listView1)
@@ -7635,7 +7683,7 @@ abort:  // If the transfer was cancelled before it began
 			this->setComputerDir( safe_cast<String^>(cb->SelectedItem));
 			this->loadComputerDir();
 			this->add_path_to_history(cb,this->computerCurrentDirectory);  
-			this->clist->Focus();
+			if (this->commandline->showgui) this->clist->Focus();
 		}
 
 		// An item in the topfield path history was selected
@@ -7645,7 +7693,7 @@ abort:  // If the transfer was cancelled before it began
 			this->loadTopfieldDir();
 
 			this->add_path_to_history(this->textBox2, this->topfieldCurrentDirectory);
-			this->tlist->Focus();
+			if (this->commandline->showgui) this->tlist->Focus();
 		}
 
 		void centreRB(RadioButton^ rb)

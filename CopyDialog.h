@@ -9,6 +9,7 @@ extern "C"
 }
 #include "antares.h"
 #include "settings.h"
+#include "commandline.h"
 
 
 
@@ -352,9 +353,12 @@ namespace Antares {
 
 			if (this->cancelled) return;
 
-			while (!this->IsHandleCreated) 				
+			if (this->TopLevel)
 			{
-				Thread::Sleep(100);
+				while (!this->IsHandleCreated) 				
+				{
+					Thread::Sleep(100);
+				}
 			}
 
 			if (this->InvokeRequired)
@@ -504,7 +508,7 @@ namespace Antares {
 
 		void update_dialog(void)
 		{
-			if ( ! this->Visible) return;
+			//if ( ! this->Visible) return;
 
 		
 
@@ -535,11 +539,16 @@ namespace Antares {
 			if (Console::KeyAvailable)
 			{
 				System::ConsoleKeyInfo key = Console::ReadKey(true);
+				String ^kstr = "";
 
-				if (key.Key == ConsoleKey::Escape)
 
+				if (key.Key == ConsoleKey::Escape) kstr="ESC key";
+				if (key.Modifiers == ConsoleModifiers::Control && key.Key==ConsoleKey::C) kstr="CTRL-C";
+
+				if (kstr->Length > 0)
 				{
-					Console::WriteLine("ESC key pressed. Cancelling...");
+					
+					Console::WriteLine(kstr+" pressed. Cancelling...");
 					this->button1->Enabled=false;
 					this->cancelled=true;
 				}
@@ -752,6 +761,7 @@ namespace Antares {
 		int on_completion;
 
 
+		CommandLine^ commandline;
 		double rate_seconds;
 		long long rate_bytes;
 		System::Diagnostics::Stopwatch ^rate_stopwatch;
@@ -1179,7 +1189,7 @@ private: System::Windows::Forms::Label^  label10;
 				 {
 					 this->resizing_was_docked=true;
 					 this->SuspendLayout();
-					 this->BringToFront();
+					 if (nullptr==this->commandline || this->commandline->showgui) this->BringToFront();
 					 this->Dock = DockStyle::None;
 					 this->FormBorderStyle = Windows::Forms::FormBorderStyle::SizableToolWindow;
 					 this->proper_size();
@@ -1196,7 +1206,7 @@ private: System::Windows::Forms::Label^  label10;
 
 				 this->Location = System::Drawing::Point(
 					 (this->parent_form->Width - this->Width)/2, offset+(this->parent_form->Height - this->Height)/2);
-				 this->BringToFront();
+				 if (nullptr==this->commandline || this->commandline->showgui) this->BringToFront();
 
 				 //this->panel1->Dock=DockStyle::Fill;
 			 }
@@ -1299,7 +1309,7 @@ private: System::Windows::Forms::Label^  label10;
 					 //printf("Dock low\n");
 
 					 this->Dock = DockStyle::Bottom;
-					 this->parent_panel1->BringToFront();
+					 if (nullptr==this->commandline || this->commandline->showgui) this->parent_panel1->BringToFront();
 
 				 }
 				 else if (high && !low)
@@ -1307,13 +1317,13 @@ private: System::Windows::Forms::Label^  label10;
 					// printf("Dock high\n");
 
 					 this->Dock = DockStyle::Top;
-					 this->parent_panel1->BringToFront();
+					if (nullptr==this->commandline || this->commandline->showgui)  this->parent_panel1->BringToFront();
 
 				 }
 				 else
 				 {
 					 this->Dock = DockStyle::None;
-					 this->BringToFront();
+					 if (nullptr==this->commandline || this->commandline->showgui) this->BringToFront();
 					 
 					 if (this->resizing_was_docked)
 						 this->proper_size();
