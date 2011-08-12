@@ -792,6 +792,7 @@ namespace Antares {
 wait_again:
 			while(1)
 			{
+				copydialog->update_dialog_threadsafe();
 				this->absorb_late_packets(4,100);
 				Thread::Sleep(500);
 				r=this->tf_init();
@@ -1887,7 +1888,8 @@ repeat:
 
 
 			ToolStripMenuItem ^mi_pc_proginfo, ^mi_pc_copy, ^mi_pc_move, ^mi_pc_delete, ^mi_pc_show_in_explorer, ^mi_pc_install_firmware, ^mi_pc_choose_columns;
-			ToolStripMenuItem ^mi_pvr_proginfo, ^mi_pvr_copy, ^mi_pvr_move, ^mi_pvr_delete;
+			ToolStripMenuItem ^mi_pc_rename;
+			ToolStripMenuItem ^mi_pvr_proginfo, ^mi_pvr_copy, ^mi_pvr_move, ^mi_pvr_delete, ^mi_pvr_rename;
 			array<ToolStripMenuItem^>^ mi_pc_choose_columns_array;
 			array<ToolStripMenuItem^>^ mi_pvr_choose_columns_array;
 
@@ -2737,6 +2739,7 @@ repeat:
 			this->basicIconsSmall->Images->SetKeyName(6, L"cog.ico");
 			this->basicIconsSmall->Images->SetKeyName(7, L"right-arrow_orange_small.ico");
 			this->basicIconsSmall->Images->SetKeyName(8, L"right-arrow_small.ico");
+			this->basicIconsSmall->Images->SetKeyName(9, L"rename.ico");
 			// 
 			// notifyIcon1
 			// 
@@ -2847,26 +2850,46 @@ repeat:
 			return path;
 		}
 
-		String ^WildcardToRegex(String ^pattern)   //http://www.codeproject.com/KB/recipes/wildcardtoregex.aspx
+		Regex^ WildcardToRegex(String ^pattern)   //http://www.codeproject.com/KB/recipes/wildcardtoregex.aspx
 		{
-			return "^" + Regex::Escape(pattern)->
+			return gcnew Regex("^" + Regex::Escape(pattern)->
 				Replace("\\*", ".*")->
-				Replace("\\?", ".") + "$";
+				Replace("\\?", ".") + "$",
+				RegexOptions::IgnoreCase) ;
 		}
 
-		int select_pattern(ListView ^listview, String ^ pattern)
+		int select_pattern(ListView ^listview, String ^ pattern, bool all_dirs, bool not_files, array<String^>^ exclude_patterns)
 		{
-			Regex^ re = gcnew Regex( this->WildcardToRegex(pattern),RegexOptions::IgnoreCase);
+			Regex^ re = this->WildcardToRegex(pattern);
 			int num=0;
+			int ne = exclude_patterns->Length;
+			array<Regex^>^ exc_re = gcnew array<Regex^>(ne);
+			for (int i=0; i<ne; i++) exc_re[i] = this->WildcardToRegex(exclude_patterns[i]);
+
 			for each (ListViewItem^ item in listview->Items )
 			{
 				String^ filename;
+				bool isdir;
 				if (listview == this->listView1)
-					filename = (safe_cast<TopfieldItem^>(item))->filename;
+				{
+					TopfieldItem^ titem = safe_cast<TopfieldItem^>(item);
+					filename = titem->filename;
+					isdir = titem->isdir;
+				}
 				else
-					filename = (safe_cast<ComputerItem^>(item))->filename;
+				{
+					ComputerItem^ citem = safe_cast<ComputerItem^>(item);
+					filename = citem->filename;
+					isdir = citem->isdir;
+				}
 
-				if (re->IsMatch(filename))
+
+				bool exc = false;
+				for (int i=0; i<ne; i++)
+					if (exc_re[i]->IsMatch(filename)) {exc=true;break;};
+
+
+				if (   ( re->IsMatch(filename) || (all_dirs && isdir) ) && !(!isdir && not_files)  && !exc)
 				{
 					num ++; 
 					item->Selected=true;
@@ -2884,10 +2907,12 @@ repeat:
 			
 
 			String^ cmd = cmdline->the_command;
+			if (cmdline->e) {this->cmdline_error("");return;};
 
 			if (cmdline->turbo_specified)
 			{
 
+				this->checkBox1->Checked = (cmdline->turbo_mode==1);
 				this->settings->changeSetting("TurboMode",  cmdline->turbo_mode==1 ? "on" : "off" );
 			}
 
@@ -2909,6 +2934,7 @@ repeat:
 				double d2 = this->is_topfield_path(path2);
 				//Console::WriteLine("path1 = "+path1+" d1="+d1.ToString());
 				//Console::WriteLine("path2 = "+path2+" d2="+d2.ToString());
+				TransferOptions ^transferoptions = gcnew TransferOptions();
 
 
 				if (d1==d2)
@@ -2921,11 +2947,16 @@ repeat:
 				{
 					String^ pvr_path = this->normalize_pvr_commandline_path(path2);
 					String ^src_folder, ^src_pattern;
-
+					bool src_ends_with_slash = false;
+					bool is_wild;
 					try{
 						String^ pc_path = Path::Combine(Environment::CurrentDirectory,path1);
+						
 						while(pc_path->EndsWith("\\"))
+						{
 							pc_path = pc_path->Substring(0,pc_path->Length-1);
+							src_ends_with_slash = true;
+						}
 						int ind = pc_path->LastIndexOf("\\");
 
 						if (ind>2)
@@ -2934,6 +2965,8 @@ repeat:
 							src_folder = pc_path->Substring(0,ind+1);
 
 						src_pattern = pc_path->Substring(ind+1,pc_path->Length-ind-1);
+						is_wild = (src_pattern->Contains("*") || src_pattern->Contains("?"));
+
 					}
 					catch(...)
 					{
@@ -2952,20 +2985,33 @@ repeat:
 						return;
 					}
 
-					int num = this->select_pattern(this->listView2, src_pattern);
+					int num = this->select_pattern(this->listView2, src_pattern, cmdline->recurse && is_wild && !src_ends_with_slash, src_ends_with_slash, cmdline->exclude_patterns );
+				
+
+
 					if (num==0) this->cmdline_error("ERROR: File not found! ("+path1+")");
+
+
+					transferoptions->exclude_patterns = cmdline->exclude_patterns;
+					if (is_wild && !src_ends_with_slash)
+						transferoptions->pattern = src_pattern; 
+
+					transferoptions->copymode = cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE;
 
 
 
 					// remember, set turbo mode
 
-					this->transfer_selection_to_PVR(cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE);
+					this->transfer_selection_to_PVR(transferoptions);
 
 
 
 				}
 				else         // From PVR to PC
 				{
+
+
+					bool src_ends_with_slash = path1->EndsWith("\\");
 
 					String^ pvr_path = this->normalize_pvr_commandline_path(path1);
 
@@ -2995,6 +3041,8 @@ repeat:
 					src_folder = pvr_path->Substring(0,ind);
 					src_pattern = pvr_path->Substring(ind+1,pvr_path->Length-ind-1);
 
+					bool is_wild = src_pattern->Contains("*") || src_pattern->Contains("?");
+
 					if (src_pattern->Length==0)
 					{
 						this->cmdline_error("ERROR: The source path is invalid ("+path1+")");
@@ -3005,17 +3053,23 @@ repeat:
 
 					this->setTopfieldDir(src_folder);
 					this->loadTopfieldDir();
-					int num = this->select_pattern(this->listView1, src_pattern);
+					int num = this->select_pattern(this->listView1, src_pattern, cmdline->recurse && is_wild && !src_ends_with_slash, src_ends_with_slash, cmdline->exclude_patterns  );
 					if (num==0) 
 					{
 						this->cmdline_error("ERROR: File not found! ("+path1+")");
 						return;
 					}
 
+					transferoptions->exclude_patterns = cmdline->exclude_patterns;
+					if (is_wild && !src_ends_with_slash)
+						transferoptions->pattern = src_pattern; 
+
+					transferoptions->copymode = cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE;
+
 
 					// remember, set turbo mode
 
-					this->transfer_selection_to_PC(cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE);
+					this->transfer_selection_to_PC(transferoptions);
 
 				}
 
@@ -4772,14 +4826,16 @@ end_copy_to_pc:
 
 		System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {    
 
-			this->transfer_selection_to_PC(CopyMode::UNDEFINED);
+			this->transfer_selection_to_PC(gcnew TransferOptions());
 		}
-		void transfer_selection_to_PC(CopyMode copymode)
+		void transfer_selection_to_PC(TransferOptions^ transferoptions)
 		{
 			// Copy files from Topfield to computer
 
 			if (this->transfer_in_progress) return;
 			const int max_folders = 1000;
+
+			CopyMode copymode = transferoptions->copymode;
 
 			if (copymode == CopyMode::UNDEFINED)
 				copymode = this->getCopyMode();
@@ -4830,6 +4886,15 @@ end_copy_to_pc:
 
 			array<array<TopfieldItem^>^>^ items_by_folder = gcnew array<array<TopfieldItem^>^>(max_folders);
 
+			Regex ^pattern_regex;
+			array<Regex^>^ exclude_regexes = gcnew array<Regex^>(transferoptions->exclude_patterns->Length);
+			for (int ii = 0; ii<exclude_regexes->Length; ii++) exclude_regexes[ii]=this->WildcardToRegex(transferoptions->exclude_patterns[ii]);
+			bool use_pattern = false;
+			if (transferoptions->pattern->Length > 0)
+			{
+				use_pattern=true;
+				pattern_regex = this->WildcardToRegex(transferoptions->pattern);
+			}
 
 			array<TopfieldItem^>^ these_items;
 
@@ -4847,6 +4912,31 @@ end_copy_to_pc:
 					if (item->isdir)
 					{
 						items = this->loadTopfieldDirArray(item->full_filename);
+
+
+						/////// Filter items if necessary
+						int i2=0;
+						for (int i1=0; i1<items->Length; i1++)
+						{
+							TopfieldItem^ it = items[i1];
+						   
+						   if (!it->isdir)
+						   {
+							   if (use_pattern && !pattern_regex->IsMatch(it->filename)) {continue;}
+
+							   bool exc = false;
+							   for each (Regex^ re in exclude_regexes)
+								   if (re->IsMatch(it->filename)) {exc = true;break;};
+							   if (exc) continue;
+
+						   }
+						   if (i1 != i2) items[i2]=items[i1]; i2++;
+
+						}
+						if (i2 != items->Length)
+							Array::Resize(items,i2);
+						//// (end filter code)
+
 
 						for each ( TopfieldItem^ it in items)
 						{
@@ -5922,10 +6012,10 @@ finish_transfer:
 
 
 		System::Void button1_Click(System::Object^  sender, System::EventArgs^  e) {
-			this->transfer_selection_to_PVR(CopyMode::UNDEFINED);
+			this->transfer_selection_to_PVR(gcnew TransferOptions());
 		}
 		////////////////////////////////////////////////////////////////////////////////////
-		void transfer_selection_to_PVR(CopyMode copymode)
+		void transfer_selection_to_PVR(TransferOptions ^transferoptions)
 		{
 
 			// Copy files from Computer to Topfield
@@ -5955,6 +6045,7 @@ finish_transfer:
 			}
 
 			const int max_folders = 1000;
+			CopyMode copymode = transferoptions->copymode;
 
 			if (copymode==CopyMode::UNDEFINED)
 				copymode = this->getCopyMode();
@@ -6010,6 +6101,16 @@ finish_transfer:
 
 			array<array<ComputerItem^>^>^ items_by_folder = gcnew array<array<ComputerItem^>^>(max_folders);
 
+			Regex ^pattern_regex;
+			array<Regex^>^ exclude_regexes = gcnew array<Regex^>(transferoptions->exclude_patterns->Length);
+			for (int ii = 0; ii<exclude_regexes->Length; ii++) exclude_regexes[ii]=this->WildcardToRegex(transferoptions->exclude_patterns[ii]);
+			bool use_pattern = false;
+			if (transferoptions->pattern->Length > 0)
+			{
+				use_pattern=true;
+				pattern_regex = this->WildcardToRegex(transferoptions->pattern);
+			}
+
 			array<ComputerItem^>^ these_items;
 
 
@@ -6027,6 +6128,30 @@ finish_transfer:
 					if (item->isdir)
 					{
 						items = this->loadComputerDirArray(item->full_filename);
+
+						/////// Filter items if necessary
+						int i2=0;
+						for (int i1=0; i1<items->Length; i1++)
+						{
+							ComputerItem^ it = items[i1];
+
+							if (!it->isdir)
+							{
+								if (use_pattern && !pattern_regex->IsMatch(it->filename)) {continue;}
+
+								bool exc = false;
+								for each (Regex^ re in exclude_regexes)
+									if (re->IsMatch(it->filename)) {exc = true;break;};
+								if (exc) continue;
+
+							}
+							if (i1 != i2) items[i2]=items[i1]; i2++;
+
+						}
+						if (i2 != items->Length)
+							Array::Resize(items,i2);
+						//// (end filter code)
+
 
 						for each ( ComputerItem^ it in items)
 						{
@@ -7825,6 +7950,8 @@ abort:  // If the transfer was cancelled before it began
 				 this->mi_pvr_move = gcnew ToolStripMenuItem("Move to PC",this->basicIconsSmall->Images["right-arrow_orange_small.ico"]);
 				 this->mi_pvr_delete = gcnew ToolStripMenuItem("Delete",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image"))));
 
+				 this->mi_pvr_rename = gcnew ToolStripMenuItem("Rename",this->basicIconsSmall->Images["rename.ico"]);
+
 				 System::Windows::Forms::ContextMenuStrip ^cm = this->contextMenuStrip1;
 
 				 ToolStripItemCollection ^ic = cm->Items;
@@ -7833,6 +7960,7 @@ abort:  // If the transfer was cancelled before it began
 				 ic->Add(mi_pvr_move);
 				 ic->Add(mi_pvr_proginfo);
 				 ic->Add(mi_pvr_delete);
+				 ic->Add(mi_pvr_rename);
 
 				 int ind=0;
 				 for each (String^ str in headerNames) 
@@ -7863,6 +7991,7 @@ abort:  // If the transfer was cancelled before it began
 				 this->mi_pc_delete = gcnew ToolStripMenuItem("Delete",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image"))));
 				 this->mi_pc_show_in_explorer = gcnew ToolStripMenuItem("Show in Explorer", this->basicIconsSmall->Images["show_file.ico"]);
 				 this->mi_pc_install_firmware = gcnew ToolStripMenuItem("Install firmware to PVR",this->basicIconsSmall->Images["cog.ico"]);
+				 this->mi_pc_rename = gcnew ToolStripMenuItem("Rename",this->basicIconsSmall->Images["rename.ico"]);
 
 
 				 System::Windows::Forms::ContextMenuStrip ^cm = this->contextMenuStrip2;
@@ -7876,6 +8005,7 @@ abort:  // If the transfer was cancelled before it began
 				 ic->Add(mi_pc_delete);
 				 ic->Add(mi_pc_show_in_explorer);
 				 ic->Add(mi_pc_install_firmware);
+				 ic->Add(mi_pc_rename);
 
 				 // this->mi_pc_choose_columns = gcnew ToolStripMenuItem("Choose columns:");
 
@@ -7911,9 +8041,10 @@ abort:  // If the transfer was cancelled before it began
 
 
 				 ListView::SelectedListViewItemCollection^ selected = this->listView1->SelectedItems;
-				 int numdir=0, numfile=0, numtfd=0, numrec=0;
+				 int numdir=0, numfile=0, numtfd=0, numrec=0, numselected=0;
 				 for each (ListViewItem^ item in selected)
 				 {
+					 numselected++;
 					 TopfieldItem^ citem = safe_cast<TopfieldItem^>(item);
 					 printf("%s\n",citem->filename);
 					 if (citem->isdir) numdir++; else numfile++;
@@ -7928,6 +8059,7 @@ abort:  // If the transfer was cancelled before it began
 				 this->mi_pvr_copy->Available=!choose_columns;
 				 this->mi_pvr_delete->Available=!choose_columns;
 				 this->mi_pvr_move->Available=!choose_columns;
+				 this->mi_pvr_rename->Available=!choose_columns && numselected==1;
 				 this->mi_pvr_proginfo->Available=numrec>0 && !choose_columns;
 
 				 for (int ind =0; ind<this->headerNames->Length; ind++)
@@ -7955,9 +8087,11 @@ abort:  // If the transfer was cancelled before it began
 
 
 				 ListView::SelectedListViewItemCollection^ selected = this->listView2->SelectedItems;
-				 int numdir=0, numfile=0, numtfd=0, numrec=0;
+				 int numdir=0, numfile=0, numtfd=0, numrec=0, numselected=0;
+				 bool isdrive=false;
 				 for each (ListViewItem^ item in selected)
 				 {
+					 numselected++;
 					 ComputerItem^ citem = safe_cast<ComputerItem^>(item);
 					 printf("%s\n",citem->filename);
 					 if (citem->isdir) numdir++; else numfile++;
@@ -7965,15 +8099,17 @@ abort:  // If the transfer was cancelled before it began
 						 numtfd++;
 					 if (!citem->isdir && citem->filename->EndsWith(".rec",StringComparison::CurrentCultureIgnoreCase) )
 						 numrec++;
+					 if (citem->isdrive) isdrive=true;
 				 }
 
 				 bool choose_columns = (dt>.1) || (numdir + numfile + numtfd == 0);
 
-				 this->mi_pc_copy->Available=!choose_columns;
-				 this->mi_pc_delete->Available=!choose_columns;
-				 this->mi_pc_move->Available=!choose_columns;
+				 this->mi_pc_copy->Available=!choose_columns && !isdrive;
+				 this->mi_pc_delete->Available=!choose_columns && !isdrive;
+				 this->mi_pc_move->Available=!choose_columns && !isdrive;
+				 this->mi_pc_rename->Available=!choose_columns && !isdrive && numselected==1;
 				 this->mi_pc_show_in_explorer->Available=!choose_columns;
-				 this->mi_pc_proginfo->Available=numrec>0 && !choose_columns;
+				 this->mi_pc_proginfo->Available=numrec>0 && !choose_columns && !isdrive;
 
 				 this->mi_pc_install_firmware->Available=false;
 				 for (int ind =0; ind<this->headerNames->Length; ind++)
@@ -8018,7 +8154,7 @@ abort:  // If the transfer was cancelled before it began
 				 }
 				 if (mi == this->mi_pvr_copy)
 				 {
-					 this->transfer_selection_to_PC(CopyMode::COPY);
+					 this->transfer_selection_to_PC(gcnew TransferOptions(CopyMode::COPY));
 				 }
 				 else if (mi == this->mi_pvr_delete)
 				 {
@@ -8027,12 +8163,20 @@ abort:  // If the transfer was cancelled before it began
 				 } 
 				 else if (mi == this->mi_pvr_move)
 				 {
-					 this->transfer_selection_to_PC(CopyMode::MOVE);
+					 this->transfer_selection_to_PC(gcnew TransferOptions(CopyMode::MOVE));
 				 }
 				 else if (mi == this->mi_pvr_proginfo)
 				 {
 					 if (this->transfer_in_progress) return;
 					 this->ViewInfo(this->listView1);
+				 }
+				 else if (mi == this->mi_pvr_rename)
+				 {
+					 
+					 ListView::SelectedListViewItemCollection^ selected = this->listView1->SelectedItems;
+					 try{
+						 selected[0]->BeginEdit();
+					 } catch(...) {};
 
 				 }
 
@@ -8068,7 +8212,7 @@ abort:  // If the transfer was cancelled before it began
 				 }
 				 else if (mi == this->mi_pc_copy)
 				 {
-					 this->transfer_selection_to_PVR(CopyMode::COPY);
+					 this->transfer_selection_to_PVR(gcnew TransferOptions(CopyMode::COPY));
 				 }
 				 else if (mi == this->mi_pc_delete)
 				 {
@@ -8095,11 +8239,20 @@ abort:  // If the transfer was cancelled before it began
 				 }
 				 else if (mi == this->mi_pc_move)
 				 {
-					 this->transfer_selection_to_PVR(CopyMode::MOVE);
+					 this->transfer_selection_to_PVR(gcnew TransferOptions(CopyMode::MOVE));
 				 }
 				 else if (mi == this->mi_pc_proginfo)
 				 {
 					 this->ViewInfo(this->listView2);
+
+				 }
+				 else if (mi == this->mi_pc_rename)
+				 {
+					 
+					 ListView::SelectedListViewItemCollection^ selected = this->listView2->SelectedItems;
+					 try{
+						 selected[0]->BeginEdit();
+					 } catch(...) {};
 
 				 }
 

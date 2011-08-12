@@ -650,6 +650,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\rename.ico"
+				>
+			</File>
+			<File
 				RelativePath=".\right-arrow.ico"
 				>
 			</File>
