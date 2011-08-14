@@ -25,7 +25,7 @@ extern "C" {
 
 	//TODO: put these prototypes somewhere better
 	struct husb_device_handle;
-	int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int max_length_paths, char *driver_names);
+	int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int max_length_paths, char *driver_names, int specified_pid);
 	struct husb_device_handle* open_winusb_device(HANDLE hdev);
 	struct husb_device_handle* open_tfbulk_device(HANDLE hdev);
 	char *windows_error_str(uint32_t retval);
@@ -487,7 +487,7 @@ namespace Antares {
 					this->fd=NULL;
 				};
 
-				int ndev = find_usb_paths(&dev_paths[0][0],  pids, max_paths,  paths_max_length, &driver_names[0][0]);
+				int ndev = find_usb_paths(&dev_paths[0][0],  pids, max_paths,  paths_max_length, &driver_names[0][0], this->commandline->pid);
 
 				this->ndev = ndev;
 				for (int j=0; j<ndev; j++)
@@ -741,10 +741,11 @@ namespace Antares {
 			if (*this->turbo_mode ) this->set_turbo_mode(0);
 
 			copydialog->reset_rate();
-			copydialog->update_dialog_threadsafe();
+			//copydialog->update_dialog_threadsafe();
 
 			while(1)
 			{
+				copydialog->update_dialog_threadsafe();
 				if (copydialog->cancelled) {return -1;};
 				fs = this->computerFreeSpace(path);
 				if (fs[0]<1024*1024)
@@ -927,7 +928,7 @@ check_freespace:
 		};
 
 
-		array<ComputerItem^>^ loadComputerDirArray(String^ dir)
+		array<ComputerItem^>^ loadComputerDirArrayOrNull(String^ dir)
 		{
 			array<String^>^ list;
 			int j;
@@ -939,8 +940,7 @@ check_freespace:
 			}
 			catch(...)
 			{
-				array<ComputerItem^>^ items = gcnew array<ComputerItem^>(0);
-				return items;
+				return nullptr;
 			}
 
 			array<ComputerItem^>^ items = gcnew array<ComputerItem^>(list->Length);
@@ -951,6 +951,15 @@ check_freespace:
 			}
 			return items;
 		}
+
+		array<ComputerItem^>^ loadComputerDirArray(String^ dir)
+		{
+			array<ComputerItem^>^ items = this->loadComputerDirArrayOrNull(dir);
+			if (items==nullptr)
+			  items = gcnew array<ComputerItem^>(0);
+			return items;
+		}
+
 
 		array<long long int>^ computerFreeSpace(String^ path)
 		{
@@ -1231,7 +1240,7 @@ repeat:
 		// Load and display files in the current computer directory.
 		// If a file is named start_rename, then start the name editing process after the directory is loaded.
 		// (useful when we have just created a new folder).
-		void loadComputerDir(String^ start_rename, String^ name_to_select)
+		int loadComputerDir(String^ start_rename, String^ name_to_select)
 		{
 
 			int j;
@@ -1287,23 +1296,25 @@ repeat:
 			else   //List contents of actual directory
 			{
 
-				try{
-					items = this->loadComputerDirArray(dir);
-				}
+					items = this->loadComputerDirArrayOrNull(dir);
+
+					if (items==nullptr) return -1;
+					/*
 				catch(System::IO::IOException ^)
 				{
 					this->setComputerDir("");
 					this->loadComputerDir();
 					Console::WriteLine("Unhandled exception in loadComputerDir");
-					return;
+					return -1;
 				}
 				catch(System::UnauthorizedAccessException ^)
 				{
 					toolStripStatusLabel1->Text="Access denied: "+dir;
 					this->computerUpDir();
-					return;
+					return -1;
 
 				}
+				*/
 
 				for (j=0; j<items->Length; j++)
 				{
@@ -1421,6 +1432,7 @@ repeat:
 			}
 			this->listView2->Tag = dir;
 			if (!rename_item) this->Arrange2();
+			return 0;
 
 		};
 
@@ -1429,9 +1441,9 @@ repeat:
 			this->loadComputerDir(start_rename,"");
 		}
 
-		void loadComputerDir(void)
+		int loadComputerDir(void)
 		{
-			this->loadComputerDir("","");
+			return this->loadComputerDir("","");
 		}
 
 		void computerUpDir(void)
@@ -1888,8 +1900,8 @@ repeat:
 
 
 			ToolStripMenuItem ^mi_pc_proginfo, ^mi_pc_copy, ^mi_pc_move, ^mi_pc_delete, ^mi_pc_show_in_explorer, ^mi_pc_install_firmware, ^mi_pc_choose_columns;
-			ToolStripMenuItem ^mi_pc_rename;
-			ToolStripMenuItem ^mi_pvr_proginfo, ^mi_pvr_copy, ^mi_pvr_move, ^mi_pvr_delete, ^mi_pvr_rename;
+			ToolStripMenuItem ^mi_pc_rename, ^mi_pc_select_all;
+			ToolStripMenuItem ^mi_pvr_proginfo, ^mi_pvr_copy, ^mi_pvr_move, ^mi_pvr_delete, ^mi_pvr_rename, ^mi_pvr_select_all;
 			array<ToolStripMenuItem^>^ mi_pc_choose_columns_array;
 			array<ToolStripMenuItem^>^ mi_pvr_choose_columns_array;
 
@@ -2803,7 +2815,13 @@ repeat:
 				return 1.0;
 
 			int ind = path->IndexOf(':');
-			if (ind != 1) return 0.0;
+			if (ind != 1) 
+			{
+				if (path->StartsWith("."))
+					return -0.5;
+				else
+					return 0.0;
+			}
 
 			String ^ drv = path->Substring(0,2);
 			if (Directory::Exists(drv)) return -1.0; else return 0.0;
@@ -2883,13 +2901,16 @@ repeat:
 					isdir = citem->isdir;
 				}
 
+				bool is_wild = pattern->Contains("?") || pattern->Contains("*");
 
 				bool exc = false;
 				for (int i=0; i<ne; i++)
 					if (exc_re[i]->IsMatch(filename)) {exc=true;break;};
 
+				bool match = re->IsMatch(filename);
+				if (is_wild && isdir && !not_files) match = false;
 
-				if (   ( re->IsMatch(filename) || (all_dirs && isdir) ) && !(!isdir && not_files)  && !exc)
+				if (   (match   || (all_dirs && isdir) ) && !(!isdir && not_files)  && !exc)
 				{
 					num ++; 
 					item->Selected=true;
@@ -2963,6 +2984,7 @@ repeat:
 							src_folder = pc_path->Substring(0,ind);
 						else
 							src_folder = pc_path->Substring(0,ind+1);
+						src_folder = Path::GetFullPath(src_folder);
 
 						src_pattern = pc_path->Substring(ind+1,pc_path->Length-ind-1);
 						is_wild = (src_pattern->Contains("*") || src_pattern->Contains("?"));
@@ -2989,7 +3011,12 @@ repeat:
 				
 
 
-					if (num==0) this->cmdline_error("ERROR: File not found! ("+path1+")");
+					if (num==0) 
+					{
+						String^ x = "";
+						if (path1->Contains("/")) x="\nNote: you must use a backslash (not slash) to separate directories.\n";
+						this->cmdline_error("ERROR: File not found! ("+path1+")"+x);
+					}
 
 
 					transferoptions->exclude_patterns = cmdline->exclude_patterns;
@@ -3015,9 +3042,10 @@ repeat:
 
 					String^ pvr_path = this->normalize_pvr_commandline_path(path1);
 
+					String^ pc_path;
 
 					try{
-						String^ pc_path = Path::Combine(Environment::CurrentDirectory,path2);
+						pc_path = Path::Combine(Environment::CurrentDirectory,path2);
 						while(pc_path->EndsWith("\\"))
 							pc_path = pc_path->Substring(0,pc_path->Length-1);
 
@@ -3028,6 +3056,8 @@ repeat:
 						this->cmdline_error("ERROR: The following path could not accessed on the PC: "+path2);
 						return;
 					}
+					if (pc_path->Length == 2 && pc_path->Substring(1,1)==":")
+						pc_path = pc_path + "\\";
 
 					while(pvr_path->EndsWith("\\"))
 						pvr_path = pvr_path->Substring(0,pvr_path->Length-1);
@@ -3049,14 +3079,25 @@ repeat:
 						return;
 					}
 
+				    this->setComputerDir(pc_path);
+					int r = this->loadComputerDir();
+					if (r!=0)
+					{
+						this->cmdline_error("ERROR: The destination path "+pc_path+" is invalid or cannot be accessed.");
+						return;
+
+					}
 
 
 					this->setTopfieldDir(src_folder);
 					this->loadTopfieldDir();
+				
 					int num = this->select_pattern(this->listView1, src_pattern, cmdline->recurse && is_wild && !src_ends_with_slash, src_ends_with_slash, cmdline->exclude_patterns  );
 					if (num==0) 
 					{
-						this->cmdline_error("ERROR: File not found! ("+path1+")");
+						String^ x = "";
+						if (path1->Contains("/")) x="\nNote: you must use a backslash (not slash) to separate directories.\n";
+						this->cmdline_error("ERROR: File not found! ("+path1+")"+x);
 						return;
 					}
 
@@ -5124,7 +5165,12 @@ end_copy_to_pc:
 			}
 			if ( (num_skip+num_dir_exist)==numitems && copymode == CopyMode::COPY) 
 			{
-				if (num_skip>0) printf("Skipping all %d items. Nothing to do.\n",numitems);
+				String ^s0 = ""; if (num_skip + num_dir_exist >0 ) s0 = (num_skip+num_dir_exist).ToString() + " item";
+				if (num_skip+num_dir_exist > 1) s0 = " all "+s0+"s";else s0 = " the "+s0; 
+				String ^s1 = ""; if (num_skip>0) s1=num_skip.ToString() + " file"; if (num_skip>1) s1=s1+"s";
+				String ^s2 = ""; if (num_dir_exist>0) s2=num_dir_exist.ToString() + " folder"; if (num_dir_exist>1) s2=s2+"s";
+				if (s2->Length > 0 && s1->Length > 0) s2 = " and "+s2;
+				if (num_skip>0 || num_dir_exist>0) Console::WriteLine("Skipping"+s0+" ("+s1+s2+"). Nothing to do.");
 				goto aborted;
 			}
 
@@ -5139,7 +5185,7 @@ end_copy_to_pc:
 			String ^ p;
 			String ^c0=", ";
 			String ^ c="";
-			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PVR.  To do: ",num_files,p);
+			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PVR.  TO DO: ",num_files,p);
 			p = num_skip==1 ? "" : "s"; if (num_skip>0) {printf(" Skip %d file%s",num_skip,p);c=c0;};
 			String ^q="";
 			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("%s Resume %d file%s", c,num_resume,p);q=" whole";c=c0;};
@@ -6374,7 +6420,12 @@ finish_transfer:
 			}
 			if ( (num_dir_exist+num_skip)==numitems && copymode == CopyMode::COPY) 
 			{
-				if (num_skip>0) printf("Skipping all %d items. Nothing to do.\n",numitems);
+				String ^s0 = ""; if (num_skip + num_dir_exist >0 ) s0 = (num_skip+num_dir_exist).ToString() + " item";
+				if (num_skip+num_dir_exist > 1) s0 = " all "+s0+"s";else s0 = " the "+s0; 
+				String ^s1 = ""; if (num_skip>0) s1=num_skip.ToString() + " file"; if (num_skip>1) s1=s1+"s";
+				String ^s2 = ""; if (num_dir_exist>0) s2=num_dir_exist.ToString() + " folder"; if (num_dir_exist>1) s2=s2+"s";
+				if (s2->Length > 0 && s1->Length > 0) s2 = " and "+s2;
+				if (num_skip>0 || num_dir_exist>0) Console::WriteLine("Skipping"+s0+" ("+s1+s2+"). Nothing to do.");
 				goto abort;
 			}
 
@@ -6388,7 +6439,7 @@ finish_transfer:
 			String ^ p;
 			String ^c0=", ";
 			String ^c="";
-			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PC.  To do: ",num_files,p);
+			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PC.  TO DO: ",num_files,p);
 			p = num_skip==1 ? "" : "s"; if (num_skip>0) {printf(" Skip %d file%s",num_skip,p);c=c0;};
 			String ^q="";
 			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("%s Resume %d file%s", c,num_resume,p);q=" whole";};
@@ -6824,9 +6875,12 @@ abort:  // If the transfer was cancelled before it began
 		System::Void listView_KeyDown(System::Object^  sender, System::Windows::Forms::KeyEventArgs^  e) {
 
 
-			if (this->transfer_in_progress) return;
+			
 
 			ListView^ listview = safe_cast<ListView^>(sender);
+
+			if (this->transfer_in_progress && listview == this->listView1) return;
+
 			//Console::WriteLine(listview->DoubleBuffered);
 			ListView::SelectedListViewItemCollection^ selected = listview->SelectedItems;
 			if (e->KeyCode == Keys::F2)    // Start editing filename if F2 is pressed
@@ -6842,6 +6896,11 @@ abort:  // If the transfer was cancelled before it began
 
 				return;
 			}
+
+			if (!e->Alt && !e->Shift && e->Control && e->KeyCode==Keys::E)
+				if (listview == this->listView2)
+					this->show_in_explorer();
+
 			if (e->KeyCode == Keys::F5)          // F5 (Refresh)
 			{
 				if (listview == this->listView1)
@@ -7951,8 +8010,15 @@ abort:  // If the transfer was cancelled before it began
 				 this->mi_pvr_delete = gcnew ToolStripMenuItem("Delete",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image"))));
 
 				 this->mi_pvr_rename = gcnew ToolStripMenuItem("Rename",this->basicIconsSmall->Images["rename.ico"]);
+				  this->mi_pvr_select_all = gcnew ToolStripMenuItem("Select all");
 
 				 System::Windows::Forms::ContextMenuStrip ^cm = this->contextMenuStrip1;
+
+				 
+				 this->mi_pvr_rename->ShortcutKeyDisplayString="F2";
+				 this->mi_pvr_delete->ShortcutKeyDisplayString="Del";
+				 this->mi_pvr_select_all->ShortcutKeyDisplayString="Ctrl+A";
+				 
 
 				 ToolStripItemCollection ^ic = cm->Items;
 
@@ -7961,6 +8027,7 @@ abort:  // If the transfer was cancelled before it began
 				 ic->Add(mi_pvr_proginfo);
 				 ic->Add(mi_pvr_delete);
 				 ic->Add(mi_pvr_rename);
+				 ic->Add(mi_pvr_select_all);
 
 				 int ind=0;
 				 for each (String^ str in headerNames) 
@@ -7992,6 +8059,13 @@ abort:  // If the transfer was cancelled before it began
 				 this->mi_pc_show_in_explorer = gcnew ToolStripMenuItem("Show in Explorer", this->basicIconsSmall->Images["show_file.ico"]);
 				 this->mi_pc_install_firmware = gcnew ToolStripMenuItem("Install firmware to PVR",this->basicIconsSmall->Images["cog.ico"]);
 				 this->mi_pc_rename = gcnew ToolStripMenuItem("Rename",this->basicIconsSmall->Images["rename.ico"]);
+				 this->mi_pc_select_all = gcnew ToolStripMenuItem("Select all");
+
+				 this->mi_pc_rename->ShortcutKeyDisplayString="F2";
+				 this->mi_pc_delete->ShortcutKeyDisplayString="Del";
+				 this->mi_pc_select_all->ShortcutKeyDisplayString="Ctrl+A";
+
+				 this->mi_pc_show_in_explorer->ShortcutKeyDisplayString="Ctrl+E";
 
 
 				 System::Windows::Forms::ContextMenuStrip ^cm = this->contextMenuStrip2;
@@ -8006,6 +8080,8 @@ abort:  // If the transfer was cancelled before it began
 				 ic->Add(mi_pc_show_in_explorer);
 				 ic->Add(mi_pc_install_firmware);
 				 ic->Add(mi_pc_rename);
+				 ic->Add(mi_pc_select_all);
+				
 
 				 // this->mi_pc_choose_columns = gcnew ToolStripMenuItem("Choose columns:");
 
@@ -8107,6 +8183,7 @@ abort:  // If the transfer was cancelled before it began
 				 this->mi_pc_copy->Available=!choose_columns && !isdrive;
 				 this->mi_pc_delete->Available=!choose_columns && !isdrive;
 				 this->mi_pc_move->Available=!choose_columns && !isdrive;
+				 this->mi_pc_select_all->Available=!choose_columns && !isdrive;
 				 this->mi_pc_rename->Available=!choose_columns && !isdrive && numselected==1;
 				 this->mi_pc_show_in_explorer->Available=!choose_columns;
 				 this->mi_pc_proginfo->Available=numrec>0 && !choose_columns && !isdrive;
@@ -8179,6 +8256,13 @@ abort:  // If the transfer was cancelled before it began
 					 } catch(...) {};
 
 				 }
+				 else if (mi == this->mi_pvr_select_all)
+				 {
+		
+					 ListView::ListViewItemCollection ^c =  this->listView1->Items;
+					 for each (ListViewItem^ it in c) it->Selected=true;
+				 }
+
 
 
 
@@ -8254,6 +8338,12 @@ abort:  // If the transfer was cancelled before it began
 						 selected[0]->BeginEdit();
 					 } catch(...) {};
 
+				 }
+				 else if (mi == this->mi_pc_select_all)
+				 {
+			
+					 ListView::ListViewItemCollection ^c =  this->listView2->Items;
+					 for each (ListViewItem^ it in c) it->Selected=true;
 				 }
 
 

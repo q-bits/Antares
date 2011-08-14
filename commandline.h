@@ -64,6 +64,9 @@ namespace Antares {
 		bool recurse;
 		array<String^>^ exclude_patterns;
 
+		int pid;
+
+
 		void error(String ^ str)
 		{
 			Console::WriteLine(str);
@@ -86,6 +89,7 @@ namespace Antares {
 			this->recurse=false;
 			this->exclude_patterns = gcnew array<String^>(0);
 			this->exit_on_completion = true;
+			this->pid=-1;
 
 
 
@@ -178,9 +182,40 @@ namespace Antares {
 				{
 					Console::WriteLine("\nYou selected the "+tok+" option. ");
 					Console::WriteLine("For help with the command line, please see the Antares home page.");
-					Console::WriteLine("http://users.on.net/~henry/antares/\n");
+					Console::WriteLine("http://users.on.net/~henry/antares/commandline.html\n");
 					ind++;
 					continue;
+				}
+
+				if (tok == "-pid" || tok == "/pid")
+				{
+					if (ind+1 >= nt)
+					{
+						this->error("ERROR: The option "+tok+" requires one argument.");
+						goto out;
+					}
+					ind++;
+					String^ x = this->tokens[ind];
+					bool invalid=false;
+					try{
+						this->pid = Convert::ToInt32(x,16);
+					}
+					catch(...)
+					{
+						invalid=true;
+					}
+					if (invalid || this->pid<=0 || this->pid>=65535)
+					{
+						this->error("ERROR: The option "+tok+" "+x+" did not specify a valid USB pid.");
+						goto out;
+					}
+
+
+
+
+					ind++;
+					continue;
+
 				}
 
 

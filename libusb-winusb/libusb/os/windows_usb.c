@@ -580,7 +580,7 @@ struct husb_device_handle* open_winusb_device(HANDLE hdev)
 
 }
 
-int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_length, char *driver_names)
+int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_length, char *driver_names, int specified_pid)
 {
 	int i,vid,pid,nfound;
 	ULONG requiredLength,length;
@@ -640,7 +640,8 @@ int find_usb_paths(char *dev_paths,  int *pids, int max_paths,  int paths_max_le
 		if (nfound + 1 > max_paths) break;
 
 		if (vid!=0x11db) continue;
-		if (pid!=0x1000 && pid != 0x1100) continue;
+		if ( pid!=0x1000 && pid != 0x1100 && specified_pid <= 0) continue;
+		if (specified_pid>0 && pid != specified_pid) continue;
 
 		//if (pid != 0x1100) continue;
 

@@ -384,8 +384,8 @@ int main(array<System::String ^> ^args)
 	form->topfield_background_enumerator=nullptr;
 
 
-
-	settings->writeXmlSettings();
+    if (settings->backup_dic == nullptr)
+		settings->writeXmlSettings();
 
 	if (form->fd != NULL)
 	{
