@@ -2960,7 +2960,7 @@ repeat:
 
 				if (d1==d2)
 				{
-					this->cmdline_error("ERROR: the parameters to the "+cmd+" command could not be understood.");
+					this->cmdline_error("ERROR: the parameters to the "+cmd+" command could not be understood.\n(Which one is the PVR, and which one is the PC?)");
 					return;
 				}
 
@@ -3006,6 +3006,7 @@ repeat:
 						this->cmdline_error("ERROR: The destination path could not be found: "+path2);
 						return;
 					}
+					this->loadTopfieldDir();
 
 					int num = this->select_pattern(this->listView2, src_pattern, cmdline->recurse && is_wild && !src_ends_with_slash, src_ends_with_slash, cmdline->exclude_patterns );
 				
@@ -3024,6 +3025,10 @@ repeat:
 						transferoptions->pattern = src_pattern; 
 
 					transferoptions->copymode = cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE;
+
+					transferoptions->never_delete_directories = is_wild && (src_pattern!="*") && !src_ends_with_slash || cmdline->exclude_patterns->Length>0;
+
+					transferoptions->skip_directories_with_no_files = is_wild && (src_pattern!="*") && !src_ends_with_slash;
 
 
 
@@ -3090,6 +3095,16 @@ repeat:
 
 
 					this->setTopfieldDir(src_folder);
+
+
+					array<TopfieldItem^> ^arr = this->loadTopfieldDirArrayOrNull(src_folder);
+					if (arr==nullptr)
+					{
+						this->cmdline_error("ERROR: The source location could not be found: "+path2);
+						return;
+					}
+
+
 					this->loadTopfieldDir();
 				
 					int num = this->select_pattern(this->listView1, src_pattern, cmdline->recurse && is_wild && !src_ends_with_slash, src_ends_with_slash, cmdline->exclude_patterns  );
@@ -3107,8 +3122,10 @@ repeat:
 
 					transferoptions->copymode = cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE;
 
+					transferoptions->never_delete_directories = is_wild && (src_pattern!="*") && !src_ends_with_slash || cmdline->exclude_patterns->Length>0;
 
-					// remember, set turbo mode
+
+					transferoptions->skip_directories_with_no_files = is_wild && (src_pattern!="*") && !src_ends_with_slash;
 
 					this->transfer_selection_to_PC(transferoptions);
 
@@ -3121,7 +3138,6 @@ repeat:
 			}
 
 
-			
 
 		}
 
@@ -4239,6 +4255,7 @@ out:
 					this->settings->restore_settings();
 					Application::Exit();
 				}
+				this->no_prompt=false;
 
 
 			}
@@ -4265,6 +4282,7 @@ out:
 				}
 			copydialog->copydirection = CopyDirection::PVR_TO_PC;
 			copydialog->update_dialog_threadsafe();
+			TransferOptions ^transferoptions = copydialog->transferoptions;
 			int numitems = copydialog->numfiles;
 
 			int this_overwrite_action;
@@ -4277,6 +4295,7 @@ out:
 			array<long long int>^    current_offsets    = copydialog->current_offsets;
 			array<long long int>^    src_sizes          = copydialog->filesizes;
 			array<FileItem^>^        src_items          = copydialog->src_items;
+			array<bool>^             filtered_dir_has_no_files =  copydialog->filtered_dir_has_no_files;
 			array<bool>^             source_deleted     = gcnew array<bool>(numitems); for (int i=0; i<numitems; i++) source_deleted[i]=false;
 
 			array<int>^              num_fails          = gcnew array<int>(numitems); for (int i=0; i<numitems; i++) num_fails[i]=0;
@@ -4291,6 +4310,7 @@ out:
 
 				if (item->isdir)
 				{
+					if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[i]) continue;
 					if (File::Exists(dest_filename[i]) && !Directory::Exists(dest_filename[i]))
 					{
 
@@ -4315,7 +4335,7 @@ out:
 						}
 					}
 
-					if (copydialog->copymode == CopyMode::MOVE && i==numitems-1)
+					if (copydialog->copymode == CopyMode::MOVE && i==numitems-1 && !transferoptions->never_delete_directories)
 					{
 
 
@@ -4790,44 +4810,45 @@ check_delete:
 
 					// Look for directories which might now be empty, and delete them:
 
-					for (int j=i-1; j>=0; j--)
-					{
-						TopfieldItem ^titem = safe_cast<TopfieldItem^>(src_items[j]);
-						String^ pth_with_slash = titem->full_filename;
-						if (!pth_with_slash->EndsWith("\\")) pth_with_slash = pth_with_slash + "\\";
-						if (titem->isdir && !source_deleted[j])
+					if (!transferoptions->never_delete_directories)
+						for (int j=i-1; j>=0; j--)
 						{
-							bool probably_empty=true;
-
-
-							for (int k=j+1; k<numitems; k++)  // assumes that sub-directories and sub-files are always later in array
+							TopfieldItem ^titem = safe_cast<TopfieldItem^>(src_items[j]);
+							String^ pth_with_slash = titem->full_filename;
+							if (!pth_with_slash->EndsWith("\\")) pth_with_slash = pth_with_slash + "\\";
+							if (titem->isdir && !source_deleted[j])
 							{
-								TopfieldItem^ titem_k = safe_cast<TopfieldItem^>(src_items[k]);
-								if (!source_deleted[k] && titem_k->full_filename->StartsWith(pth_with_slash))
+								bool probably_empty=true;
+
+
+								for (int k=j+1; k<numitems; k++)  // assumes that sub-directories and sub-files are always later in array
 								{
-									probably_empty=false;
-									break;
+									TopfieldItem^ titem_k = safe_cast<TopfieldItem^>(src_items[k]);
+									if (!source_deleted[k] && titem_k->full_filename->StartsWith(pth_with_slash))
+									{
+										probably_empty=false;
+										break;
+									}
 								}
-							}
 
 
-							if (probably_empty)
-							{
-								// Make real sure it's empty now.
-
-								array<TopfieldItem^>^ dirarray = this->loadTopfieldDirArrayOrNull(titem->full_filename);
-								if (dirarray != nullptr && dirarray->Length==0)
+								if (probably_empty)
 								{
-									// Now finally delete it
-									dr = this->deleteTopfieldPath(titem->full_filename);
+									// Make real sure it's empty now.
 
-									if (dr>=0) source_deleted[j]=true;
+									array<TopfieldItem^>^ dirarray = this->loadTopfieldDirArrayOrNull(titem->full_filename);
+									if (dirarray != nullptr && dirarray->Length==0)
+									{
+										// Now finally delete it
+										dr = this->deleteTopfieldPath(titem->full_filename);
+
+										if (dr>=0) source_deleted[j]=true;
+									}
 								}
+
 							}
 
 						}
-
-					}
 
 				}
 
@@ -4902,6 +4923,7 @@ end_copy_to_pc:
 			copydialog->parent_win = this;
 			copydialog->parent_form = this;
 			copydialog->commandline=this->commandline;
+			copydialog->transferoptions = transferoptions;
 			//copydialog->showCopyDialog();
 
 
@@ -5026,6 +5048,7 @@ end_copy_to_pc:
 			array<int>^              overwrite_action = gcnew array<int>(numitems);
 			array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
 			array<int>^              file_indices = gcnew array<int>(numitems);
+			array<bool>^             filtered_dir_has_no_files = gcnew array<bool>(numitems);
 
 
 			array<int>^ num_cat = {0,0,0}; //numbers of existing files (divided by category)
@@ -5035,6 +5058,29 @@ end_copy_to_pc:
 			array<String^>^ files_cat = {"","",""};
 
 			for (int i=0; i<numitems; i++) overwrite_action[i]=OVERWRITE;
+
+
+			for (int i=0; i<numitems; i++)
+			{
+				TopfieldItem^ item = src_items[i];
+
+				if (!item->isdir) continue;
+				String^ x = item->full_filename;
+				if (!x->EndsWith("\\")) x = x + "\\";
+
+				bool file_found = false;
+				for (int j=0; j<numitems; j++)
+				{
+					if (j==i || src_items[j]->isdir) continue;
+					String^ y = src_items[j]->full_filename;
+					if (y->StartsWith(x))
+					{
+						file_found=true;
+						break;
+					}
+				}
+				filtered_dir_has_no_files[i] = !file_found;
+			}
 
 			for (ind=0; ind<numitems; ind++)
 			{
@@ -5049,6 +5095,12 @@ end_copy_to_pc:
 				}
 				if (item->isdir)
 				{
+
+					if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[ind]) 
+					{
+						num_dir_exist++;   // A bit hacky adding it to "existing" count
+						continue;
+					}
 
 					if( Directory::Exists(dest_filename[ind]))
 						num_dir_exist++;
@@ -5261,6 +5313,7 @@ end_copy_to_pc:
 			copydialog->action1_skipdelete = action1_skipdelete;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 			copydialog->file_indices=file_indices;
+			copydialog->filtered_dir_has_no_files=filtered_dir_has_no_files;
 
 			for (int i=0, ind=0; i<numitems; i++) {if ( !(src_items[i]->isdir || overwrite_action[i]==SKIP) ) ind++; file_indices[i]=ind;};
 
@@ -5347,6 +5400,7 @@ aborted:   // If the transfer was cancelled before it began
 
 			copydialog->copydirection=CopyDirection::PC_TO_PVR;
 			copydialog->update_dialog_threadsafe();
+			TransferOptions ^transferoptions = copydialog->transferoptions;
 			int numitems = copydialog->numfiles;
 
 			int this_overwrite_action;
@@ -5359,6 +5413,7 @@ aborted:   // If the transfer was cancelled before it began
 			array<long long int>^    current_offsets    = copydialog->current_offsets;
 			array<long long int>^    src_sizes          = copydialog->filesizes;
 			array<FileItem^>^        src_items          = copydialog->src_items;
+			array<bool>^             filtered_dir_has_no_files=copydialog->filtered_dir_has_no_files;
 			array<bool>^             source_deleted     = gcnew array<bool>(numitems); for (int i=0; i<numitems; i++) source_deleted[i]=false;
 			array<array<TopfieldItem^>^>^ topfield_items_by_folder = copydialog->topfield_items_by_folder;
 			array<String^>^          failed_filenames   = gcnew array<String^>(0);
@@ -5377,6 +5432,7 @@ aborted:   // If the transfer was cancelled before it began
 
 				if (item->isdir)
 				{
+					if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[i]) continue;
 					titem = this->topfieldFileExists(topfield_items_by_folder,dest_filename[i]);
 					int r=0;
 					if (titem==nullptr)
@@ -5405,7 +5461,7 @@ aborted:   // If the transfer was cancelled before it began
 					}
 
 
-					if (copydialog->copymode==CopyMode::MOVE)
+					if (copydialog->copymode==CopyMode::MOVE && !transferoptions->never_delete_directories)
 					{
 						// Try deleting this directory at the source, and any directories which might now be empty
 
@@ -6121,6 +6177,7 @@ finish_transfer:
 			copydialog->parent_win = this;
 			copydialog->parent_form = this;
 			copydialog->commandline = this->commandline;
+			copydialog->transferoptions = transferoptions;
 			//copydialog->showCopyDialog();
 
 			//String ^window_title_bit;
@@ -6287,8 +6344,31 @@ finish_transfer:
 			array<int>^              overwrite_action = gcnew array<int>(numitems);
 			array<long long int>^    current_offsets = gcnew array<long long int>(numitems);
 			array<int>^              file_indices = gcnew array<int>(numitems);
+			array<bool>^             filtered_dir_has_no_files = gcnew array<bool>(numitems);
 
 			for (int i=0; i<numitems; i++) overwrite_action[i]=OVERWRITE;
+
+			for (int i=0; i<numitems; i++)
+			{
+				ComputerItem^ item = src_items[i];
+
+				if (!item->isdir) continue;
+				String^ x = item->full_filename;
+				if (!x->EndsWith("\\")) x = x + "\\";
+
+				bool file_found = false;
+				for (int j=0; j<numitems; j++)
+				{
+					if (j==i || src_items[j]->isdir) continue;
+					String^ y = src_items[j]->full_filename;
+					if (y->StartsWith(x))
+					{
+						file_found=true;
+						break;
+					}
+				}
+				filtered_dir_has_no_files[i] = !file_found;
+			}
 
 			TopfieldItem^ titem;				 
 			array<int>^ num_cat={0,0,0}; //numbers of existing files (divided by category of destination file: 0=correct size,  1=undersized, 2=oversized).
@@ -6308,6 +6388,14 @@ finish_transfer:
 					dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
 				}
 				if (item->isdir) {
+
+					if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[ind]) 
+					{
+						num_dir_exist++;   // A bit hacky adding it to "existing" count
+						continue;
+					}
+
+
 					if (nullptr != this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]))
 						num_dir_exist++;
 					else
@@ -6508,6 +6596,8 @@ finish_transfer:
 			copydialog->numfiles=numitems;
 			copydialog->current_index=0;
 			copydialog->file_indices=file_indices;
+			copydialog->filtered_dir_has_no_files=filtered_dir_has_no_files;
+			
 
 			for (int i=0, ind=0; i<numitems; i++) {if ( !(src_items[i]->isdir || overwrite_action[i]==SKIP) ) ind++; file_indices[i]=ind;};
 

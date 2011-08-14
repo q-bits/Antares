@@ -536,6 +536,7 @@ namespace Antares {
 			}
 
 
+			try{
 			if (Console::KeyAvailable)
 			{
 				System::ConsoleKeyInfo key = Console::ReadKey(true);
@@ -554,6 +555,8 @@ namespace Antares {
 				}
 				
 			}
+			}
+			catch(...){}  //Todo: nicer way of dealing with an absent console.
 
 
 			//double current_delta = (double) (time(NULL) - this->current_start_time);
@@ -760,6 +763,7 @@ namespace Antares {
 
 		int on_completion;
 
+		TransferOptions^ transferoptions;
 
 		CommandLine^ commandline;
 		double rate_seconds;
@@ -803,6 +807,7 @@ namespace Antares {
 		array<String^>^       dest_filename;
 		array<FileItem^>^     src_items;
 		array<int>^           file_indices; 
+		array<bool>^          filtered_dir_has_no_files;
 		array<array<TopfieldItem^>^>^ topfield_items_by_folder;
 		bool usb_error; 
 		String^ file_error; 

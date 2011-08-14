@@ -8,6 +8,11 @@ namespace Antares {
 	using namespace System;
 	using namespace System::Text;
 
+
+
+	///////////////// class TransferOptions
+
+
 	public ref class TransferOptions
 	{
 	public:
@@ -15,12 +20,16 @@ namespace Antares {
 		array<String^>^ exclude_patterns; 
 
 		CopyMode copymode;
+		bool never_delete_directories;   // Should be set to true if doing a recursive wildcard move
+		bool skip_directories_with_no_files;  // Should be set to true if doing a recursive wilcard move/copy
 
 		void init(void)
 		{
 			this->pattern="";
 			this->copymode=CopyMode::UNDEFINED;
 			this->exclude_patterns = gcnew array<String^>(0);
+			this->never_delete_directories=false;
+			this->skip_directories_with_no_files=false;
 
 		}
 
@@ -40,6 +49,8 @@ namespace Antares {
 
 
 	};
+
+	///////////////////// class CommandLine
 
 	public ref class CommandLine
 	{
