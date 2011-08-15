@@ -276,7 +276,6 @@ int main(array<System::String ^> ^args)
 
 {
 
-
 	if (args->Length > 0)
 	{
 		//InitConsoleHandles();

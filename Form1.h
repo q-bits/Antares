@@ -3150,15 +3150,21 @@ repeat:
 			if (this->idle_count > 1 ) return;
 
 			Application::Idle -= gcnew EventHandler(this, &Form1::Application_Idle);
-			
+
+			if (this->commandline->the_command->Length==0 && !this->commandline->dont_free_console)
+			{
+
+				try{ FreeConsole();}catch(...){}
+
+			}
+
+
 			if (this->commandline->the_command->Length>0)
 			{
 				this->exit_on_completion = this->commandline->exit_on_completion;
 				this->no_prompt = this->commandline->no_prompt;
 				this->settings->backup_settings();
 				this->run_command(this->commandline);
-
-
 			}
 
 
@@ -4924,6 +4930,7 @@ end_copy_to_pc:
 			copydialog->parent_form = this;
 			copydialog->commandline=this->commandline;
 			copydialog->transferoptions = transferoptions;
+			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 			//copydialog->showCopyDialog();
 
 
@@ -4938,6 +4945,7 @@ end_copy_to_pc:
 
 			copydialog->tiny_size();
 			copydialog->label3->Text="Finding files...";
+			Console::WriteLine("Finding files...");
 			this->ShowCopyDialog(copydialog);
 
 			copydialog->Update();
@@ -6178,6 +6186,7 @@ finish_transfer:
 			copydialog->parent_form = this;
 			copydialog->commandline = this->commandline;
 			copydialog->transferoptions = transferoptions;
+			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 			//copydialog->showCopyDialog();
 
 			//String ^window_title_bit;
@@ -6192,6 +6201,7 @@ finish_transfer:
 
 			copydialog->tiny_size();
 			copydialog->label3->Text="Finding files...";
+			Console::WriteLine("Finding files...");
 			this->ShowCopyDialog(copydialog);
 
 			copydialog->Update();
@@ -6384,8 +6394,10 @@ finish_transfer:
 				else
 				{
 
-					dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
-					dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
+					//dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
+					//dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
+					dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
+					dest_filename[ind] = Antares::combineTopfieldPath(dest_filename[ind], item->safe_filename);
 				}
 				if (item->isdir) {
 
@@ -8225,6 +8237,7 @@ abort:  // If the transfer was cancelled before it began
 				 this->mi_pvr_copy->Available=!choose_columns;
 				 this->mi_pvr_delete->Available=!choose_columns;
 				 this->mi_pvr_move->Available=!choose_columns;
+				 this->mi_pvr_select_all->Available=!choose_columns;
 				 this->mi_pvr_rename->Available=!choose_columns && numselected==1;
 				 this->mi_pvr_proginfo->Available=numrec>0 && !choose_columns;
 

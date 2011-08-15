@@ -73,6 +73,7 @@ namespace Antares {
 		bool turbo_specified;
 		int turbo_mode;
 		bool recurse;
+		bool dont_free_console;
 		array<String^>^ exclude_patterns;
 
 		int pid;
@@ -101,6 +102,7 @@ namespace Antares {
 			this->exclude_patterns = gcnew array<String^>(0);
 			this->exit_on_completion = true;
 			this->pid=-1;
+			this->dont_free_console=false;
 
 
 
@@ -141,7 +143,7 @@ namespace Antares {
 					continue;
 				}
 
-				if (tok=="-g" || tok=="/g")
+				if (tok=="-g" || tok=="/g" || tok=="/G" || tok == "-G")
 				{
 					this->showgui_specified=true;
 					this->exit_on_completion=false;
@@ -163,14 +165,14 @@ namespace Antares {
 					continue;
 				}
 
-				if (tok == "-r" || tok =="/r")
+				if (tok == "-r" || tok =="/r" || tok=="-R" || tok == "/R")
 				{
 					this->recurse=true;
 					ind++;
 					continue;
 				}
 
-				if (tok == "-x" || tok == "/x")
+				if (tok == "-x" || tok == "/x" || tok=="-X" || tok =="/X")
 				{
 					if (ind+1 >= nt)
 					{
