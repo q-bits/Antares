@@ -944,11 +944,22 @@ check_freespace:
 			}
 
 			array<ComputerItem^>^ items = gcnew array<ComputerItem^>(list->Length);
+			int ind = 0;
 			for (j=0; j<list->Length; j++)
 			{
+				ComputerItem^ item; 
+				try{
+					item = gcnew ComputerItem(list[j], dir);
+				}
+				catch(...)
+				{
+					continue;
+				}
 
-				items[j] = gcnew ComputerItem(list[j], dir);
+				items[ind] = item;
+				ind++;
 			}
+			Array::Resize(items, ind);
 			return items;
 		}
 
@@ -4045,9 +4056,19 @@ out:
 
 			if(item->isdir)
 			{
+				String ^old = this->computerCurrentDirectory;
 				String^ dir = Path::Combine(this->computerCurrentDirectory,item->Text);
 				this->setComputerDir(dir);
-				this->loadComputerDir();
+				int r = this->loadComputerDir();
+				if (r<0)
+				{
+					this->setComputerDir(old);
+					this->loadComputerDir();
+					this->toolStripStatusLabel1->Text = "Access denied: "+dir;
+					return;
+				}
+
+
 				this->add_path_to_history(this->textBox1, this->computerCurrentDirectory);
 				return;
 
