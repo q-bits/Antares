@@ -22,6 +22,7 @@ namespace Antares {
 		CopyMode copymode;
 		bool never_delete_directories;   // Should be set to true if doing a recursive wildcard move
 		bool skip_directories_with_no_files;  // Should be set to true if doing a recursive wilcard move/copy
+		bool overwrite_all;
 
 		void init(void)
 		{
@@ -30,6 +31,7 @@ namespace Antares {
 			this->exclude_patterns = gcnew array<String^>(0);
 			this->never_delete_directories=false;
 			this->skip_directories_with_no_files=false;
+			this->overwrite_all=false;
 
 		}
 
@@ -75,6 +77,7 @@ namespace Antares {
 		bool recurse;
 		bool dont_free_console;
 		array<String^>^ exclude_patterns;
+		bool overwrite_all;
 
 		int pid;
 
@@ -103,6 +106,7 @@ namespace Antares {
 			this->exit_on_completion = true;
 			this->pid=-1;
 			this->dont_free_console=false;
+			this->overwrite_all=false;
 
 
 
@@ -222,14 +226,18 @@ namespace Antares {
 						this->error("ERROR: The option "+tok+" "+x+" did not specify a valid USB pid.");
 						goto out;
 					}
+					ind++;
+					continue;
+				}
 
-
-
-
+				if (tok=="-overwrite_all" || tok=="/overwrite_all" || tok=="-oa" || tok == "/oa")
+				{
+					this->overwrite_all = true;
 					ind++;
 					continue;
 
 				}
+
 
 
 

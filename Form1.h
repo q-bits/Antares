@@ -2968,6 +2968,8 @@ repeat:
 				//Console::WriteLine("path2 = "+path2+" d2="+d2.ToString());
 				TransferOptions ^transferoptions = gcnew TransferOptions();
 
+				transferoptions->overwrite_all = cmdline->overwrite_all;
+
 
 				if (d1==d2)
 				{
@@ -5222,6 +5224,9 @@ end_copy_to_pc:
 				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
 				int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
 
+				if (transferoptions->overwrite_all) {action1=OVERWRITE; action2=OVERWRITE; action2=OVERWRITE;} 
+
+
 				action1_skipdelete = oc->checkBox1->Checked;
 
 				for (int i=0; i<numitems; i++)
@@ -6518,6 +6523,8 @@ finish_transfer:
 				int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
 				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
 				int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
+
+				if (transferoptions->overwrite_all) {action1=OVERWRITE; action2=OVERWRITE; action2=OVERWRITE;} 
 
 				action1_skipdelete = oc->checkBox1->Checked;
 
