@@ -427,6 +427,7 @@ int husb_bulk_write_winusb(struct husb_device_handle *fd,  int ep,  char *bytes,
     return bytes_written;
 }
 
+extern int verbose;
 
 int husb_bulk_read_winusb(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout, int no_reply)
 {
@@ -456,6 +457,7 @@ int husb_bulk_read_winusb(struct husb_device_handle *fd,  int ep,  char *bytes, 
 
 			if ( * ( (uint32_t *) (bytes+4 )) == 0x100a0000L)
 			{
+				if (verbose) printf("Auto send_success.\n");
 
 				 r = WinUsb_WritePipe(fd->usbHandle,
                              fd->bulkOutPipe,

@@ -98,7 +98,6 @@ namespace Antares {
 	//
 	// TODO: Clean up, put somewhere else
 
-
 	enum TBPFLAG
 	{
 		TBPF_NOPROGRESS = 0,

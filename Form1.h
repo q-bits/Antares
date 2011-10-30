@@ -183,6 +183,15 @@ namespace Antares {
 
 
 			this->commandline = gcnew CommandLine(Environment::CommandLine);
+
+			if (this->commandline->verbose) 
+			{
+				printf("Verbose mode.\n");
+				set_verbose(3,2);
+			}
+
+
+
 			this->exit_on_completion=false;
 			this->no_prompt = false;
 			this->idle_count = 0;
@@ -495,7 +504,7 @@ namespace Antares {
 					device_path = &dev_paths[j][0];
 					String^ driver_name = gcnew String( &driver_names[j][0]);
 					driver_name = driver_name->ToLowerInvariant();
-					//Console::WriteLine("Driver: " + driver_name);
+					if (verbose) printf("%d: Driver: %s\n",j, driver_name);
 					if (driver_name->Equals("winusb"))
 					{
 						hdev = CreateFileA(device_path, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
@@ -545,6 +554,7 @@ namespace Antares {
 
 
 				}
+				if (verbose) Console::WriteLine(error_str);
 
 				//this->fd=NULL;
 				//printf("this->fd = %ld   fdtemp=%ld  \n",(long int) this->fd, (long int) fdtemp);
@@ -627,7 +637,7 @@ namespace Antares {
 					// Select configuration 0x01
 					if (libusb_set_configuration(dh, 0x01))
 					{
-						fprintf(stderr, "connect: Select configuration failed\n");
+						fprintf(stdout, "connect: Select configuration failed\n");
 
 						continue;
 					}
@@ -635,7 +645,7 @@ namespace Antares {
 					// Claim interface 0x00
 					if (libusb_claim_interface(dh, 0x00))
 					{
-						fprintf(stderr, "connect: Claim interface failed\n");
+						fprintf(stdout, "connect: Claim interface failed\n");
 
 						continue;
 					}
@@ -877,7 +887,7 @@ check_freespace:
 			{
 			case SUCCESS:
 				trace(1,
-					fprintf(stderr, "Turbo mode: %s\n",
+					fprintf(stdout, "Turbo mode: %s\n",
 					turbo_on ? "ON" : "OFF"));
 				this->absorb_late_packets(2,100);
 
@@ -885,13 +895,13 @@ check_freespace:
 				break;
 
 			case FAIL:
-				fprintf(stderr, "ERROR: Device reports %s in set_turbo_mode\n",
+				fprintf(stdout, "ERROR: Device reports %s in set_turbo_mode\n",
 					decode_error(&reply));
 				this->connection_error_occurred();
 				break;
 
 			default:
-				fprintf(stderr, "ERROR: Unhandled packet (in set_turbo_mode) cmd=%d\n",&reply.cmd);
+				fprintf(stdout, "ERROR: Unhandled packet (in set_turbo_mode) cmd=%d\n",&reply.cmd);
 				this->connection_error_occurred();
 				this->absorb_late_packets(2,100);
 			}
@@ -1508,7 +1518,7 @@ repeat:
 		// Load the specified topfield directory into an array of TopfieldItems
 		array<TopfieldItem^>^ loadTopfieldDirArrayOrNull(String^ path)               
 		{
-			//Console::WriteLine("Loading directory: "+path);
+			if (verbose) printf("loadTopfieldDirArrayOrNull(%s)\n ",path);
 			tf_packet reply;
 
 			__u16 count;
@@ -1546,6 +1556,11 @@ repeat:
 					for(i = 0; (i < count); i++)
 					{
 						item = gcnew TopfieldItem(&entries[i],path);
+						if (verbose)
+						{
+							printf("%lld : %s\n",item->size, item->full_filename);
+
+						}
 						item->directory = path;
 						if (String::Compare(item->filename,"..")!=0 ) 
 						{
@@ -1563,13 +1578,13 @@ repeat:
 					break;
 
 				case FAIL:
-					//fprintf(stderr, "ERROR: Device reports %s in loadTopfieldDirArray, path %s\n",decode_error(&reply),path);
+					//fprintf(stdout, "ERROR: Device reports %s in loadTopfieldDirArray, path %s\n",decode_error(&reply),path);
 					this->connection_error_occurred();
 					return nullptr;//items;
 
 					break;
 				default:
-					fprintf(stderr, "ERROR: Unhandled packet\n");
+					fprintf(stdout, "ERROR: Unhandled packet\n");
 					this->absorb_late_packets(4,100);
 					this->connection_error_occurred();
 					return nullptr;//items;
@@ -1649,13 +1664,13 @@ repeat:
 				}
 
 			case FAIL:
-				fprintf(stderr, "ERROR: Device reports %s in getTopfieldFreeSpace\n",
+				fprintf(stdout, "ERROR: Device reports %s in getTopfieldFreeSpace\n",
 					decode_error(&reply));
 				this->connection_error_occurred();
 				break;
 
 			default:
-				fprintf(stderr, "ERROR: Unhandled packet in load_topfield_dir/hdd_size\n");
+				fprintf(stdout, "ERROR: Unhandled packet in load_topfield_dir/hdd_size\n");
 				this->connection_error_occurred();
 				this->absorb_late_packets(4,100);
 			}
@@ -2079,6 +2094,14 @@ repeat:
 
 	private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip2;
+
+
+
+
+
+
+
+
 
 
 
@@ -3167,7 +3190,11 @@ repeat:
 			if (this->commandline->the_command->Length==0 && !this->commandline->dont_free_console)
 			{
 
-				try{ FreeConsole();}catch(...){}
+				try{
+#ifndef _DEBUG
+					FreeConsole();
+#endif
+				}catch(...){}
 
 			}
 
@@ -4305,10 +4332,16 @@ out:
 			Monitor::Enter(this->locker);
 			//////////////
 			if (this->commandline->showgui)
+			{
 				while(copydialog->loaded==false)
 				{
 					Thread::Sleep(100);
 				}
+			}
+
+			if (this->commandline->verbose) printf("transfer_to_PC\n");
+			
+
 			copydialog->copydirection = CopyDirection::PVR_TO_PC;
 			copydialog->update_dialog_threadsafe();
 			TransferOptions ^transferoptions = copydialog->transferoptions;
@@ -4548,6 +4581,7 @@ restart_copy_to_pc:
 				copydialog->total_bytes_received=total_bytes_received;
 				//copydialog->current_filesize = item->size;
 				copydialog->update_dialog_threadsafe();
+				if (verbose) printf("Start of transfer: topfield_file_offset=%lld \n",(long long) topfield_file_offset);
 
 
 				int update=0;
@@ -4564,6 +4598,7 @@ restart_copy_to_pc:
 
 					if (r<=0)
 					{
+						if (verbose) printf("r=%d in transfer_to_PC / get_tf_packet \n",r);
 						copydialog->usb_error=true;
 						this->connection_error_occurred();
 						goto out;
@@ -4580,13 +4615,14 @@ restart_copy_to_pc:
 							bytecount = get_u64(&tf->size);
 							mod_utime_buf.actime = mod_utime_buf.modtime =
 								tfdt_to_time(&tf->stamp);
+							if (verbose) printf("DATA_HDD_FILE_START, bytecount=%lld \n",(long long) bytecount);
 
 							send_success(fd);
 							state = DATA;
 						}
 						else
 						{
-							fprintf(stderr,
+							fprintf(stdout,
 								"ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
 								state);
 							this->connection_error_occurred();
@@ -4603,6 +4639,7 @@ restart_copy_to_pc:
 							__u16 dataLen =
 								get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
 
+							if (verbose) printf("HDD_FILE_DATA, offset=%lld  dataLen=%lld\n",(long long) offset, (long long) dataLen);
 
 							// if( !quiet)
 							// {
@@ -4651,21 +4688,23 @@ restart_copy_to_pc:
 							}
 							catch(...)
 							{
+								if (verbose) printf("An I/O error occurred in transfer_to_PC / Write\n");
 								io_error=true;
 								goto out;
 							}
-							topfield_file_offset+=dataLen;
-							probable_minimum_received_offset=topfield_file_offset;
-							copydialog->new_packet(dataLen);
 							if (topfield_file_offset != offset)
 							{
-								//printf("Warning: offset mismatch! %lu %lu \n",topfield_file_offset,offset);
+								printf("Warning: offset mismatch! %lld %lld \n",(long long) topfield_file_offset, (long long) offset);
 								// TODO: Handle this type of error
 							}
 
+							topfield_file_offset+=dataLen;
+							probable_minimum_received_offset=topfield_file_offset;
+							copydialog->new_packet(dataLen);
+						
 							bytes_received += dataLen;
 							total_bytes_received +=dataLen;
-							if (topfield_file_offset>item->size) printf("Warning: topfield_file_offset>item->size\n");else
+							if (topfield_file_offset > item->size) printf("Warning: topfield_file_offset>item->size     %lld >  %lld  \n",(long long) topfield_file_offset, (long long) item->size);else
 								//copydialog->total_offset = total_bytes_received;
 								copydialog->current_offsets[i] = topfield_file_offset;//bytes_received;
 
@@ -4675,6 +4714,7 @@ restart_copy_to_pc:
 							if (update%4==0)
 							{
 								//this->Update();
+								if (verbose) printf("update_dialog_threadsafe\n");
 								copydialog->update_dialog_threadsafe();
 							}
 							//if(w < dataLen)
@@ -4690,7 +4730,7 @@ restart_copy_to_pc:
 
 							if (copydialog->cancelled == true)
 							{
-								//printf("CANCELLING\n");
+								if (verbose) printf("CANCELLING because of copy dialog.\n");
 								send_cancel(fd);
 								//was_cancelled=true;
 								state = ABORT;
@@ -4700,6 +4740,7 @@ restart_copy_to_pc:
 
 							if (copydialog->turbo_request != *this->turbo_mode)
 							{
+								if (verbose) printf("Need to change turbo mode.\n");
 								turbo_changed=true;
 								copydialog->update_dialog_threadsafe();
 
@@ -4726,7 +4767,7 @@ restart_copy_to_pc:
 					case DATA_HDD_FILE_END:
 						send_success(fd);
 						//item->Selected = false;
-						//printf("DATA_HDD_FILE_END\n");
+						if (verbose) printf("DATA_HDD_FILE_END\n");
 						result = 0;
 						copydialog->success(i);
 						goto out;
@@ -4743,12 +4784,15 @@ restart_copy_to_pc:
 						break;
 
 					case SUCCESS:
-						//printf("SUCCESS\n");
-						goto out;
+						if (verbose) printf("SUCCESS.    state=%d\n",state);
+						if (state==DATA)
+						{
+							goto out;
+						}
 						break;
 
 					default:
-						printf("ERROR: Unhandled packet (cmd 0x%x)\n",
+						printf("ERROR: Unhandled packet (cmd 0x%x) in transfer_to_PC\n",
 							get_u32(&reply.cmd));
 						this->connection_error_occurred();
 						send_cancel(fd);
@@ -4765,8 +4809,11 @@ out:
 
 				try  
 				{
+					if (verbose) printf("Setting length of destination file to %lld\n",copydialog->current_offsets[i]);
 					dest_file->SetLength(copydialog->current_offsets[i]);
-				} catch(...){};
+				} catch(...){
+				if (verbose) printf("Setting length didn't work.\n");
+				};
 
 				try
 				{
@@ -4776,7 +4823,7 @@ out:
 				}
 				catch(...)
 				{
-
+					if (verbose) printf("Closing, and setting times, didn't work.\n");
 				}
 
 				if (copydialog->cancelled==true) break;
@@ -4787,6 +4834,7 @@ out:
 
 					Monitor::Exit(this->locker);
 					int wfc = this->wait_for_connection(copydialog);
+					if (verbose) printf("transfer_to_PC / wait_for_connection returned %d\n",wfc);
 					Monitor::Enter(this->locker);
 
 
@@ -4907,6 +4955,11 @@ end_copy_to_pc:
 						break;
 					}
 				}
+			}
+
+			if (verbose)
+			{
+				Console::WriteLine(copydialog->file_error);
 			}
 
 
@@ -5482,13 +5535,15 @@ aborted:   // If the transfer was cancelled before it began
 
 					// If there was some other error creating the folder...
 					// ... perhaps it was really successful. Try loading the folder contents to find out.
+
 					if (r<0)
 					{
 						array<TopfieldItem^> ^check = this->loadTopfieldDirArrayOrNull(dest_filename[i]);
-						//printf("Double checking %s\n",dest_filename[i]);
+						if (verbose) printf("newTopfieldFolder returned %d. Double checking %s\n",r,dest_filename[i]);
 
 						if (check==nullptr)
 						{
+							if (verbose) printf("Double-check failed.\n");
 							copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
 							goto finish_transfer;
 						}
@@ -5773,6 +5828,7 @@ restart_copy_to_pvr:
 
 					if (r<=0)
 					{
+						if (verbose) printf("In main loop of transfer_to_PVR, get_tf_packet returned %d\n",r);
 						copydialog->usb_error=true;
 						goto out;
 					}
@@ -5781,6 +5837,7 @@ restart_copy_to_pvr:
 					switch (get_u32(&reply.cmd))
 					{
 					case SUCCESS:
+						if (verbose) printf("SUCCESS\n");
 						switch (state)
 						{
 						case START:
@@ -5800,13 +5857,11 @@ restart_copy_to_pvr:
 								tf->name[94] = '\0';
 								tf->unused = 0;
 								tf->attrib = 0;
-								trace(3,
-									fprintf(stderr, "%s: DATA_HDD_FILE_START\n",
-									__FUNCTION__));
+								if (verbose) printf(" DATA_HDD_FILE_START  \n");
 								r = send_tf_packet(this->fd, &packet);
 								if(r < 0)
 								{
-									//fprintf(stderr, "ERROR: Incomplete send.\n");
+									if (verbose) printf( "ERROR: Incomplete send in transfer_to_PVR.\n");
 									copydialog->usb_error=true;
 									goto out;
 								}
@@ -5816,6 +5871,7 @@ restart_copy_to_pvr:
 
 						case DATA:
 							{
+								if (verbose) printf("DATA\n");
 								int payloadSize = sizeof(packet.data) - 9;    payloadSize = payloadSize / 1024*1024; 
 
 								int w;
@@ -5883,7 +5939,7 @@ restart_copy_to_pvr:
 								if(w > 0 || true)
 								{
 									trace(3,
-										fprintf(stderr, "%s: DATA_HDD_FILE_DATA\n",
+										fprintf(stdout, "%s: DATA_HDD_FILE_DATA\n",
 										__FUNCTION__));
 									r = send_tf_packet(this->fd, &packet);
 									if(r < w)
@@ -5955,12 +6011,12 @@ restart_copy_to_pvr:
 							put_u16(&packet.length, PACKET_HEAD_SIZE);
 							put_u32(&packet.cmd, DATA_HDD_FILE_END);
 							//trace(3,
-							//	fprintf(stderr, "%s: DATA_HDD_FILE_END\n",
+							//	fprintf(stdout, "%s: DATA_HDD_FILE_END\n",
 							//	__FUNCTION__));
 							r = send_tf_packet(fd, &packet);
 							if(r < 0)
 							{
-								printf("ERROR: Incomplete send.\n");
+								printf("ERROR: Incomplete send in transfer_to_PVR.\n");
 								copydialog->usb_error=true;
 								goto out;
 							}
@@ -5977,7 +6033,7 @@ restart_copy_to_pvr:
 						break;
 
 					case FAIL:
-						fprintf(stderr, "ERROR: Device reports %s in transfer_to_PVR\n",
+						fprintf(stdout, "ERROR: Device reports %s in transfer_to_PVR\n",
 							decode_error(&reply));
 						copydialog->usb_error=true;
 						state=END; copydialog->usb_error=true;break;  // This line an experiment, 26/1/11.
@@ -5985,7 +6041,7 @@ restart_copy_to_pvr:
 						break;
 
 					default:
-						fprintf(stderr, "ERROR: Unhandled packet (copy PVR -> PC)\n");
+						fprintf(stdout, "ERROR: Unhandled packet (copy PVR -> PC)\n");
 						copydialog->usb_error=true;
 						goto out;
 						break;
@@ -6142,6 +6198,7 @@ finish_transfer:
 					}
 				}
 			}
+			if (verbose) printf("%s\n", copydialog->file_error);
 
 
 		}
@@ -7080,10 +7137,14 @@ abort:  // If the transfer was cancelled before it began
 
 			int r=-1;
 			char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
+			if (verbose) printf("newTopfieldFolder(%s)\n",path);
 			Monitor::Enter(this->locker);
 			try{
 				r = do_hdd_mkdir(this->fd,path);}
-			catch(...){};
+			catch(Exception^ e)
+			{
+				if (verbose) printf("Exception in newTopfieldFolder, calling do_hdd_mkdir. \n%s\n",e->Message); 
+			};
 			Monitor::Exit(this->locker);
 			Marshal::FreeHGlobal((System::IntPtr)(void*)path);
 			return r;
@@ -7494,6 +7555,7 @@ abort:  // If the transfer was cancelled before it began
 			//if (this->transfer_in_progress) return false;
 			//this->transfer_in_progress = true;
 			array<Byte>^ buff;
+			if (verbose) printf("topfieldLoadInfo, %s.\n",item->full_filename);
 			Monitor::Enter(this->locker);
 			try{
 				buff = this->read_topfield_file_snippet(item->full_filename, 0);
@@ -7579,6 +7641,7 @@ abort:  // If the transfer was cancelled before it began
 			// Read one packet's worth of a file on the Topfield, starting at specified offset.
 			// Return as an array of Bytes.
 
+			if (verbose) printf("read_topfield_file_snippet, %s : %lld\n",filename, offset);
 
 			array<Byte>^ out_array = gcnew array<Byte>(0); 
 			struct tf_packet reply;
@@ -7625,7 +7688,7 @@ abort:  // If the transfer was cancelled before it began
 					}
 					else
 					{
-						fprintf(stderr,
+						fprintf(stdout,
 							"ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
 							state);
 						this->connection_error_occurred();
@@ -7648,7 +7711,7 @@ abort:  // If the transfer was cancelled before it began
 
 						if(r < get_u16(&reply.length))
 						{
-							fprintf(stderr,
+							fprintf(stdout,
 								"ERROR: Short packet %d instead of %d\n", r,
 								get_u16(&reply.length));
 							this->connection_error_occurred();
@@ -7666,7 +7729,7 @@ abort:  // If the transfer was cancelled before it began
 					}
 					else
 					{
-						fprintf(stderr,
+						fprintf(stdout,
 							"ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
 							state);
 						this->connection_error_occurred();
@@ -7686,7 +7749,7 @@ abort:  // If the transfer was cancelled before it began
 					break;
 
 				case FAIL:
-					fprintf(stderr, "ERROR: Device reports %s in read_topfield_file_snippet\n",
+					fprintf(stdout, "ERROR: Device reports %s in read_topfield_file_snippet\n",
 						decode_error(&reply));
 					send_cancel(fd);
 					this->connection_error_occurred();
@@ -7700,7 +7763,7 @@ abort:  // If the transfer was cancelled before it began
 					break;
 
 				default:
-					fprintf(stderr, "ERROR: Unhandled packet (cmd 0x%x)\n",
+					fprintf(stdout, "ERROR: Unhandled packet (cmd 0x%x)\n",
 						get_u32(&reply.cmd));
 					this->connection_error_occurred();
 				}

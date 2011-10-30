@@ -11,6 +11,8 @@ extern "C"
 {
 #include <time.h>
 #include <types.h>
+//	extern int verbose;
+//	extern int packet_trace;
 }
 
 
@@ -276,9 +278,12 @@ int main(array<System::String ^> ^args)
 
 {
 
+
 	if (args->Length > 0)
 	{
 		//InitConsoleHandles();
+
+
 		//Console::CursorTop = Console::CursorTop-2;
 		///Console::SetIn(TextReader::Null);
 		//printf("Hi There!\n");
@@ -365,6 +370,11 @@ int main(array<System::String ^> ^args)
 	Form1^ form = gcnew Form1();
 	//form->copydialog = gcnew CopyDialog();
 
+
+	if (form->commandline->dont_free_console)
+	InitConsoleHandles();
+
+
 	Settings ^settings = form->settings;
 
 	//form->Focus();
@@ -375,6 +385,8 @@ int main(array<System::String ^> ^args)
 
 	//form->Form1_Load(nullptr,nullptr);
 	//Console::WriteLine("Application::Run");
+
+
 	if (form->commandline->showgui)
 		Application::Run(form);
 	else

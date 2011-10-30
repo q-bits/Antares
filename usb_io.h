@@ -65,7 +65,7 @@
 #define TF_PROTOCOL_TIMEOUT 11000
 
 
-#define trace(level, msg) if(verbose >= level) { msg; }
+#define trace(level, msg) if(verbose >= level) {print_time(); msg; }
 
 extern int verbose;
 
@@ -106,7 +106,8 @@ struct typefile
 };
 #pragma pack(pop)
 
-
+void set_verbose(int verbose, int packet_trace);
+void print_time(void);
 int send_success(libusb_device_handle* fd);
 int send_cancel(libusb_device_handle* fd);
 int send_cmd_ready(libusb_device_handle* fd);

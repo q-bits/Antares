@@ -45,18 +45,18 @@ int do_cmd_turbo(libusb_device_handle* fd, char *state)
     {
         case SUCCESS:
             trace(1,
-                  fprintf(stderr, "Turbo mode: %s\n",
+                  printf( "Turbo Mode: %s\n",
                           turbo_on ? "ON" : "OFF"));
             return 0;
             break;
 
         case FAIL:
-            fprintf(stderr, "ERROR: Device reports %s\n",
+            printf( "ERROR: Device reports %s\n",
                     decode_error(&reply));
             break;
 
         default:
-            fprintf(stderr, "ERROR: Unhandled packet\n");
+            fprintf(stdout, "ERROR: Unhandled packet\n");
     }
     return -EPROTO;
 }
@@ -651,31 +651,34 @@ int do_hdd_rename(libusb_device_handle* fd, char *srcPath, char *dstPath)
 int do_hdd_mkdir(libusb_device_handle* fd, char *path)
 {
     int r;
-
+    if (verbose) printf("do_hdd_mkdir, path=%s\n",path);
     r = send_cmd_hdd_create_dir(fd, path);
     if(r < 0)
     {
+		if (verbose) printf(" send_cmd_hdd_create returned %d to do_hdd_mkdir.\n",r);
         return -EPROTO;
     }
 
     r = get_tf_packet(fd, &reply);
     if(r < 0)
     {
+		if (verbose) printf(" get_tf_packet returned %d to do_hdd_mkdir.\n",r);
         return -EPROTO;
     }
     switch (get_u32(&reply.cmd))
     {
         case SUCCESS:
+			if (verbose) printf(" Success received, in do_hdd_mkdir.\n");
             return 0;
             break;
 
         case FAIL:
-            fprintf(stderr, "ERROR: Device reports %s\n",
+            printf("ERROR in do_hdd_mkdir: Device reports %s\n",
                     decode_error(&reply));
             break;
 
         default:
-            fprintf(stderr, "ERROR: Unhandled packet\n");
+            printf( "ERROR in do_hdd_mkdir: Unhandled packet.\n");
     }
     return -EPROTO;
 }

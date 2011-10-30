@@ -78,6 +78,7 @@ namespace Antares {
 		bool dont_free_console;
 		array<String^>^ exclude_patterns;
 		bool overwrite_all;
+		bool verbose;
 
 		int pid;
 
@@ -107,6 +108,7 @@ namespace Antares {
 			this->pid=-1;
 			this->dont_free_console=false;
 			this->overwrite_all=false;
+			this->verbose=false;
 
 
 
@@ -172,6 +174,14 @@ namespace Antares {
 				if (tok == "-r" || tok =="/r" || tok=="-R" || tok == "/R")
 				{
 					this->recurse=true;
+					ind++;
+					continue;
+				}
+
+				if (tok == "-verbose" || tok =="/verbose" )
+				{
+					this->verbose=true;
+					this->dont_free_console=true;
 					ind++;
 					continue;
 				}

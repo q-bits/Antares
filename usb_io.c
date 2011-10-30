@@ -43,6 +43,7 @@ Adapted by Henry Haselgrove, for use in Antares
 #include "crc16.h"
 #include "usb.h"
 #include "stdafx.h"
+#include "windows.h"
 
 /* The Topfield packet handling is a bit unusual. All data is stored in
  * memory in big endian order, however, just prior to transmission all
@@ -72,6 +73,14 @@ struct husb_device_handle;
 int husb_bulk_write(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout);
 int husb_bulk_read(struct husb_device_handle *fd,  int ep,  char *bytes,   int size,  int timeout, int no_reply);
 
+
+
+void print_time(void)
+{
+	SYSTEMTIME t;
+    GetSystemTime(&t);
+	printf("%02d.%03d: ",t.wSecond,t.wMilliseconds);
+}
 
 
 
@@ -148,7 +157,7 @@ static __u8 success_packet[8] = {
 /* Optimised packet handling to reduce overhead during bulk file transfers. */
 int send_cancel(libusb_device_handle* fd)
 {
-	trace(3, fprintf(stderr,"send_cancel\n"));
+	trace(3, printf("send_cancel\n"));
     return usb_bulk_write(fd, 0x01, cancel_packet, 8, default_timeout());
 
 
@@ -156,14 +165,14 @@ int send_cancel(libusb_device_handle* fd)
 
 int send_success(libusb_device_handle* fd)
 {
-	trace(3, fprintf(stderr,"send_success\n"));
+	trace(3, printf("send_success\n"));
     return usb_bulk_write(fd, 0x01, success_packet, 8, default_timeout());
 }
 
 int send_cmd_ready(libusb_device_handle* fd)
 {
     struct tf_packet req;
-
+	trace(3, printf("send_cmd_ready\n"));
     put_u16(&req.length, 8);
     put_u32(&req.cmd, CMD_READY);
     return send_tf_packet(fd, &req);
@@ -172,7 +181,7 @@ int send_cmd_ready(libusb_device_handle* fd)
 int send_cmd_reset(libusb_device_handle* fd)
 {
     struct tf_packet req;
-
+    trace(3, printf("send_cmd_reset\n"));
     put_u16(&req.length, 8);
     put_u32(&req.cmd, CMD_RESET);
     return send_tf_packet(fd, &req);
@@ -181,7 +190,7 @@ int send_cmd_reset(libusb_device_handle* fd)
 int send_cmd_turbo(libusb_device_handle* fd, int turbo_on)
 {
     struct tf_packet req;
-
+    trace(3, printf("send_cmd_turbo\n"));
     put_u16(&req.length, 12);
     put_u32(&req.cmd, CMD_TURBO);
     put_u32(&req.data, turbo_on);
@@ -191,7 +200,7 @@ int send_cmd_turbo(libusb_device_handle* fd, int turbo_on)
 int send_cmd_hdd_size(libusb_device_handle* fd)
 {
     struct tf_packet req;
-
+    trace(3, printf("send_cmd_hdd_size\n"));
     put_u16(&req.length, 8);
     put_u32(&req.cmd, CMD_HDD_SIZE);
     return send_tf_packet(fd, &req);
@@ -208,9 +217,10 @@ int send_cmd_hdd_dir(libusb_device_handle* fd, char *path)
     __u16 packetSize;
     int pathLen = strlen(path) + 1;
 
+	trace(3, printf("send_cmd_hdd_dir: %s\n",path));
     if((PACKET_HEAD_SIZE + pathLen) >= MAXIMUM_PACKET_SIZE)
     {
-        fprintf(stderr, "ERROR: Path is too long.\n");
+        fprintf(stdout, "ERROR: Path is too long.\n");
         return -1;
     }
 
@@ -227,10 +237,10 @@ int send_cmd_hdd_file_send(libusb_device_handle* fd, __u8 dir, char *path)
     struct tf_packet req;
     __u16 packetSize;
     int pathLen = strlen(path) + 1;
-
+	trace(3, printf("send_cmd_hdd_file_send:  %s \n",path));
     if((PACKET_HEAD_SIZE + 1 + 2 + pathLen) >= MAXIMUM_PACKET_SIZE)
     {
-        fprintf(stderr, "ERROR: Path is too long.\n");
+        fprintf(stdout, "ERROR: Path is too long.\n");
         return -1;
     }
 
@@ -250,10 +260,10 @@ int send_cmd_hdd_file_send_with_offset(libusb_device_handle* fd, __u8 dir, char 
     struct tf_packet req;
     __u16 packetSize, pad;
     int pathLen = strlen(path) + 1;
-
+	trace(3, printf("send_cmd_hdd_file_send_with_offset:  %s  [%ld]\n",path,offset));
     if((PACKET_HEAD_SIZE + 1 + 2 + pathLen) >= MAXIMUM_PACKET_SIZE)
     {
-        fprintf(stderr, "ERROR: Path is too long.\n");
+        fprintf(stdout, "ERROR: Path is too long.\n");
         return -1;
     }
 
@@ -284,10 +294,10 @@ int send_cmd_hdd_del(libusb_device_handle* fd, char *path)
     struct tf_packet req;
     __u16 packetSize;
     int pathLen = strlen(path) + 1;
-
+    trace(3, printf("send_cmd_hdd_del\n"));
     if((PACKET_HEAD_SIZE + pathLen) >= MAXIMUM_PACKET_SIZE)
     {
-        fprintf(stderr, "ERROR: Path is too long.\n");
+        fprintf(stdout, "ERROR: Path is too long.\n");
         return -1;
     }
 
@@ -306,9 +316,10 @@ int send_cmd_hdd_rename(libusb_device_handle* fd, char *src, char *dst)
     __u16 srcLen = strlen(src) + 1;
     __u16 dstLen = strlen(dst) + 1;
 
+	trace(3, printf("send_cmd_hdd_rename: %s : %s\n",src,dst));
     if((PACKET_HEAD_SIZE + 2 + srcLen + 2 + dstLen) >= MAXIMUM_PACKET_SIZE)
     {
-        fprintf(stderr,
+        fprintf(stdout,
                 "ERROR: Combination of source and destination paths is too long.\n");
         return -1;
     }
@@ -330,9 +341,10 @@ int send_cmd_hdd_create_dir(libusb_device_handle* fd, char *path)
     __u16 packetSize;
     __u16 pathLen = strlen(path) + 1;
 
+	trace(3, printf("send_cmd_hdd_create_dir: %s\n",path));
     if((PACKET_HEAD_SIZE + 2 + pathLen) >= MAXIMUM_PACKET_SIZE)
     {
-        fprintf(stderr, "ERROR: Path is too long.\n");
+        fprintf(stdout, "ERROR: Path is too long.\n");
         return -1;
     }
 
@@ -348,7 +360,7 @@ int send_cmd_hdd_create_dir(libusb_device_handle* fd, char *path)
 void print_packet(struct tf_packet *packet, char *prefix)
 {
     int i;
-#if 0
+#if 1
     __u8 *d = (__u8 *) packet;
     __u16 pl = get_u16(&packet->length);
 
@@ -359,35 +371,39 @@ void print_packet(struct tf_packet *packet, char *prefix)
             break;
 
         case 1:
-            fprintf(stderr, "%s", prefix);
+            fprintf(stdout, "%s", prefix);
             for(i = 0; i < 8; ++i)
             {
-                fprintf(stderr, " %02x", d[i]);
+                fprintf(stdout, " %02x", d[i]);
             }
-            fprintf(stderr, "\n");
+            fprintf(stdout, "\n");
             break;
 
         default:
-            fprintf(stderr, "%s", prefix);
+			print_time(); printf("\n");
+            fprintf(stdout, "%s", prefix);
             for(i = 0; i < pl; ++i)
             {
-                fprintf(stderr, " %02x", d[i]);
-                if(23 == (i % 24))
-                    fprintf(stderr, "\n%s", prefix);
-            }
-            fprintf(stderr, "\n");
+                fprintf(stdout, " %02x", d[i]);
+				if(23 == (i % 24))
+					fprintf(stdout, "\n%s", prefix);
+			}
+			fprintf(stdout, "\n");
 
-            fprintf(stderr, "%s", prefix);
-            for(i = 0; i < pl; ++i)
-            {
-                if(isalnum(d[i]) || ispunct(d[i]))
-                    fprintf(stderr, "%c", d[i]);
-                else
-                    fprintf(stderr, ".");
-                if(74 == (i % 75))
-                    fprintf(stderr, "\n%s", prefix);
-            }
-            fprintf(stderr, "\n");
+			if (packet_trace>2)
+			{
+				fprintf(stdout, "%s", prefix);
+				for(i = 0; i < pl; ++i)
+				{
+					if(isalnum(d[i]) || ispunct(d[i]))
+						fprintf(stdout, "%c", d[i]);
+					else
+						fprintf(stdout, ".");
+					if(74 == (i % 75))
+						fprintf(stdout, "\n%s", prefix);
+				}
+				fprintf(stdout, "\n");
+			}
             break;
     }
 #endif
@@ -419,7 +435,7 @@ int send_tf_packet(libusb_device_handle* fd, struct tf_packet *packet)
     size_t byte_count = (pl + 1) & ~1;
 
     put_u16(&packet->crc, get_crc(packet));
-    //print_packet(packet, "OUT>");
+    if (verbose>2) print_packet(packet, "OUT>");
     swap_out_packet(packet);
 	if (fd==0)  return -1;
 
@@ -457,7 +473,7 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
     __u8 *buf = (__u8 *) packet;
     int r;
 
-    trace(3, fprintf(stderr, "get_tf_packet\n"));
+    trace(3, fprintf(stdout, "get_tf_packet\n"));
 
     r = usb_bulk_read(fd, 0x82, buf, MAXIMUM_PACKET_SIZE,
                       timeout, no_reply);
@@ -465,13 +481,13 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
     {
 		int e = errno;
 		if (e!=0)
-            fprintf(stderr, "USB read error: %s\n", strerror(e));
+            fprintf(stdout, "USB read error: %s\n", strerror(e));
         return -1;
     }
 
     if(r < PACKET_HEAD_SIZE)
     {
-        fprintf(stderr, "Short read. %d bytes\n", r);
+        fprintf(stdout, "Short read. %d bytes\n", r);
         return -1;
     }
 
@@ -493,7 +509,7 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
 
         if(len < PACKET_HEAD_SIZE)
         {
-            fprintf(stderr, "Invalid packet length %04x\n", len);
+            fprintf(stdout, "Invalid packet length %04x\n", len);
             return -1;
         }
 
@@ -511,7 +527,7 @@ int get_tf_packet2(libusb_device_handle* fd, struct tf_packet * packet, int time
     }
 
 	if (r>4) last_successful_communication=time(NULL);
-    //print_packet(packet, " IN<");
+    if (verbose>2) print_packet(packet, " IN<");
     return r;
 }
 
@@ -667,4 +683,11 @@ char *decode_error(struct tf_packet *packet)
         default:
             return "Unknown error or all your base are belong to us";
     }
+}
+
+
+void set_verbose(int verbose_, int packet_trace_)
+{
+	verbose=verbose_;
+	packet_trace=packet_trace_;
 }
