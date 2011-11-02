@@ -650,7 +650,7 @@ int do_hdd_rename(libusb_device_handle* fd, char *srcPath, char *dstPath)
 
 int do_hdd_mkdir(libusb_device_handle* fd, char *path)
 {
-    int r;
+    int r,i;
     if (verbose) printf("do_hdd_mkdir, path=%s\n",path);
     r = send_cmd_hdd_create_dir(fd, path);
     if(r < 0)
@@ -659,7 +659,12 @@ int do_hdd_mkdir(libusb_device_handle* fd, char *path)
         return -EPROTO;
     }
 
-    r = get_tf_packet(fd, &reply);
+	for (i=0; i<6; i++)     // Effectively a longer timeout, in an an attempt to fix Valiant's problem -- HH 2/11/11
+	{
+		trace(3, printf("Attempt %i of get_tf_packet.\n",i));
+		r = get_tf_packet(fd, &reply);
+		if (r>=0) break;
+	}
     if(r < 0)
     {
 		if (verbose) printf(" get_tf_packet returned %d to do_hdd_mkdir.\n",r);

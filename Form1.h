@@ -1348,7 +1348,7 @@ repeat:
 						if (!item->isdir)
 						{
 							item->file_type = info->file_type;
-							item->populate_subitems();
+							//item->populate_subitems();
 						}
 
 					}
@@ -1362,6 +1362,7 @@ repeat:
 
 					CachedProgramInformation^ pi = this->proginfo_cache->query(item);
 					if (pi!=nullptr) pi->apply_to_item(item);
+					item->populate_subitems();
 
 					if (item->filename == start_rename)
 					{
@@ -1381,11 +1382,13 @@ repeat:
 
 				if (reloaded)
 				{
+					if (verbose) printf("reloaded  in loadComputerDir.\n");
 					this->updateListViewItems(clist,safe_cast<array<FileItem^>^>(items));
 				}
 				else
 
 				{
+					if (verbose) printf("not reloaded  in loadComputerDir.\n");
 					this->listView2->BeginUpdate();
 					this->listView2->Items->Clear();
 
@@ -1766,7 +1769,7 @@ repeat:
 
 					item->ImageIndex = item->icon_index = info->icon_index;	
 					item->file_type = info->file_type;
-					item->populate_subitems();
+					//item->populate_subitems();
 				}
 
 				if (String::Equals(start_rename,item->filename) && !String::Equals(start_rename,"") )
@@ -1783,6 +1786,7 @@ repeat:
 
 				CachedProgramInformation^ pi = this->proginfo_cache->query(item);
 				if (pi!=nullptr) pi->apply_to_item(item);
+				item->populate_subitems();
 
 				if (dir == this->TopfieldClipboardDirectory)
 				{
@@ -5538,6 +5542,7 @@ aborted:   // If the transfer was cancelled before it began
 
 					if (r<0)
 					{
+						this->absorb_late_packets(2,100);
 						array<TopfieldItem^> ^check = this->loadTopfieldDirArrayOrNull(dest_filename[i]);
 						if (verbose) printf("newTopfieldFolder returned %d. Double checking %s\n",r,dest_filename[i]);
 
@@ -8420,6 +8425,7 @@ abort:  // If the transfer was cancelled before it began
 						 String^ str = "PVR_Column"+i.ToString()+"Visible";
 						 this->settings->changeSetting(str, this->settings[str]=="1" ? "0" : "1");
 						 this->apply_columns_visible();
+						 this->refreshTopfield();
 						 return;
 					 }
 				 }
@@ -8480,6 +8486,7 @@ abort:  // If the transfer was cancelled before it began
 						 String^ str = "PC_Column"+i.ToString()+"Visible";
 						 this->settings->changeSetting(str, this->settings[str]=="1" ? "0" : "1");
 						 this->apply_columns_visible();
+						 this->refreshComputer();
 						 return;
 					 }
 				 }

@@ -770,8 +770,8 @@ namespace Antares {
 		{
 			item->channel = this->channel;
 			item->description = this->description;
-			item->SubItems[4]->Text = item->channel;
-			item->SubItems[5]->Text = item->description;
+			//item->SubItems[4]->Text = item->channel;
+			//item->SubItems[5]->Text = item->description;
 		}
 	};
 
