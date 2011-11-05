@@ -4394,7 +4394,7 @@ out:
 						{
 
 							//MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
-							copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error";
+							copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
 
 							goto end_copy_to_pc;
 
@@ -4862,7 +4862,7 @@ out:
 						goto restart_copy_to_pc;
 						break;
 					case -2:
-						copydialog->file_error = "An error occurred writing the file to your computer";
+						copydialog->file_error = "An error occurred writing the file to your computer.";
 						goto end_copy_to_pc;
 					}
 				}

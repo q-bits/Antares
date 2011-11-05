@@ -21,7 +21,21 @@ byte get_byte(void* addr)
 	return *( (__u8*) addr);
 }
 
+void memcpy_and_process(char * dest, char *src, size_t size)
+// Do a memcpy-like operation, but skip any characters in the range 0<x<32.
+// Intended to get rid of non-printing characters from program description.
+{
+	size_t si, di;
+	for (si=0, di=0; si<size; si++)
+	{
+		if (src[si]<32 && src[si]>0) continue;
+        dest[di] = src[si];
+		
+		di++;
+	}
 
+
+}
 
 
 void HDD_DecodeRECHeader (char *Buffer, tRECHeaderInfo *RECHeaderInfo)
@@ -66,12 +80,12 @@ void HDD_DecodeRECHeader (char *Buffer, tRECHeaderInfo *RECHeaderInfo)
 
   if (RECHeaderInfo->HeaderVersion == 0x5010)
   {
-    memcpy (RECHeaderInfo->SISvcName, &Buffer [p +  14], 28);
+    memcpy_and_process (RECHeaderInfo->SISvcName, &Buffer [p +  14], 28);
     p += 42;
   }
   else
   {
-    memcpy (RECHeaderInfo->SISvcName, &Buffer [p +  14], 24);
+    memcpy_and_process (RECHeaderInfo->SISvcName, &Buffer [p +  14], 24);
     p += 38;
   }
 
@@ -196,16 +210,17 @@ void HDD_DecodeRECHeader (char *Buffer, tRECHeaderInfo *RECHeaderInfo)
   RECHeaderInfo->EventRunningStatus  = get_byte(&Buffer [p + 16]);
   RECHeaderInfo->EventTextLength     = get_byte(&Buffer [p + 17]);
   RECHeaderInfo->EventParentalRate   = get_byte(&Buffer [p + 18]);
-  memcpy (RECHeaderInfo->EventEventName, &Buffer [p + 19], RECHeaderInfo->EventTextLength);
-  memcpy (RECHeaderInfo->EventEventDescription, &Buffer [p + 19 + RECHeaderInfo->EventTextLength], 257 - RECHeaderInfo->EventTextLength);
-  memcpy (RECHeaderInfo->EventUnknown1, &Buffer [p + 276], 18);
+  memcpy_and_process (RECHeaderInfo->EventEventName, &Buffer [p + 19], RECHeaderInfo->EventTextLength);
+  memcpy_and_process (RECHeaderInfo->EventEventDescription, &Buffer [p + 19 + RECHeaderInfo->EventTextLength], 257 - RECHeaderInfo->EventTextLength);
+  memcpy_and_process (RECHeaderInfo->EventUnknown1, &Buffer [p + 276], 18);
+
 
   p += 294;
 
   //Extended Event block
   RECHeaderInfo->ExtEventTextLength  = get_word(&Buffer [p +  0]);
   RECHeaderInfo->ExtEventEventID     = get_dword(&Buffer [p +  2]);
-  memcpy (RECHeaderInfo->ExtEventText, &Buffer [p +  6], 1024);
+  memcpy_and_process (RECHeaderInfo->ExtEventText, &Buffer [p +  6], 1024);
 
   p += 1030;
 

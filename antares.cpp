@@ -60,18 +60,21 @@ namespace Antares {
 
 	String^ safeString( String^ filename_str)
 	{
-		int i;
+		int i, dest_i, len;
 		System::Text::StringBuilder^ sb = gcnew System::Text::StringBuilder(filename_str);
+		len = filename_str->Length;
 		wchar_t c;
-		for (i=0;i<filename_str->Length; i++)
+		for (i=0, dest_i=0;i<len; i++)
 		{
 			c = sb[i];
-			if (c<32) c='_';
+			if (c<32) continue; //c='_';
 			if (c==':') c='-';
 			if (c=='\"') c='\'';
 			if (c=='<' || c=='>' || c=='/' || c=='|' || c=='?' || c=='*')  c='_';
-			sb[i]=c;
+			sb[dest_i]=c;
+			dest_i++;
 		}
+		if (dest_i < len && dest_i>0) sb->Length = dest_i;
 		return sb->ToString();
 	}
 
