@@ -511,6 +511,7 @@ namespace Antares {
 
 		virtual bool get_column_visible(int col) {return false;}
         virtual int get_num_columns(void) {return 0;}
+		virtual String^ clean_filename(String^ str) {return str;}
 
 		//virtual bool set_column_visible(int col) = 0;
 
@@ -527,6 +528,11 @@ namespace Antares {
 
 			int dest_ind=-1;
 			array<String^>^ data = gcnew array<String^>{this->filename, this->sizestring, this->file_type, this->datestring, this->channel, this->description};
+
+			try{
+			data[0] = this->clean_filename(data[0]);
+			}
+			catch(...){}
 
 			int nc = this->get_num_columns();
 			for (int j=0; j<nc; j++)
@@ -699,6 +705,20 @@ namespace Antares {
 			return num_topfield_columns;
 		}
 
+		
+		virtual String^ clean_filename(String^ str) override
+		{
+			wchar_t ch;
+			if (str->Length > 0)
+			{
+				ch = str[0];
+				if (ch<32)  return str->Substring(1);
+			}
+			return str;
+
+		}
+		
+
 		TopfieldItem(typefile *entry, String^ containing_directory) : FileItem()
 		{
 
@@ -853,7 +873,7 @@ namespace Antares {
 			if (this->col == 2) return String::Compare(fx->file_type, fy->file_type);
 
 			// Sort by date
-			if (this->col == 3) return String::Compare(fx->datestring, fy->datestring);
+			if (this->col == 3) return DateTime::Compare(fx->datetime, fy->datetime);//String::Compare(fx->datestring, fy->datestring);
 
 			if (this->col == 4) return String::Compare(fx->channel, fy->channel);
 

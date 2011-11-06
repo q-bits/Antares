@@ -615,12 +615,14 @@ namespace Antares {
 				this->checkBox1->Text = "Turbo mode";
 			}
 
-			//this->label4->Text =  (offset / 1024).ToString("#,#,#")+"KB / "+(size/1024).ToString("#,#,#")+"KB";
+			this->label4->Text =  (offset / 1024.0/1024.0).ToString("#,#,0.0")+" MB / "+(size/1024.0/1024.0).ToString("#,#,0")+" MB";
+			
+			/*
 			long long int offset_MB = offset / 1024LL/1024LL;
 			int offset_dec_MB = (int)  (  (offset - offset_MB * 1024LL*1024LL)*10/1024/1024 );
 			String^ offset_int_MB =  (offset_MB).ToString("#,#,#"); if (offset_int_MB->Length==0) offset_int_MB="0";
 			this->label4->Text = offset_int_MB+"."+offset_dec_MB.ToString()+" MB / "+(size/1024/1024).ToString("#,#,#")+" MB";
-
+*/
 
 			long long total_offset=0;  long long total_size=0;
 			long long files_remaining=0;
@@ -637,16 +639,19 @@ namespace Antares {
 
 
 
-			//			this->label5->Text =  (total_offset / 1024).ToString("#,#,#")+"KB / "+(total_size/1024).ToString("#,#,#")+"KB";
+			this->label5->Text =  (total_offset / 1024.0 / 1024.0).ToString("#,#,0.0")+" MB / "+(total_size/1024.0 / 1024.0).ToString("#,#,0")+" MB  Total";
+			/*
 			long long int total_offset_MB = total_offset / 1024LL/1024LL;
 			int total_offset_dec_MB = (int)  ( (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024 );
 			String^ total_offset_int_MB = (total_offset_MB).ToString("#,#,#"); if (total_offset_int_MB->Length==0) total_offset_int_MB="0";
+
+			this->label5->Text = 
+			total_offset_int_MB+"."+total_offset_dec_MB.ToString()+" MB / "
+			+ (total_size/1024/1024).ToString("#,#,#")+" MB"
+			+ "  Total";
+			*/
 			int ind = this->file_indices[i];
 			int indmax = this->file_indices[this->numfiles-1];
-			this->label5->Text = 
-				total_offset_int_MB+"."+total_offset_dec_MB.ToString()+" MB / "
-				 + (total_size/1024/1024).ToString("#,#,#")+" MB"
-				 + "  Total";
 			if (indmax>1)
 			{
 				//this->label10->Text= ind.ToString()+" / "+indmax.ToString();

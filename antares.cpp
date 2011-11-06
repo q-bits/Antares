@@ -103,6 +103,7 @@ namespace Antares {
 	}
 
 
+	/*
 	String^ DateString(time_t time)
 	{
 		struct tm *newtime;
@@ -114,16 +115,20 @@ namespace Antares {
 		return s;
 
 	}
+	*/
 
 	String^ DateString(DateTime time)
 	{
 
 
+		return time.ToString("g"); 
+		/*
 		char str[100];
 		sprintf_s(str,99,"%4d - %02d - %02d    %02d:%02d",time.Year,time.Month,time.Day,time.Hour,time.Minute);
 		System::String ^s = gcnew System::String(str);
 		return s;
-		//  return time.ToString(); 
+		*/
+		
 	}
 
 	String^ combineTopfieldPath(String^ path1,  String^ path2)
@@ -194,23 +199,26 @@ namespace Antares {
 
 	String^ HumanReadableSize(__u64 size)
 	{
-		char str[100];
+		//char str[100];
 		double x = (double) size;
 		int j;
 
+		System::String^ s = "";
 		for (j=1; j<=5; j++)
 		{
 			if (x<1024)
 			{
 				if (x<999)
-					sprintf_s(str,99,"%5.3g",x);
+					//sprintf_s(str,99,"%5.3g",x);
+					s = x.ToString("G3");
 				else
-					sprintf_s(str,99,"%3d",(int) x);
+				s=x.ToString("###0");
+					//sprintf_s(str,99,"%3d",(int) x);
 				break;
 			}
 			x=x/1024;
 		}
-		System::String^ s = gcnew System::String(str);
+		//System::String^ s = gcnew System::String(str);
 		switch(j)
 		{
 		case 1:
