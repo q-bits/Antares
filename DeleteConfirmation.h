@@ -7,6 +7,7 @@ using namespace System::Windows::Forms;
 using namespace System::Data;
 using namespace System::Drawing;
 
+#include "language.h"
 
 namespace Antares {
 
@@ -25,9 +26,19 @@ namespace Antares {
 		DeleteConfirmation(void)
 		{
 			InitializeComponent();
-			//
-			//TODO: Add the constructor code here
-			//
+			
+
+			this->apply_language();
+
+		}
+
+
+		void apply_language(void)
+		{
+			this->Name = lang::d_title;
+			this->Text = lang::d_title;
+			this->button1->Text = "&"+lang::b_yes;
+			this->button2->Text = "&"+lang::b_no;
 		}
 
 	protected:

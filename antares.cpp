@@ -377,6 +377,11 @@ int main(array<System::String ^> ^args)
 	Console::WriteLine(x->ToString() + " " + y->ToString());
 	*/
 
+
+	lang::set_fi();
+
+	
+	
 	// Create the main window and run it
 	Form1^ form = gcnew Form1();
 	//form->copydialog = gcnew CopyDialog();

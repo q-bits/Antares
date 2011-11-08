@@ -500,6 +500,10 @@
 				</File>
 			</File>
 			<File
+				RelativePath=".\language.h"
+				>
+			</File>
+			<File
 				RelativePath=".\libusb-winusb\libusb\libusb.h"
 				>
 			</File>

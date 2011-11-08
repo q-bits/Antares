@@ -240,10 +240,12 @@ namespace Antares {
 			this->settings = gcnew Settings();
 
 
+		
 			this->Hide();
 			///////////////////////////
 			InitializeComponent();
 			///////////////////////////
+
 
 			//this->SuspendLayout();
 			//this->SuspendDrawing(this);
@@ -293,6 +295,8 @@ namespace Antares {
 			//if (this->fd==NULL) this->label2->Text="PVR: Device not connected";
 
 			this->headerNames = gcnew array<String^>{"Name", "Size", "Type", "Date","Channel","Description"};
+
+			
 			this->mi_pc_choose_columns_array = gcnew array<ToolStripMenuItem^>(this->headerNames->Length);
 			this->mi_pvr_choose_columns_array = gcnew array<ToolStripMenuItem^>(this->headerNames->Length);
 
@@ -315,6 +319,10 @@ namespace Antares {
 
 			this->computerHeaders = gcnew array<ColumnHeader^>
 			{computerNameHeader, computerSizeHeader, computerTypeHeader, computerDateHeader, computerChannelHeader, computerDescriptionHeader};
+
+
+
+			this->apply_language();
 
 			this->apply_columns_visible();
 
@@ -487,7 +495,7 @@ namespace Antares {
 				HANDLE hdev;
 				husb_device_handle *fdtemp;
 				fdtemp=NULL;
-				String^ error_str = "PVR: Device not connected";
+				String^ error_str = lang::st_not_connected;//"PVR: Device not connected";
 				if (this->fd != NULL) 
 				{
 					//MessageBox::Show(" husb_free,  "+( (int) this->fd).ToString());
@@ -519,7 +527,7 @@ namespace Antares {
 					}
 					else
 					{
-						error_str = "PVR: Error -- wrong driver installed.";
+						error_str = lang::st_wrong_driver;//"PVR: Error -- wrong driver installed.";
 						continue;
 					}
 
@@ -528,7 +536,7 @@ namespace Antares {
 						DWORD last_error = GetLastError();
 						printf("%s\n",windows_error_str(last_error));
 						if (last_error==ERROR_ACCESS_DENIED) 
-							error_str="PVR: Error -- already in use.";
+							error_str=lang::st_in_use;//"PVR: Error -- already in use.";
 
 						continue;
 					}
@@ -1406,7 +1414,7 @@ repeat:
 				array<long long int>^ freespaceArray = this->computerFreeSpace(dir);
 				if (freespaceArray[0] > -1)
 				{
-					String ^str = " Local Disk "+str+"  --  " + HumanReadableSize(freespaceArray[0]) + " Free / " + HumanReadableSize(freespaceArray[1])+ " Total";
+					String ^str = " "+lang::st_local+" "+str+"  --  " + HumanReadableSize(freespaceArray[0]) + " "+lang::st_free+" / " + HumanReadableSize(freespaceArray[1])+ " "+lang::st_total;
 
 					label1->Text = str;
 
@@ -1700,10 +1708,10 @@ repeat:
 				TopfieldFreeSpace v = this->last_topfield_freespace;
 				if (v.valid)
 				{
-					String^ str=" Topfield device";
+					String^ str= " "+lang::st_toppy;//" Topfield device";
 
-					if (this->pid==0x1100) str="Topfield second device";
-					this->label2->Text = str+"  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" Free / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " Total";
+					if (this->pid==0x1100) str=lang::st_toppy2;//"Topfield second device";
+					this->label2->Text = str+"  --  "+HumanReadableSize(1024* ((__u64) v.freek))+" "+lang::st_free+" / " + HumanReadableSize(1024*( (__u64) v.totalk)) + " "+lang::st_total;
 				}
 			}
 
@@ -6915,11 +6923,12 @@ abort:  // If the transfer was cancelled before it began
 				if (item->isdir) numdirs++; else numfiles++;
 				totalsize += item->size;
 				conf_str = item->filename;
-				if (item->isdir) conf_str = conf_str + "\\          [Folder -- Contents will be deleted!!!]";
+				if (item->isdir) conf_str = conf_str + "\\          "+lang::d_folder;//[Folder -- Contents will be deleted!!!]";
 				confirmation->listBox1->Items->Add(conf_str);
 
 			}
 			if (numfiles+numdirs==0) return;
+			/*
 			conf_str = "Delete the following";
 			//if (numfiles>1 || numdirs>1) conf_str = conf_str+"these"; else conf_str=conf_str+"this"; 
 			if (numfiles>0) conf_str+=" file";
@@ -6931,6 +6940,8 @@ abort:  // If the transfer was cancelled before it began
 				if (numdirs>1) conf_str+="s";
 			}
 			conf_str+="?";
+			*/
+			if (numfiles+numdirs > 1) conf_str = lang::d_delete_plural; else conf_str = lang::d_delete;
 
 			confirmation->label1->Text = conf_str;
 			Console::WriteLine(confirmation->Size);
@@ -7833,12 +7844,13 @@ abort:  // If the transfer was cancelled before it began
 				if (item->isdir) numdirs++; else numfiles++;
 				totalsize += item->size;
 				conf_str = item->filename;
-				if (item->isdir) conf_str = conf_str + "\\          [Folder -- Contents will be deleted!!!]";
+				if (item->isdir) conf_str = conf_str + "\\          "+lang::d_folder;
 				confirmation->listBox1->Items->Add(conf_str);
 
 			}
 			if (numfiles+numdirs==0) return;
-			conf_str = "Delete the following";
+			
+			/*
 			//if (numfiles>1 || numdirs>1) conf_str = conf_str+"these"; else conf_str=conf_str+"this"; 
 			if (numfiles>0) conf_str+=" file";
 			if (numfiles>1) conf_str+="s";
@@ -7849,6 +7861,8 @@ abort:  // If the transfer was cancelled before it began
 				if (numdirs>1) conf_str+="s";
 			}
 			conf_str+="?";
+			*/
+			if (numfiles+numdirs > 1) conf_str = lang::d_delete_plural; else conf_str = lang::d_delete;
 
 			confirmation->label1->Text = conf_str;
 			Console::WriteLine(confirmation->Size);
@@ -7891,7 +7905,7 @@ abort:  // If the transfer was cancelled before it began
 
 			if (error)
 			{
-				MessageBox::Show(this,"An error occurred while deleting.","Error.",MessageBoxButtons::OK);
+				MessageBox::Show(this,lang::d_error,lang::st_error,MessageBoxButtons::OK);
 			}
 			this->loadComputerDir();
 		}
@@ -7912,7 +7926,7 @@ abort:  // If the transfer was cancelled before it began
 			for( int i=0; i<100; i++)
 			{
 
-				foldername = "New Folder";
+				foldername = lang::m_new_folder_name;
 				if (i>0) foldername = foldername + " ("+i.ToString()+")";
 				dir = this->computerCurrentDirectory + "\\" + foldername;
 
@@ -7936,7 +7950,7 @@ abort:  // If the transfer was cancelled before it began
 
 			this->loadComputerDir(foldername);
 			if (!success)
-				MessageBox::Show(this,"An error occurred while creating the new folder.","Error.",MessageBoxButtons::OK);
+				MessageBox::Show(this,lang::m_folder_error,lang::st_error,MessageBoxButtons::OK);
 
 		}
 
@@ -8561,6 +8575,106 @@ abort:  // If the transfer was cancelled before it began
 
 
 				 System::Diagnostics::Process::Start("explorer.exe", "/select,"+item->full_filename);
+
+			 }
+
+
+			 void apply_language(void)
+			 {
+
+				 ///////////////////////////
+				 /// Toolbar buttons
+
+				 // Up
+				 this->toolStripButton1->Text = lang::tb_up;
+				 this->toolStripButton5->Text = lang::tb_up;
+
+				 this->toolStripButton1->ToolTipText = lang::tt_up;
+				 this->toolStripButton5->ToolTipText = lang::tt_up;
+
+
+				 // Refresh
+				 this->toolStripButton2->Text = lang::tb_refresh;
+				 this->toolStripButton6->Text = lang::tb_refresh;
+
+				 this->toolStripButton2->ToolTipText = lang::tt_refresh;
+				 this->toolStripButton6->ToolTipText = lang::tt_refresh;
+
+				 // Delete
+				 this->toolStripButton3->Text = lang::tb_delete;
+				 this->toolStripButton7->Text = lang::tb_delete;
+
+				 this->toolStripButton3->ToolTipText = lang::tt_delete;
+				 this->toolStripButton7->ToolTipText = lang::tt_delete;
+
+				 
+				 // New Folder
+				 this->toolStripButton4->Text = lang::tb_new;
+				 this->toolStripButton8->Text = lang::tb_new;
+
+				 this->toolStripButton4->ToolTipText = lang::tt_new;
+				 this->toolStripButton8->ToolTipText = lang::tt_new;
+
+
+				 // View Info
+				 this->toolStripButton11->Text = lang::tb_info;
+				 this->toolStripButton12->Text = lang::tb_info;
+
+				 this->toolStripButton11->ToolTipText = lang::tt_info;
+				 this->toolStripButton12->ToolTipText = lang::tt_info;
+
+				 //cut
+				 this->toolStripButton9->Text = lang::tb_cut;
+				 this->toolStripButton9->ToolTipText = lang::tt_cut;
+
+				 //paste
+				 this->toolStripButton10->Text = lang::tb_paste;
+				 this->toolStripButton10->ToolTipText = lang::tt_paste;
+
+				 //settings
+				 this->toolStripButton13->Text = lang::tb_settings;
+				 this->toolStripButton13->ToolTipText = lang::tt_settings;
+
+
+
+				 //////////////////
+
+				 // turbo mode check
+				 this->checkBox1->Text = lang::tb_turbo_mode;
+
+				 // move check
+
+				 this->checkBox2->Text = lang::cb_move;      // need to re-center ?
+
+
+				 ///////////////////// Headers
+
+				 this->computerNameHeader->Text = lang::h_name;
+				 this->topfieldNameHeader->Text = lang::h_name;
+				 this->headerNames[0]=lang::h_name;
+
+
+				 this->computerSizeHeader->Text = lang::h_size;
+				 this->topfieldSizeHeader->Text = lang::h_size;
+				 this->headerNames[1]=lang::h_size;
+
+				 this->computerTypeHeader->Text = lang::h_type;
+				 this->topfieldTypeHeader->Text = lang::h_type;
+				 this->headerNames[2]=lang::h_type;
+
+				 this->computerDateHeader->Text = lang::h_date;
+				 this->topfieldDateHeader->Text = lang::h_date;
+				 this->headerNames[3]=lang::h_date;
+
+				 this->computerChannelHeader->Text = lang::h_channel;
+				 this->topfieldChannelHeader->Text = lang::h_channel;
+				 this->headerNames[4]=lang::h_channel;
+
+				 this->computerDescriptionHeader->Text = lang::h_description;
+				 this->topfieldDescriptionHeader->Text = lang::h_description;
+				 this->headerNames[5]=lang::h_description;
+
+
 
 			 }
 

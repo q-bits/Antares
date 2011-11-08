@@ -94,6 +94,8 @@ namespace Antares {
 	private: System::Windows::Forms::CheckBox^  checkBox1;
 	private: System::Windows::Forms::CheckBox^  rescaleCheck;
 	private: System::Windows::Forms::CheckBox^  nosleep_check;
+	private: System::Windows::Forms::GroupBox^  groupBox2;
+	private: System::Windows::Forms::ComboBox^  comboBox1;
 
 
 
@@ -125,7 +127,10 @@ namespace Antares {
 			this->rescaleCheck = (gcnew System::Windows::Forms::CheckBox());
 			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
 			this->nosleep_check = (gcnew System::Windows::Forms::CheckBox());
+			this->groupBox2 = (gcnew System::Windows::Forms::GroupBox());
+			this->comboBox1 = (gcnew System::Windows::Forms::ComboBox());
 			this->groupBox1->SuspendLayout();
+			this->groupBox2->SuspendLayout();
 			this->SuspendLayout();
 			// 
 			// button2
@@ -133,7 +138,7 @@ namespace Antares {
 			this->button2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 			this->button2->DialogResult = System::Windows::Forms::DialogResult::Cancel;
 			this->button2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
-			this->button2->Location = System::Drawing::Point(267, 345);
+			this->button2->Location = System::Drawing::Point(267, 258);
 			this->button2->Name = L"button2";
 			this->button2->Size = System::Drawing::Size(154, 24);
 			this->button2->TabIndex = 3;
@@ -145,7 +150,7 @@ namespace Antares {
 			this->button1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 			this->button1->DialogResult = System::Windows::Forms::DialogResult::OK;
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
-			this->button1->Location = System::Drawing::Point(72, 345);
+			this->button1->Location = System::Drawing::Point(72, 258);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(154, 24);
 			this->button1->TabIndex = 2;
@@ -205,7 +210,8 @@ namespace Antares {
 			// 
 			// groupBox1
 			// 
-			this->groupBox1->BackColor = System::Drawing::SystemColors::Control;
+			this->groupBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->groupBox1->Controls->Add(this->rescaleCheck);
 			this->groupBox1->Controls->Add(this->label2);
 			this->groupBox1->Controls->Add(this->label1);
@@ -234,7 +240,7 @@ namespace Antares {
 			// checkBox1
 			// 
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->Location = System::Drawing::Point(477, 350);
+			this->checkBox1->Location = System::Drawing::Point(477, 343);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(83, 17);
 			this->checkBox1->TabIndex = 4;
@@ -245,12 +251,35 @@ namespace Antares {
 			// nosleep_check
 			// 
 			this->nosleep_check->AutoSize = true;
-			this->nosleep_check->Location = System::Drawing::Point(267, 21);
+			this->nosleep_check->Location = System::Drawing::Point(267, 125);
 			this->nosleep_check->Name = L"nosleep_check";
 			this->nosleep_check->Size = System::Drawing::Size(280, 30);
 			this->nosleep_check->TabIndex = 5;
 			this->nosleep_check->Text = L"During a transfer, prevent Windows from automatically\r\ngoing to sleep when idle";
 			this->nosleep_check->UseVisualStyleBackColor = true;
+			// 
+			// groupBox2
+			// 
+			this->groupBox2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
+			this->groupBox2->Controls->Add(this->comboBox1);
+			this->groupBox2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			this->groupBox2->Location = System::Drawing::Point(267, 21);
+			this->groupBox2->Name = L"groupBox2";
+			this->groupBox2->Size = System::Drawing::Size(286, 69);
+			this->groupBox2->TabIndex = 6;
+			this->groupBox2->TabStop = false;
+			this->groupBox2->Text = L"Language Selection";
+			// 
+			// comboBox1
+			// 
+			this->comboBox1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
+			this->comboBox1->FormattingEnabled = true;
+			this->comboBox1->Location = System::Drawing::Point(44, 29);
+			this->comboBox1->Name = L"comboBox1";
+			this->comboBox1->Size = System::Drawing::Size(176, 23);
+			this->comboBox1->TabIndex = 0;
 			// 
 			// SettingsDialog
 			// 
@@ -258,7 +287,8 @@ namespace Antares {
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->ClientSize = System::Drawing::Size(565, 381);
+			this->ClientSize = System::Drawing::Size(565, 301);
+			this->Controls->Add(this->groupBox2);
 			this->Controls->Add(this->nosleep_check);
 			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->button2);
@@ -271,6 +301,7 @@ namespace Antares {
 			this->Text = L"Antares Settings";
 			this->groupBox1->ResumeLayout(false);
 			this->groupBox1->PerformLayout();
+			this->groupBox2->ResumeLayout(false);
 			this->ResumeLayout(false);
 			this->PerformLayout();
 

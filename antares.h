@@ -27,6 +27,8 @@ extern "C" {
 
 #define EPROTO 1
 
+#include "language.h"
+
 namespace Antares {
 
 
