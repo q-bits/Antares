@@ -7,6 +7,7 @@ using namespace System::Windows::Forms;
 using namespace System::Data;
 using namespace System::Drawing;
 
+#include "language.h"
 
 namespace Antares {
 
@@ -25,9 +26,17 @@ namespace Antares {
 		LowSpaceAlert(void)
 		{
 			InitializeComponent();
-			//
-			//TODO: Add the constructor code here
-			//
+			
+			this->apply_language();
+		}
+		void apply_language(void)
+		{
+			this->label1->Text = lang::f_warning;
+			this->label4->Text = lang::f_proceed;
+			this->button1->Text = lang::b_ok;
+			this->button2->Text = lang::b_cancel_transfer;
+			this->Text = lang::f_title;
+			this->Name = lang::f_title;
 		}
 
 	protected:

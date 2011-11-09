@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Settings.h"
+#include "language.h"
 
 using namespace System;
 using namespace System::ComponentModel;
@@ -31,15 +32,20 @@ namespace Antares {
 		SettingsDialog(void)
 		{
 			InitializeComponent();
-			//
-			//TODO: Add the constructor code here
-			//
+		
+			this->apply_language();
 		}
+
+
 
 		SettingsDialog(Antares::Settings^ settings_in)
 		{
 			 
-			 InitializeComponent();
+			InitializeComponent();
+		
+			this->apply_language();
+			
+
              this->settings = settings_in;
 
 
@@ -64,6 +70,43 @@ namespace Antares {
 
 
 		}
+
+		
+		void apply_language(void)
+		{
+
+			this->rescaleCheck->Text = lang::s_rescale;
+			this->nosleep_check->Text = lang::s_idle;
+
+			System::Drawing::Size sz = this->nosleep_check->Size;
+			sz.Width = 280;
+			sz.Height = 2*sz.Height;
+			this->nosleep_check->AutoSize=false;
+			this->nosleep_check->Size=sz;
+
+
+			this->Text = lang::s_title;
+			this->Name = lang::s_title;
+			this->groupBox1->Text = lang::s_choose;
+			
+			this->button1->Text = lang::b_ok;
+			this->button2->Text = lang::b_cancel;
+			this->groupBox2->Text = lang::s_language;
+
+			array<System::Object^>^ arr = gcnew cli::array< System::Object^  >(6) {lang::h_name, lang::h_size, lang::h_type, lang::h_date, lang::h_channel, lang::h_description};
+			this->checkedListBox1->Items->Clear();
+			this->checkedListBox1->Items->AddRange(arr);
+
+			this->checkedListBox2->Items->Clear();
+			this->checkedListBox2->Items->AddRange(arr);
+
+//			this->checkedListBox1->Items->AddRange(gcnew cli::array< System::Object^  >(6) {L"Name", L"Size", L"Type", L"Date", L"Channel", 
+//				L"Description"});
+
+
+		}
+
+
 
 	protected:
 		/// <summary>
@@ -96,6 +139,7 @@ namespace Antares {
 	private: System::Windows::Forms::CheckBox^  nosleep_check;
 	private: System::Windows::Forms::GroupBox^  groupBox2;
 	private: System::Windows::Forms::ComboBox^  comboBox1;
+
 
 
 
@@ -138,7 +182,7 @@ namespace Antares {
 			this->button2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 			this->button2->DialogResult = System::Windows::Forms::DialogResult::Cancel;
 			this->button2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
-			this->button2->Location = System::Drawing::Point(267, 258);
+			this->button2->Location = System::Drawing::Point(289, 258);
 			this->button2->Name = L"button2";
 			this->button2->Size = System::Drawing::Size(154, 24);
 			this->button2->TabIndex = 3;
@@ -169,9 +213,8 @@ namespace Antares {
 			this->checkedListBox1->Items->AddRange(gcnew cli::array< System::Object^  >(6) {L"Name", L"Size", L"Type", L"Date", L"Channel", 
 				L"Description"});
 			this->checkedListBox1->Location = System::Drawing::Point(8, 52);
-			this->checkedListBox1->MultiColumn = true;
 			this->checkedListBox1->Name = L"checkedListBox1";
-			this->checkedListBox1->Size = System::Drawing::Size(100, 116);
+			this->checkedListBox1->Size = System::Drawing::Size(105, 116);
 			this->checkedListBox1->TabIndex = 0;
 			// 
 			// checkedListBox2
@@ -184,16 +227,15 @@ namespace Antares {
 			this->checkedListBox2->FormattingEnabled = true;
 			this->checkedListBox2->Items->AddRange(gcnew cli::array< System::Object^  >(6) {L"Name", L"Size", L"Type", L"Date", L"Channel", 
 				L"Description"});
-			this->checkedListBox2->Location = System::Drawing::Point(114, 52);
-			this->checkedListBox2->MultiColumn = true;
+			this->checkedListBox2->Location = System::Drawing::Point(121, 52);
 			this->checkedListBox2->Name = L"checkedListBox2";
-			this->checkedListBox2->Size = System::Drawing::Size(100, 116);
+			this->checkedListBox2->Size = System::Drawing::Size(105, 116);
 			this->checkedListBox2->TabIndex = 1;
 			// 
 			// label1
 			// 
 			this->label1->AutoSize = true;
-			this->label1->Location = System::Drawing::Point(37, 30);
+			this->label1->Location = System::Drawing::Point(39, 30);
 			this->label1->Name = L"label1";
 			this->label1->Size = System::Drawing::Size(31, 15);
 			this->label1->TabIndex = 2;
@@ -202,7 +244,7 @@ namespace Antares {
 			// label2
 			// 
 			this->label2->AutoSize = true;
-			this->label2->Location = System::Drawing::Point(141, 30);
+			this->label2->Location = System::Drawing::Point(155, 30);
 			this->label2->Name = L"label2";
 			this->label2->Size = System::Drawing::Size(23, 15);
 			this->label2->TabIndex = 3;
@@ -251,7 +293,7 @@ namespace Antares {
 			// nosleep_check
 			// 
 			this->nosleep_check->AutoSize = true;
-			this->nosleep_check->Location = System::Drawing::Point(267, 125);
+			this->nosleep_check->Location = System::Drawing::Point(267, 113);
 			this->nosleep_check->Name = L"nosleep_check";
 			this->nosleep_check->Size = System::Drawing::Size(280, 30);
 			this->nosleep_check->TabIndex = 5;
@@ -334,6 +376,7 @@ namespace Antares {
 				 this->settings->changeSetting("prevent_sleep_during_transfer", (  (int)  this->nosleep_check->Checked ).ToString() );
 
 
+				
 
 			 }
 };

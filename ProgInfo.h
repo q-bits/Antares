@@ -36,6 +36,7 @@ namespace Antares {
 		ProgInfo(tRECHeaderInfo *ri, String^ windowtitle)
 		{
 			InitializeComponent();
+			this->apply_language();
 
 			String^ channel = gcnew String(ri->SISvcName);
 			String^ title = gcnew String(ri->EventEventName);
@@ -51,18 +52,45 @@ namespace Antares {
 			this->channel->Text = channel;
 			this->title->Text = title;
 			this->description->Text = description;
-			String^ duration = ri->EventDurationMin.ToString() + "min";
-			if (ri->EventDurationHour > 0 ) duration =  ri->EventDurationHour.ToString() + "hr " + duration;
+			String^ duration = ri->EventDurationMin.ToString() + lang::u_minutes;
+			if (ri->EventDurationHour > 0 ) duration =  ri->EventDurationHour.ToString() + lang::u_hours+" " + duration;
 			this->duration->Text = duration;
 			int recorded_min = ri->HeaderDuration; 
-            String^ recorded_duration = (recorded_min % 60).ToString() + "min";
+			String^ recorded_duration = (recorded_min % 60).ToString() + lang::u_minutes;
 			int recorded_hr = recorded_min/60;
-			if (recorded_hr>0) recorded_duration = recorded_hr.ToString() + "hr " + recorded_duration;
+			if (recorded_hr>0) recorded_duration = recorded_hr.ToString() + lang::u_hours+" " + recorded_duration;
 			this->recorded_duration->Text = recorded_duration;
            
 		}
 
+		static void right_align_control(System::Windows::Forms::Control ^ c, int r)
+		{
+			Drawing::Point p = c->Location;
+			p.X = r - c->Width;
+			c->Location = p;
+		}
 
+		void apply_language(void)
+		{
+			this->label2->Text = lang::h_channel+":";
+			this->label3->Text = lang::p_title;
+			this->label4->Text = lang::h_description+":";
+			this->label5->Text = lang::p_proglen;
+			this->label6->Text = lang::p_reclen;
+			this->button1->Text = lang::b_close;
+			this->Name = lang::p_wintitle;
+			this->Text = lang::p_wintitle;
+			
+
+			right_align_control(this->label2,159);
+			right_align_control(this->label3,159);
+			right_align_control(this->label4,159);
+			right_align_control(this->label5,159);
+
+			right_align_control(this->label6,590);
+
+
+		}
 
 
 	protected:
@@ -143,6 +171,7 @@ namespace Antares {
 			// 
 			// label2
 			// 
+			this->label2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->label2->AutoSize = true;
 			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
@@ -155,6 +184,7 @@ namespace Antares {
 			// 
 			// label3
 			// 
+			this->label3->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->label3->AutoSize = true;
 			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
@@ -167,6 +197,7 @@ namespace Antares {
 			// 
 			// label4
 			// 
+			this->label4->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->label4->AutoSize = true;
 			this->label4->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
@@ -235,6 +266,7 @@ namespace Antares {
 			// 
 			// label5
 			// 
+			this->label5->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->label5->AutoSize = true;
 			this->label5->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
@@ -297,6 +329,7 @@ namespace Antares {
 			// 
 			// label6
 			// 
+			this->label6->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->label6->AutoSize = true;
 			this->label6->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));

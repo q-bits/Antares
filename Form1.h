@@ -588,7 +588,7 @@ namespace Antares {
 
 			}
 		}
-
+/*
 
 		void CheckConnection_old(void)
 		{
@@ -711,7 +711,7 @@ namespace Antares {
 				return;
 			}
 		}
-
+*/
 
 		int tf_init(void)
 		{
@@ -755,7 +755,7 @@ namespace Antares {
 			if (fs[0]>1024*1024) return -2;
 
 			//Antares::TaskbarState::setError(this);
-			copydialog->set_error( " NO SPACE LEFT ON PC. Retrying . . . ");
+			copydialog->set_error( " "+lang::c_no_space_pc);
 			if (*this->turbo_mode ) this->set_turbo_mode(0);
 
 			copydialog->reset_rate();
@@ -794,12 +794,12 @@ namespace Antares {
 			//Antares::TaskbarState::setError(this);
 			if (copydialog->usb_error)
 			{
-				copydialog->set_error( " ERROR CONNECTING TO THE PVR. Retrying . . . ");
-				Console::WriteLine("ERROR CONNECTING TO THE PVR. Retrying . . .");
+				copydialog->set_error( " "+lang::c_error);
+				Console::WriteLine(lang::c_error);
 			}
 			if (copydialog->freespace_check_needed)
 			{
-				copydialog->current_file = "Checking free space on PVR...";
+				copydialog->current_file = lang::c_checking;
 
 				copydialog->update_dialog_threadsafe();
 				goto check_freespace;
@@ -836,8 +836,8 @@ check_freespace:
 				//printf("freek = %d\n",freespace.freek);
 				if (freespace.freek < this->topfield_minimum_free_megs*1024.0) {
 					//printf("copydialog->cancelled %d \n",copydialog->cancelled);
-					copydialog->set_error( " NO SPACE LEFT ON PVR. Retrying . . . ");
-					if (!printed) {printed=true; Console::WriteLine("NO SPACE left on PVR. Retrying . . .");};
+					copydialog->set_error( " "+lang::c_no_space_pvr);
+					if (!printed) {printed=true; Console::WriteLine(lang::c_no_space_pvr);};
 					copydialog->reset_rate();
 					copydialog->update_dialog_threadsafe();
 					this->set_turbo_mode(0);
@@ -1318,7 +1318,7 @@ repeat:
 
 					drives>>=1;
 				}
-				this->label1->Text = "My Computer";
+				this->label1->Text = lang::st_my_computer;//"My Computer";
 				settings->changeSetting("ComputerDir","");
 				this->clist->Tag = "";
 			}
@@ -2489,11 +2489,13 @@ repeat:
 			// 
 			// checkBox2
 			// 
+			this->checkBox2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left) 
+				| System::Windows::Forms::AnchorStyles::Right));
 			this->checkBox2->AutoSize = true;
 			this->checkBox2->CheckAlign = System::Drawing::ContentAlignment::TopCenter;
 			this->checkBox2->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(150)));
-			this->checkBox2->Location = System::Drawing::Point(3, 133);
+			this->checkBox2->Location = System::Drawing::Point(5, 133);
 			this->checkBox2->Name = L"checkBox2";
 			this->checkBox2->Size = System::Drawing::Size(38, 31);
 			this->checkBox2->TabIndex = 7;
@@ -4105,7 +4107,7 @@ out:
 				{
 					this->setComputerDir(old);
 					this->loadComputerDir();
-					this->toolStripStatusLabel1->Text = "Access denied: "+dir;
+					this->toolStripStatusLabel1->Text = lang::st_denied+" "+dir; // Access denied:
 					return;
 				}
 
@@ -4271,7 +4273,7 @@ out:
 				if (copydialog->file_error->Length > 0)
 				{
 					if (this->Visible)
-						MessageBox::Show(this,copydialog->file_error,"Error",MessageBoxButtons::OK);
+						MessageBox::Show(this,copydialog->file_error,lang::st_error,MessageBoxButtons::OK);
 					else
 						Console::WriteLine(copydialog->file_error);
 				}
@@ -4388,8 +4390,8 @@ out:
 					if (File::Exists(dest_filename[i]) && !Directory::Exists(dest_filename[i]))
 					{
 
-						//MessageBox::Show(this,"The folder "+dest_filename[ind]+" could not be created because a file of that name already exists. Aborting transfer.","Error",MessageBoxButtons::OK);
-						copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
+						//copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
+						copydialog->file_error = String::Format(lang::c_folder_file_clash, dest_filename[i]);
 						goto end_copy_to_pc;                         
 
 					}
@@ -4401,9 +4403,10 @@ out:
 						catch (...)
 						{
 
-							//MessageBox::Show(this,"The folder "+dest_filename[i]+" could not be created. Aborting transfer.","Error",MessageBoxButtons::OK);
-							copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
-
+							
+							//copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
+							copydialog->file_error = String::Format(lang::c_folder_error, dest_filename[i]);
+				
 							goto end_copy_to_pc;
 
 						}
@@ -4534,7 +4537,7 @@ restart_copy_to_pc:
 				catch(System::UnauthorizedAccessException ^)
 				{
 					//MessageBox::Show(this,"Antares cannot save the file to the location you chose. Please select another location and try again.","Write permission denied",MessageBoxButtons::OK);
-					copydialog->file_error = "Antares cannot save the file to the location you chose. Please select another location and try again.";
+					copydialog->file_error = lang::c_bad_location;//"Antares cannot save the file to the location you chose. Please select another location and try again.";
 
 					goto end_copy_to_pc;				
 				}
@@ -4870,7 +4873,7 @@ out:
 						goto restart_copy_to_pc;
 						break;
 					case -2:
-						copydialog->file_error = "An error occurred writing the file to your computer.";
+						copydialog->file_error = lang::c_error_writing;//"An error occurred writing the file to your computer.";
 						goto end_copy_to_pc;
 					}
 				}
@@ -4956,8 +4959,18 @@ end_copy_to_pc:
 			if (L > 0)
 			{
 				if (copydialog->file_error->Length > 0) copydialog->file_error  += "\n";
-				copydialog->file_error+="The following file"; if (L>1) copydialog->file_error+="s";
-				copydialog->file_error+=" could not be accessed on the PVR:\n";
+				//copydialog->file_error+="The following file"; if (L>1) copydialog->file_error+="s";
+				//copydialog->file_error+=" could not be accessed on the PVR:\n";
+				if (L>1)
+				
+					copydialog->file_error += lang::c_no_access_pvr_plural;
+				else
+					copydialog->file_error += lang::c_no_access_pvr;
+				copydialog->file_error += "\n";
+
+
+
+
 				for (int i=0; i<L; i++)
 				{				
 					copydialog->file_error+=failed_filenames[i]+"\n";
@@ -5023,17 +5036,17 @@ end_copy_to_pc:
 
 
 			if (copymode==CopyMode::COPY)
-				copydialog->window_title1="Copying File";
+				copydialog->window_title1=lang::c_title1_copy;//"Copying File";
 			else
-				copydialog->window_title1="Moving File";
+				copydialog->window_title1=lang::c_title1_move;//"Moving File";
 
-			copydialog->window_title2="[PVR --> PC]";
-			copydialog->Text = copydialog->window_title1 + "(s) ... "+copydialog->window_title2; 
+			copydialog->window_title2=lang::c_title2_to_pc;//"[PVR --> PC]";
+			copydialog->Text = copydialog->window_title1 + " ... "+copydialog->window_title2; 
 			//copydialog->Text = copydialog->window_title;
 
 			copydialog->tiny_size();
-			copydialog->label3->Text="Finding files...";
-			Console::WriteLine("Finding files...");
+			copydialog->label3->Text=lang::c_finding;//"Finding files...";
+			Console::WriteLine(lang::c_finding);
 			this->ShowCopyDialog(copydialog);
 
 			copydialog->Update();
@@ -5247,8 +5260,8 @@ end_copy_to_pc:
 				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1],files_cat[2]);
 				oc->copymode=copymode;
-				if (num_exist==1) oc->title_label->Text="A file with this name already exists                                                                     ";
-				else oc->title_label->Text="Files with these names already exist                                                                                  ";					
+				if (num_exist==1) oc->title_label->Text=lang::o_exist;//"A file with this name already exists                                                                     ";
+				else oc->title_label->Text=lang::o_exist_plural;//"Files with these names already exist                                                                                  ";					
 				//oc->files1->Text = files_cat[0];
 				if (num_cat[0]==0)
 				{
@@ -5262,25 +5275,25 @@ end_copy_to_pc:
 				{
 					oc->checkBox1->Visible=true;
 					if (num_cat[0]==1)
-						oc->checkBox1->Text = "Delete the PVR copy";
+						oc->checkBox1->Text = lang::o_delete_pvr;//"Delete the PVR copy";
 					else
-						oc->checkBox1->Text = "Delete the PVR copies";
+						oc->checkBox1->Text = lang::o_delete_pvr_plural;//"Delete the PVR copies";
 				}
-				if (num_cat[0]>1) oc->label1->Text = "Files have correct size"; else oc->label1->Text = "File has correct size"; 
+				if (num_cat[0]>1) oc->label1->Text = lang::o_correct_plural; else oc->label1->Text = lang::o_correct;//"File has correct size"; 
 
 				//oc->files2->Text = files_cat[1];
 				if (num_cat[1]==0)
 				{
 					oc->panel2->Visible = false;oc->files2->Visible=false;
 				}
-				if (num_cat[1]>1) oc->label2->Text = "Undersized files"; else oc->label2->Text = "Undersized file";
+				if (num_cat[1]>1) oc->label2->Text =  lang::o_undersized_plural; else oc->label2->Text = lang::o_undersized ;///"Undersized file";
 
 				//oc->files3->Text = files_cat[2];
 				if (num_cat[2]==0)
 				{
 					oc->panel3->Visible = false;oc->files3->Visible=false;
 				}
-				if (num_cat[2]>1) oc->label3->Text = "These existing files are larger!"; else oc->label3->Text = "This existing file is larger!";
+				if (num_cat[2]>1) oc->label3->Text = lang::o_oversized_plural; else oc->label3->Text =lang::o_oversized;//"This existing file is larger!";
 
 				if (!this->no_prompt)
 					if (::DialogResult::Cancel == oc->ShowDialog() ) goto aborted;
@@ -5366,8 +5379,8 @@ end_copy_to_pc:
 
 				LowSpaceAlert^ alert = gcnew LowSpaceAlert();
 
-				alert->required_label->Text = "Required: " + HumanReadableSize(space_required);
-				alert->available_label->Text = "Available: " + HumanReadableSize(freespaceArray[0]);
+				alert->required_label->Text = lang::f_required+" " + HumanReadableSize(space_required);
+				alert->available_label->Text = lang::f_available+" " + HumanReadableSize(freespaceArray[0]);
 				if (!this->no_prompt)
 					if (::DialogResult::Cancel ==  alert->ShowDialog())
 					{
@@ -5541,7 +5554,8 @@ aborted:   // If the transfer was cancelled before it began
 					// Abort if required destination folder is already a file name
 					if (titem!=nullptr && !titem->isdir)
 					{
-						copydialog->file_error="The folder "+dest_filename[i]+" could not be created because there exists a file of the same name.";
+						//copydialog->file_error="The folder "+dest_filename[i]+" could not be created because there exists a file of the same name.";
+						copydialog->file_error = String::Format(lang::c_folder_file_clash, dest_filename[i]);
 						goto finish_transfer;
 					}
 
@@ -5557,7 +5571,9 @@ aborted:   // If the transfer was cancelled before it began
 						if (check==nullptr)
 						{
 							if (verbose) printf("Double-check failed.\n");
-							copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
+
+							//copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
+							copydialog->file_error=String::Format(lang::c_folder_error , dest_filename[i]);
 							goto finish_transfer;
 						}
 					}
@@ -6654,29 +6670,33 @@ finish_transfer:
 			}
 
 
-
-			TopfieldFreeSpace tfs = this->getTopfieldFreeSpace();
-
-			long long int freespace = (long long int) tfs.freek * 1024LL;
-			long long int margin = 1024*1024*3; if (freespace>margin) freespace-=margin;  // You can never seem to use the last couple of MB on topfield
-			if (tfs.valid)
+			long long int freespace;
+			long long int margin;
+			
 			{
-				if (space_required > freespace)
-				{
+				TopfieldFreeSpace tfs = this->getTopfieldFreeSpace();
 
-					LowSpaceAlert^ alert = gcnew LowSpaceAlert();
-					alert->required_label->Text = "Required: " + HumanReadableSize(space_required);
-					alert->available_label->Text = "Available: " + HumanReadableSize(freespace);
-					if (freespace < this->topfield_minimum_free_megs*1024*1024)
+				freespace = (long long int) tfs.freek * 1024LL;
+				margin = 1024*1024*3; if (freespace>margin) freespace-=margin;  // You can never seem to use the last couple of MB on topfield
+				if (tfs.valid)
+				{
+					if (space_required > freespace)
 					{
-						alert->label4->Visible = false;
-						alert->button1->Visible = false;
-					}
-					if (!this->no_prompt)
-						if (::DialogResult::Cancel ==  alert->ShowDialog())
+
+						LowSpaceAlert^ alert = gcnew LowSpaceAlert();
+						alert->required_label->Text = "Required: " + HumanReadableSize(space_required);
+						alert->available_label->Text = "Available: " + HumanReadableSize(freespace);
+						if (freespace < this->topfield_minimum_free_megs*1024*1024)
 						{
-							goto abort;
+							alert->label4->Visible = false;
+							alert->button1->Visible = false;
 						}
+						if (!this->no_prompt)
+							if (::DialogResult::Cancel ==  alert->ShowDialog())
+							{
+								goto abort;
+							}
+					}
 				}
 			}
 
@@ -7627,7 +7647,7 @@ abort:  // If the transfer was cancelled before it began
 					//item->description = gcnew String(ri.EventEventDescription);
 					//item->channel = gcnew String(ri.SISvcName);
 
-					ProgInfo^ pi = gcnew ProgInfo(&ri,"Program Information, "+item->full_filename);
+					ProgInfo^ pi = gcnew ProgInfo(&ri,lang::p_wintitle+", "+item->filename);
 
 					pi->ShowDialog(this);
 					break;
