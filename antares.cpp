@@ -378,8 +378,8 @@ int main(array<System::String ^> ^args)
 	*/
 
 
+	//lang::set_fi();
 	lang::set_en_au();
-	//lang::set_en_au();
 
 	
 	

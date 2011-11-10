@@ -31,14 +31,13 @@ namespace Antares {
 		OverwriteConfirmation(void)
 		{
 			InitializeComponent();
-			//
-			//TODO: Add the constructor code here
-			//
+		    this->apply_language();
 		}
 
 		OverwriteConfirmation(String^ f1, String^ f2, String^ f3)
 		{
 			InitializeComponent();
+			this->apply_language();
 
 			array<String^>^ fa1 = f1->Split(L'\n');
             array<String^>^ fa2 = f2->Split(L'\n');
@@ -74,6 +73,25 @@ namespace Antares {
 		}
 
 
+		void apply_language(void)
+		{
+			this->skip1->Text = lang::o_skip_r;
+			this->overwrite1->Text = lang::o_overwrite;
+
+			this->resume2->Text = lang::o_resume;
+			this->skip2->Text = lang::o_skip;
+			this->overwrite2->Text = lang::o_overwrite;
+
+
+			this->skip3->Text = lang::o_skip;
+			this->overwrite3->Text = lang::o_overwrite;
+
+			this->button1->Text = lang::b_ok;
+			this->button2->Text = lang::b_cancel_transfer;
+
+
+
+		}
 
 
 	protected:

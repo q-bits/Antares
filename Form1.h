@@ -5260,8 +5260,9 @@ end_copy_to_pc:
 				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1],files_cat[2]);
 				oc->copymode=copymode;
-				if (num_exist==1) oc->title_label->Text=lang::o_exist;//"A file with this name already exists                                                                     ";
-				else oc->title_label->Text=lang::o_exist_plural;//"Files with these names already exist                                                                                  ";					
+				//"A file with this name already exists";
+				if (num_exist==1) oc->title_label->Text=lang::o_exist+"                                                                     ";
+				else oc->title_label->Text=lang::o_exist_plural+"                                                                     ";;
 				//oc->files1->Text = files_cat[0];
 				if (num_cat[0]==0)
 				{
@@ -6215,8 +6216,16 @@ finish_transfer:
 			if (L > 0)
 			{
 				if (copydialog->file_error->Length > 0) copydialog->file_error  += "\n";
-				copydialog->file_error+="The following file"; if (L>1) copydialog->file_error+="s";
-				copydialog->file_error+=" could not be accessed on the PC:\n";
+				//copydialog->file_error+="The following file"; if (L>1) copydialog->file_error+="s";
+				//copydialog->file_error+=" could not be accessed on the PC:\n";
+
+				if (L>1)
+					copydialog->file_error += lang::c_no_access_pc_plural;
+				else
+					copydialog->file_error += lang::c_no_access_pc;
+
+				copydialog->file_error += "\n";
+
 				for (int i=0; i<L; i++)
 				{				
 					copydialog->file_error+=failed_filenames[i]+"\n";
@@ -6303,17 +6312,17 @@ finish_transfer:
 
 			//String ^window_title_bit;
 			if (copymode==CopyMode::COPY)
-				copydialog->window_title1="Copying File";
+				copydialog->window_title1=lang::c_title1_copy;//"Copying File";
 			else
-				copydialog->window_title1="Moving File";
+				copydialog->window_title1=lang::c_title1_move;//"Moving File";
 
-			copydialog->window_title2="[PC --> PVR]";
-			copydialog->Text=copydialog->window_title1 + "(s) ... "+copydialog->window_title2; 
+			copydialog->window_title2=lang::c_title2_to_pvr;//"[PC --> PVR]";
+			copydialog->Text=copydialog->window_title1 + " ... "+copydialog->window_title2; 
 			//copydialog->Text = copydialog->window_title;
 
 			copydialog->tiny_size();
-			copydialog->label3->Text="Finding files...";
-			Console::WriteLine("Finding files...");
+			copydialog->label3->Text=lang::c_finding;//"Finding files...";
+			Console::WriteLine(lang::c_finding);
 			this->ShowCopyDialog(copydialog);
 
 			copydialog->Update();
@@ -6569,8 +6578,8 @@ finish_transfer:
 				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1], files_cat[2]);
 				oc->copymode=copymode;
-				if (num_exist==1) oc->title_label->Text="A file with this name already exists                                                   ";
-				else oc->title_label->Text = "Files with these names already exist                                                              ";
+				if (num_exist==1) oc->title_label->Text=lang::o_exist+"                                                   ";
+				else oc->title_label->Text = lang::o_exist_plural+"                                                              ";
 
 				if (num_cat[0]==0)
 				{
@@ -6585,23 +6594,27 @@ finish_transfer:
 				{
 					oc->checkBox1->Visible=true;
 					if (num_cat[0]==1)
-						oc->Text = "Delete the PC copy";
+						oc->Text = lang::o_delete_pc;//"Delete the PC copy";
 					else
-						oc->Text = "Delete the PC copies";
+						oc->Text =  lang::o_delete_pc_plural;//"Delete the PC copies";
 				}
-				if (num_cat[0]>1) oc->label1->Text = "Files have correct size"; else oc->label1->Text = "File has correct size"; 
+				if (num_cat[0]>1) 
+					oc->label1->Text = lang::o_correct_plural;//"Files have correct size"; 
+				else oc->label1->Text = lang::o_correct;//"File has correct size"; 
 
 				if (num_cat[1]==0)
 				{
 					oc->panel2->Visible = false;oc->files2->Visible=false;
 				}
-				if (num_cat[1]>1) oc->label2->Text = "Undersized files"; else oc->label2->Text = "Undersized file";
+				if (num_cat[1]>1) oc->label2->Text = lang::o_undersized_plural;//"Undersized files";
+				else oc->label2->Text = lang::o_undersized;//"Undersized file";
 
 				if (num_cat[2]==0)
 				{
 					oc->panel3->Visible = false;oc->files3->Visible=false;
 				}
-				if (num_cat[2]>1) oc->label3->Text = "These exising files are larger!!"; else oc->label3->Text = "This existing file is larger!!";
+				if (num_cat[2]>1) oc->label3->Text = lang::o_oversized_plural;//"These exising files are larger!!"; 
+				else oc->label3->Text = lang::o_oversized;//"This existing file is larger!!";
 
 				if (!this->no_prompt)
 					if (::DialogResult::Cancel == oc->ShowDialog() ) goto abort;
@@ -6684,8 +6697,8 @@ finish_transfer:
 					{
 
 						LowSpaceAlert^ alert = gcnew LowSpaceAlert();
-						alert->required_label->Text = "Required: " + HumanReadableSize(space_required);
-						alert->available_label->Text = "Available: " + HumanReadableSize(freespace);
+						alert->required_label->Text = lang::f_required+" " + HumanReadableSize(space_required);
+						alert->available_label->Text =lang::f_available+" " + HumanReadableSize(freespace);
 						if (freespace < this->topfield_minimum_free_megs*1024*1024)
 						{
 							alert->label4->Visible = false;
@@ -7068,7 +7081,7 @@ abort:  // If the transfer was cancelled before it began
 						{
 							e->CancelEdit = true;
 
-							MessageBox::Show(this,"An error occurred during rename.","Error.",MessageBoxButtons::OK);
+							MessageBox::Show(this,lang::m_rename_error,lang::st_error,MessageBoxButtons::OK);
 							//this->listView2->Items->Clear();
 							this->loadComputerDir();
 						}
@@ -7208,7 +7221,7 @@ abort:  // If the transfer was cancelled before it began
 			for( int i=0; i<1000; i++)
 			{
 
-				foldername = "NewFolder" + i.ToString("D2");
+				foldername = lang::m_new_folder_name + " " + i.ToString("D2");
 
 
 
@@ -7236,7 +7249,7 @@ abort:  // If the transfer was cancelled before it began
 				Monitor::Enter(this->locker);
 				r=this->newTopfieldFolder(dir);
 				Monitor::Exit(this->locker);
-				if (r!=0) this->toolStripStatusLabel1->Text="Error creating new folder.";
+				if (r!=0) this->toolStripStatusLabel1->Text=lang::m_folder_error;//"Error creating new folder.";
 				success=true;
 				break;
 			}
@@ -7286,14 +7299,22 @@ abort:  // If the transfer was cancelled before it began
 
 				if (numfiles>1)
 				{
-					txt = "  Selected " + numfiles.ToString() +" files on PC  ( "+Antares::HumanReadableSize(totalsize)+" )";
+					//txt = "  Selected " + numfiles.ToString() +" files on PC  ( "+Antares::HumanReadableSize(totalsize)+" )";
 
 					if (numdirs>0)
 					{
-						txt = txt + "     and   "+numdirs.ToString();
-						if (numdirs>1) txt=txt+" folders"; else txt=txt+" folder";
-						txt=txt+" (size unknown) ";
+						if (numdirs==1)
+							txt = String::Format(lang::st_pc_selected_with_folder, numfiles, Antares::HumanReadableSize(totalsize)  );
+						else
+							txt = String::Format(lang::st_pc_selected_with_folders, numfiles, Antares::HumanReadableSize(totalsize) , numdirs);
+						//txt = txt + "     and   "+numdirs.ToString();
+						//if (numdirs>1) txt=txt+" folders"; else txt=txt+" folder";
+						//txt=txt+" (size unknown) ";
+
 					}
+					
+					else
+					   txt = String::Format(lang::st_pc_selected, numfiles, Antares::HumanReadableSize(totalsize)  );
 
 				}
 
@@ -7341,14 +7362,27 @@ abort:  // If the transfer was cancelled before it began
 
 				if (numfiles>1)
 				{
+
+					if (numdirs>0)
+					{
+						if (numdirs==1)
+							txt = String::Format(lang::st_pvr_selected_with_folder, numfiles, Antares::HumanReadableSize(totalsize)  );
+						else
+							txt = String::Format(lang::st_pvr_selected_with_folders, numfiles, Antares::HumanReadableSize(totalsize) , numdirs);
+					}
+					else
+						txt = String::Format(lang::st_pvr_selected, numfiles, Antares::HumanReadableSize(totalsize)  );
+
+					/*
 					txt = "  Selected " + numfiles.ToString() +" files on PVR ( "+Antares::HumanReadableSize(totalsize)+" )";
 
 					if (numdirs>0)
 					{
-						txt = txt + "     and   "+numdirs.ToString();
-						if (numdirs>1) txt=txt+" folders"; else txt=txt+" folder";
-						txt=txt+" (size unknown) ";
+					txt = txt + "     and   "+numdirs.ToString();
+					if (numdirs>1) txt=txt+" folders"; else txt=txt+" folder";
+					txt=txt+" (size unknown) ";
 					}
+					*/
 
 				}
 
@@ -7454,7 +7488,7 @@ abort:  // If the transfer was cancelled before it began
 			if (bad_location)
 			{
 				MessageBox::Show(
-					"Cannot paste to this location, since it is inside a folder being moved.", 
+					lang::m_paste_error,    //"Cannot paste to this location, since it is inside a folder being moved.", 
 					"", MessageBoxButtons::OK);
 				return;
 			}
@@ -8235,14 +8269,14 @@ abort:  // If the transfer was cancelled before it began
 
 				 System::ComponentModel::ComponentResourceManager^  resources = (gcnew System::ComponentModel::ComponentResourceManager(Form1::typeid));
 
-				 this->mi_pvr_copy = gcnew ToolStripMenuItem("Copy to PC",this->basicIconsSmall->Images["right-arrow_small.ico"]);
-				 this->mi_pvr_proginfo = gcnew ToolStripMenuItem("Show program information",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton11.Image"))));
+				 this->mi_pvr_copy = gcnew ToolStripMenuItem(lang::cm_copy_pc,this->basicIconsSmall->Images["right-arrow_small.ico"]);
+				 this->mi_pvr_proginfo = gcnew ToolStripMenuItem(lang::cm_info,(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton11.Image"))));
 
-				 this->mi_pvr_move = gcnew ToolStripMenuItem("Move to PC",this->basicIconsSmall->Images["right-arrow_orange_small.ico"]);
-				 this->mi_pvr_delete = gcnew ToolStripMenuItem("Delete",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image"))));
+				 this->mi_pvr_move = gcnew ToolStripMenuItem(lang::cm_move_pc,this->basicIconsSmall->Images["right-arrow_orange_small.ico"]);
+				 this->mi_pvr_delete = gcnew ToolStripMenuItem(lang::tb_delete,(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image"))));
 
-				 this->mi_pvr_rename = gcnew ToolStripMenuItem("Rename",this->basicIconsSmall->Images["rename.ico"]);
-				  this->mi_pvr_select_all = gcnew ToolStripMenuItem("Select all");
+				 this->mi_pvr_rename = gcnew ToolStripMenuItem(lang::cm_rename,this->basicIconsSmall->Images["rename.ico"]);
+				 this->mi_pvr_select_all = gcnew ToolStripMenuItem(lang::cm_select_all);
 
 				 System::Windows::Forms::ContextMenuStrip ^cm = this->contextMenuStrip1;
 
@@ -8283,15 +8317,15 @@ abort:  // If the transfer was cancelled before it began
 
 				 System::ComponentModel::ComponentResourceManager^  resources = (gcnew System::ComponentModel::ComponentResourceManager(Form1::typeid));
 
-				 this->mi_pc_copy = gcnew ToolStripMenuItem("Copy to PVR",this->basicIconsSmall->Images["left-arrow_small.ico"]);
-				 this->mi_pc_proginfo = gcnew ToolStripMenuItem("Show program information",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton11.Image"))));
+				 this->mi_pc_copy = gcnew ToolStripMenuItem(lang::cm_copy_pvr,this->basicIconsSmall->Images["left-arrow_small.ico"]);
+				 this->mi_pc_proginfo = gcnew ToolStripMenuItem(lang::cm_info,(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton11.Image"))));
 
-				 this->mi_pc_move = gcnew ToolStripMenuItem("Move to PVR",this->basicIconsSmall->Images["left-arrow_orange_small.ico"]);
-				 this->mi_pc_delete = gcnew ToolStripMenuItem("Delete",(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image"))));
-				 this->mi_pc_show_in_explorer = gcnew ToolStripMenuItem("Show in Explorer", this->basicIconsSmall->Images["show_file.ico"]);
-				 this->mi_pc_install_firmware = gcnew ToolStripMenuItem("Install firmware to PVR",this->basicIconsSmall->Images["cog.ico"]);
-				 this->mi_pc_rename = gcnew ToolStripMenuItem("Rename",this->basicIconsSmall->Images["rename.ico"]);
-				 this->mi_pc_select_all = gcnew ToolStripMenuItem("Select all");
+				 this->mi_pc_move = gcnew ToolStripMenuItem(lang::cm_move_pvr,this->basicIconsSmall->Images["left-arrow_orange_small.ico"]);
+				 this->mi_pc_delete = gcnew ToolStripMenuItem(lang::tb_delete,(cli::safe_cast<System::Drawing::Image^  >(resources->GetObject(L"toolStripButton3.Image"))));
+				 this->mi_pc_show_in_explorer = gcnew ToolStripMenuItem(lang::cm_explorer, this->basicIconsSmall->Images["show_file.ico"]);
+				 this->mi_pc_install_firmware = gcnew ToolStripMenuItem(lang::cm_firmware,this->basicIconsSmall->Images["cog.ico"]);
+				 this->mi_pc_rename = gcnew ToolStripMenuItem(lang::cm_rename,this->basicIconsSmall->Images["rename.ico"]);
+				 this->mi_pc_select_all = gcnew ToolStripMenuItem(lang::cm_select_all);
 
 				 this->mi_pc_rename->ShortcutKeyDisplayString="F2";
 				 this->mi_pc_delete->ShortcutKeyDisplayString="Del";

@@ -48,9 +48,9 @@ namespace Antares {
 		CopyDialog(void)
 		{
 			InitializeComponent();
-			//
-			//TODO: Add the constructor code here
-			//
+		
+
+
 			this->cancelled=false;
 			this->completed=false;
 			this->is_closed=false;
@@ -110,8 +110,17 @@ namespace Antares {
 			this->is_resizing=false;
 			this->resizing_was_docked=false;
 
+			this->apply_language();
 
 
+		}
+
+
+		void apply_language(void)
+		{
+			this->button1->Text = lang::b_cancel;
+			this->checkBox1->Text = lang::tb_turbo_mode;
+			this->label9->Text = lang::c_completion;
 		}
 
 		void success(int i)
