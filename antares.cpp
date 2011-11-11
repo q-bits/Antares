@@ -222,19 +222,19 @@ namespace Antares {
 		switch(j)
 		{
 		case 1:
-			s = s + " bytes";
+			s = s + " "+lang::u_bytes;//" bytes";
 			break;
 		case 2:
-			s = s + " KB";
+			s = s + " "+lang::u_kb;//" KB";
 			break;
 		case 3:
-			s = s + " MB";
+			s = s + " "+lang::u_mb;//" MB";
 			break;
 		case 4:
-			s = s + " GB";
+			s = s + " "+lang::u_gb;//" GB";
 			break;
 		case 5:
-			s = s + " TB";
+			s = s + " "+lang::u_tb;//" TB";
 		}
 		return s;
 	}
@@ -377,12 +377,12 @@ int main(array<System::String ^> ^args)
 	Console::WriteLine(x->ToString() + " " + y->ToString());
 	*/
 
-
-	//lang::set_fi();
 	lang::set_en_au();
 
-	
-	
+	//Console::WriteLine(System::Globalization::CultureInfo::CurrentCulture->Name);
+	//Console::WriteLine(System::Globalization::CultureInfo::InstalledUICulture->Name);
+	//Console::WriteLine(System::Globalization::CultureInfo::CurrentUICulture->Name);
+
 	// Create the main window and run it
 	Form1^ form = gcnew Form1();
 	//form->copydialog = gcnew CopyDialog();

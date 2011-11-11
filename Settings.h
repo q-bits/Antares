@@ -25,6 +25,10 @@ namespace Antares {
         System::Configuration::Configuration^ config;
 		System::Configuration::KeyValueConfigurationCollection^ settings;
 
+
+		static array<String^> ^language_codes = {"auto", "en-gb",          "en-au",          "fi",    "de"     };
+		static array<String^> ^language_names = {"auto", "English (UK)", "English (Aust.)", "suomi", "Deutsch"};
+
 		void backup_settings(void)
 		{
 			backup_dic = gcnew Dictionary<String^,String^>(dic);
@@ -92,6 +96,8 @@ namespace Antares {
 			dic->Add("PC_ColumnScale","380");
 
 			dic->Add("prevent_sleep_during_transfer","1");
+
+			dic->Add("language","auto");   // auto, en-gb, en-au, fi, de
 
 
 			String ^folder = Path::Combine(Environment::GetFolderPath(Environment::SpecialFolder::ApplicationData) , "Antares\\");
@@ -200,6 +206,7 @@ namespace Antares {
 			
 		}
 
+		/*
 		// Load settings from an old-style config file, if present
 		void loadOldSettings(void)
 		{
@@ -221,6 +228,7 @@ namespace Antares {
 			}
 
 		}
+		*/
 
 		void changeSetting(String^ key,  String^ val)
 		{

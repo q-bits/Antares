@@ -121,6 +121,13 @@ namespace Antares {
 			this->button1->Text = lang::b_cancel;
 			this->checkBox1->Text = lang::tb_turbo_mode;
 			this->label9->Text = lang::c_completion;
+			this->label9->Update();
+
+			System::Drawing::Point point = this->label9->Location;
+			point.X = this->Width - this->label9->Width-28;
+			this->label9->Location = point;
+
+
 		}
 
 		void success(int i)
@@ -617,11 +624,11 @@ namespace Antares {
 			};
 			if (*this->turbo_mode != this->turbo_request && this->current_error->Length == 0)
 			{
-				this->checkBox1->Text = "Turbo mode [Changing...]";
+				this->checkBox1->Text = lang::c_turbo_changing;//"Turbo mode [Changing...]";
 			}
 			else
 			{
-				this->checkBox1->Text = "Turbo mode";
+				this->checkBox1->Text = lang::tb_turbo_mode;//"Turbo mode";
 			}
 
 			this->label4->Text =  (offset / 1024.0/1024.0).ToString("#,#,0.0")+" MB / "+(size/1024.0/1024.0).ToString("#,#,0")+" MB";
@@ -1075,9 +1082,9 @@ private: System::Windows::Forms::Label^  label10;
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->comboBox1->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->comboBox1->FormattingEnabled = true;
-			this->comboBox1->Location = System::Drawing::Point(577, 209);
+			this->comboBox1->Location = System::Drawing::Point(553, 209);
 			this->comboBox1->Name = L"comboBox1";
-			this->comboBox1->Size = System::Drawing::Size(79, 21);
+			this->comboBox1->Size = System::Drawing::Size(103, 21);
 			this->comboBox1->TabIndex = 13;
 			this->comboBox1->SelectedIndexChanged += gcnew System::EventHandler(this, &CopyDialog::comboBox1_SelectedIndexChanged);
 			// 
@@ -1085,7 +1092,7 @@ private: System::Windows::Forms::Label^  label10;
 			// 
 			this->label9->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Right));
 			this->label9->AutoSize = true;
-			this->label9->Location = System::Drawing::Point(574, 193);
+			this->label9->Location = System::Drawing::Point(563, 193);
 			this->label9->Name = L"label9";
 			this->label9->Size = System::Drawing::Size(78, 13);
 			this->label9->TabIndex = 14;
@@ -1298,8 +1305,12 @@ private: System::Windows::Forms::Label^  label10;
 				 // "on completion..."
 				 p=this->comboBox1->Location;
 
+				 int ww1 = this->comboBox1->Width;
+				 int ww2 = this->label9->Width;
+				 int ww = ww1>ww2 ? ww1 : ww2; 
+
 				 p.Y = this->Height - 95 + 16    + bottom_trim - 8;
-				 p.X = this->Width - 103;
+				 p.X = this->Width - ww - 24;
 				 int X = p.X;
 				 this->comboBox1->Location=p;
 

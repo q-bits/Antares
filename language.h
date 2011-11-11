@@ -519,5 +519,12 @@ p_title                     = "Titel:";
 p_proglen                   = "Länge der Sendung:";
 p_reclen                    = "Länge der Aufnahme:";
 }
+static void set_en_gb(void){
+set_en_au();
+tt_info                     = "Show programme information";
+cm_info                     = "Show programme information";
+p_wintitle                  = "Programme Information";
+p_proglen                   = "Programme length:";
+}
 };
 }

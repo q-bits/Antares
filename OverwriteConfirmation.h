@@ -90,6 +90,7 @@ namespace Antares {
 			this->button2->Text = lang::b_cancel_transfer;
 
 
+			this->Text = "";  // Do I want a window title?
 
 		}
 

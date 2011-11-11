@@ -29,25 +29,29 @@ namespace Antares {
 
 
 	public:
-		SettingsDialog(void)
-		{
-			InitializeComponent();
-		
-			this->apply_language();
-		}
 
 
 
 		SettingsDialog(Antares::Settings^ settings_in)
 		{
-			 
+
 			InitializeComponent();
-		
 			this->apply_language();
-			
 
-             this->settings = settings_in;
+            this->settings = settings_in;
 
+
+			int lang_index=0;
+			this->comboBox1->Items->Clear();
+			String^ lang_setting = this->settings["language"];
+
+			for (int j=0; j < this->settings->language_names->Length ; j++)
+			{
+				this->comboBox1->Items->Add( this->settings->language_names[j]);
+				if (this->settings->language_codes[j] == lang_setting)
+					lang_index = j;
+			}
+			this->comboBox1->SelectedIndex = lang_index;
 
 
 			 for (int j=0; j<num_columns; j++)
@@ -293,7 +297,7 @@ namespace Antares {
 			// nosleep_check
 			// 
 			this->nosleep_check->AutoSize = true;
-			this->nosleep_check->Location = System::Drawing::Point(267, 113);
+			this->nosleep_check->Location = System::Drawing::Point(267, 160);
 			this->nosleep_check->Name = L"nosleep_check";
 			this->nosleep_check->Size = System::Drawing::Size(280, 30);
 			this->nosleep_check->TabIndex = 5;
@@ -376,6 +380,12 @@ namespace Antares {
 				 this->settings->changeSetting("prevent_sleep_during_transfer", (  (int)  this->nosleep_check->Checked ).ToString() );
 
 
+				 int lang_index = this->comboBox1->SelectedIndex;
+				 try{
+					 this->settings->changeSetting("language",this->settings->language_codes[lang_index]);
+				 }
+				 catch(...){}
+			
 				
 
 			 }
