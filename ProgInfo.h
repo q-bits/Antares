@@ -226,31 +226,31 @@ namespace Antares {
 			// channel
 			// 
 			this->channel->AutoSize = true;
-			this->channel->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->channel->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->channel->ForeColor = System::Drawing::Color::Navy;
 			this->channel->Location = System::Drawing::Point(172, 52);
 			this->channel->Name = L"channel";
-			this->channel->Size = System::Drawing::Size(118, 18);
+			this->channel->Size = System::Drawing::Size(106, 18);
 			this->channel->TabIndex = 5;
 			this->channel->Text = L"Some Channel";
 			// 
 			// title
 			// 
 			this->title->AutoSize = true;
-			this->title->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->title->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->title->ForeColor = System::Drawing::Color::Navy;
 			this->title->Location = System::Drawing::Point(172, 81);
 			this->title->Name = L"title";
-			this->title->Size = System::Drawing::Size(204, 18);
+			this->title->Size = System::Drawing::Size(178, 18);
 			this->title->TabIndex = 6;
 			this->title->Text = L"A really good show, part 2";
 			// 
 			// description
 			// 
 			this->description->BackColor = System::Drawing::SystemColors::Control;
-			this->description->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->description->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->description->ForeColor = System::Drawing::Color::Navy;
 			this->description->Location = System::Drawing::Point(175, 143);
@@ -293,12 +293,12 @@ namespace Antares {
 			// duration
 			// 
 			this->duration->AutoSize = true;
-			this->duration->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->duration->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->duration->ForeColor = System::Drawing::Color::Navy;
 			this->duration->Location = System::Drawing::Point(172, 111);
 			this->duration->Name = L"duration";
-			this->duration->Size = System::Drawing::Size(82, 18);
+			this->duration->Size = System::Drawing::Size(73, 18);
 			this->duration->TabIndex = 10;
 			this->duration->Text = L"1hr 45min";
 			// 
@@ -318,12 +318,12 @@ namespace Antares {
 			// recorded_duration
 			// 
 			this->recorded_duration->AutoSize = true;
-			this->recorded_duration->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
+			this->recorded_duration->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, 
+				System::Drawing::GraphicsUnit::Point, static_cast<System::Byte>(0)));
 			this->recorded_duration->ForeColor = System::Drawing::Color::Navy;
 			this->recorded_duration->Location = System::Drawing::Point(593, 111);
 			this->recorded_duration->Name = L"recorded_duration";
-			this->recorded_duration->Size = System::Drawing::Size(82, 18);
+			this->recorded_duration->Size = System::Drawing::Size(73, 18);
 			this->recorded_duration->TabIndex = 13;
 			this->recorded_duration->Text = L"1hr 45min";
 			// 
@@ -358,6 +358,7 @@ namespace Antares {
 			this->Controls->Add(this->label3);
 			this->Controls->Add(this->label2);
 			this->ForeColor = System::Drawing::Color::Green;
+			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedSingle;
 			this->Name = L"ProgInfo";
 			this->ShowInTaskbar = false;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;

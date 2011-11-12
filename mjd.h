@@ -42,6 +42,7 @@ struct tf_datetime
 
 
 time_t tfdt_to_time(struct tf_datetime *dt);
+double tfdt_to_year(struct tf_datetime * dt);
 void time_to_tfdt(time_t t, struct tf_datetime *dt);
 void time_to_tfdt64(__time64_t t, struct tf_datetime *dt);
 #endif /* _MJD_H */

@@ -240,7 +240,7 @@ namespace Antares {
 			this->panel1->Dock = System::Windows::Forms::DockStyle::Top;
 			this->panel1->Location = System::Drawing::Point(0, 62);
 			this->panel1->Name = L"panel1";
-			this->panel1->Size = System::Drawing::Size(627, 27);
+			this->panel1->Size = System::Drawing::Size(718, 27);
 			this->panel1->TabIndex = 3;
 			// 
 			// skip1
@@ -253,7 +253,7 @@ namespace Antares {
 			this->skip1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->skip1->ForeColor = System::Drawing::Color::DarkGreen;
-			this->skip1->Location = System::Drawing::Point(371, 0);
+			this->skip1->Location = System::Drawing::Point(462, 0);
 			this->skip1->Name = L"skip1";
 			this->skip1->Size = System::Drawing::Size(170, 27);
 			this->skip1->TabIndex = 5;
@@ -270,7 +270,7 @@ namespace Antares {
 			this->overwrite1->Dock = System::Windows::Forms::DockStyle::Right;
 			this->overwrite1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->overwrite1->ForeColor = System::Drawing::Color::DarkGreen;
-			this->overwrite1->Location = System::Drawing::Point(541, 0);
+			this->overwrite1->Location = System::Drawing::Point(632, 0);
 			this->overwrite1->Name = L"overwrite1";
 			this->overwrite1->Size = System::Drawing::Size(86, 27);
 			this->overwrite1->TabIndex = 4;
@@ -315,7 +315,7 @@ namespace Antares {
 			this->overwrite2->Dock = System::Windows::Forms::DockStyle::Right;
 			this->overwrite2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->overwrite2->ForeColor = System::Drawing::Color::DarkGreen;
-			this->overwrite2->Location = System::Drawing::Point(541, 0);
+			this->overwrite2->Location = System::Drawing::Point(632, 0);
 			this->overwrite2->Name = L"overwrite2";
 			this->overwrite2->Size = System::Drawing::Size(86, 27);
 			this->overwrite2->TabIndex = 4;
@@ -333,7 +333,7 @@ namespace Antares {
 			this->panel2->Dock = System::Windows::Forms::DockStyle::Top;
 			this->panel2->Location = System::Drawing::Point(0, 143);
 			this->panel2->Name = L"panel2";
-			this->panel2->Size = System::Drawing::Size(627, 27);
+			this->panel2->Size = System::Drawing::Size(718, 27);
 			this->panel2->TabIndex = 5;
 			// 
 			// resume2
@@ -344,7 +344,7 @@ namespace Antares {
 			this->resume2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->resume2->ForeColor = System::Drawing::Color::DarkGreen;
-			this->resume2->Location = System::Drawing::Point(292, 0);
+			this->resume2->Location = System::Drawing::Point(383, 0);
 			this->resume2->Name = L"resume2";
 			this->resume2->Size = System::Drawing::Size(196, 27);
 			this->resume2->TabIndex = 6;
@@ -360,7 +360,7 @@ namespace Antares {
 			this->skip2->Dock = System::Windows::Forms::DockStyle::Right;
 			this->skip2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->skip2->ForeColor = System::Drawing::Color::DarkGreen;
-			this->skip2->Location = System::Drawing::Point(488, 0);
+			this->skip2->Location = System::Drawing::Point(579, 0);
 			this->skip2->Name = L"skip2";
 			this->skip2->Size = System::Drawing::Size(53, 27);
 			this->skip2->TabIndex = 5;
@@ -407,7 +407,7 @@ namespace Antares {
 			this->panel3->Dock = System::Windows::Forms::DockStyle::Top;
 			this->panel3->Location = System::Drawing::Point(0, 224);
 			this->panel3->Name = L"panel3";
-			this->panel3->Size = System::Drawing::Size(627, 27);
+			this->panel3->Size = System::Drawing::Size(718, 27);
 			this->panel3->TabIndex = 7;
 			// 
 			// skip3
@@ -419,7 +419,7 @@ namespace Antares {
 			this->skip3->Dock = System::Windows::Forms::DockStyle::Right;
 			this->skip3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->skip3->ForeColor = System::Drawing::Color::DarkGreen;
-			this->skip3->Location = System::Drawing::Point(488, 0);
+			this->skip3->Location = System::Drawing::Point(579, 0);
 			this->skip3->Name = L"skip3";
 			this->skip3->Size = System::Drawing::Size(53, 27);
 			this->skip3->TabIndex = 5;
@@ -435,7 +435,7 @@ namespace Antares {
 			this->overwrite3->Dock = System::Windows::Forms::DockStyle::Right;
 			this->overwrite3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->overwrite3->ForeColor = System::Drawing::Color::DarkGreen;
-			this->overwrite3->Location = System::Drawing::Point(541, 0);
+			this->overwrite3->Location = System::Drawing::Point(632, 0);
 			this->overwrite3->Name = L"overwrite3";
 			this->overwrite3->Size = System::Drawing::Size(86, 27);
 			this->overwrite3->TabIndex = 4;
@@ -481,14 +481,14 @@ namespace Antares {
 			this->panel4->Dock = System::Windows::Forms::DockStyle::Bottom;
 			this->panel4->Location = System::Drawing::Point(0, 315);
 			this->panel4->Name = L"panel4";
-			this->panel4->Size = System::Drawing::Size(627, 51);
+			this->panel4->Size = System::Drawing::Size(718, 51);
 			this->panel4->TabIndex = 9;
 			// 
 			// button2
 			// 
 			this->button2->DialogResult = System::Windows::Forms::DialogResult::Cancel;
 			this->button2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
-			this->button2->Location = System::Drawing::Point(386, 13);
+			this->button2->Location = System::Drawing::Point(407, 13);
 			this->button2->Name = L"button2";
 			this->button2->Size = System::Drawing::Size(174, 24);
 			this->button2->TabIndex = 1;
@@ -499,7 +499,7 @@ namespace Antares {
 			// 
 			this->button1->DialogResult = System::Windows::Forms::DialogResult::OK;
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
-			this->button1->Location = System::Drawing::Point(102, 13);
+			this->button1->Location = System::Drawing::Point(116, 13);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(139, 24);
 			this->button1->TabIndex = 0;
@@ -517,7 +517,7 @@ namespace Antares {
 			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->checkBox1->ForeColor = System::Drawing::Color::DarkGreen;
-			this->checkBox1->Location = System::Drawing::Point(498, 89);
+			this->checkBox1->Location = System::Drawing::Point(589, 89);
 			this->checkBox1->Name = L"checkBox1";
 			this->checkBox1->Size = System::Drawing::Size(129, 19);
 			this->checkBox1->TabIndex = 10;
@@ -531,7 +531,7 @@ namespace Antares {
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->ClientSize = System::Drawing::Size(627, 366);
+			this->ClientSize = System::Drawing::Size(718, 366);
 			this->Controls->Add(this->checkBox1);
 			this->Controls->Add(this->panel4);
 			this->Controls->Add(this->files3);

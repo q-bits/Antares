@@ -64,6 +64,17 @@ time_t tfdt_to_time(struct tf_datetime * dt)
     return result;
 }
 
+
+double tfdt_to_year(struct tf_datetime * dt)
+{
+    int mjd = get_u16(&dt->mjd);
+
+    return ((mjd - 15078.2) / 365.25);
+       
+}
+
+
+
 /* Convert itime_t to Topfield MJD date and time structure */
 void time_to_tfdt(time_t t, struct tf_datetime *dt)
 {

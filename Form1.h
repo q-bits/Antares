@@ -5261,8 +5261,8 @@ end_copy_to_pc:
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1],files_cat[2]);
 				oc->copymode=copymode;
 				//"A file with this name already exists";
-				if (num_exist==1) oc->title_label->Text=lang::o_exist+"                                                                     ";
-				else oc->title_label->Text=lang::o_exist_plural+"                                                                     ";;
+				if (num_exist==1) oc->title_label->Text=lang::o_exist+"                                                                               ";
+				else oc->title_label->Text=lang::o_exist_plural+"                                                                               ";;
 				//oc->files1->Text = files_cat[0];
 				if (num_cat[0]==0)
 				{
@@ -6578,8 +6578,8 @@ finish_transfer:
 				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1], files_cat[2]);
 				oc->copymode=copymode;
-				if (num_exist==1) oc->title_label->Text=lang::o_exist+"                                                   ";
-				else oc->title_label->Text = lang::o_exist_plural+"                                                              ";
+				if (num_exist==1) oc->title_label->Text=lang::o_exist+"                                                             ";
+				else oc->title_label->Text = lang::o_exist_plural+"                                                                        ";
 
 				if (num_cat[0]==0)
 				{
@@ -7681,7 +7681,7 @@ abort:  // If the transfer was cancelled before it began
 					//item->description = gcnew String(ri.EventEventDescription);
 					//item->channel = gcnew String(ri.SISvcName);
 
-					ProgInfo^ pi = gcnew ProgInfo(&ri,lang::p_wintitle+", "+item->filename);
+					ProgInfo^ pi = gcnew ProgInfo(&ri,lang::p_wintitle+", "+item->clean_filename(item->full_filename)  );
 
 					pi->ShowDialog(this);
 					break;

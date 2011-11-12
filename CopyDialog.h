@@ -631,7 +631,7 @@ namespace Antares {
 				this->checkBox1->Text = lang::tb_turbo_mode;//"Turbo mode";
 			}
 
-			this->label4->Text =  (offset / 1024.0/1024.0).ToString("#,#,0.0")+" MB / "+(size/1024.0/1024.0).ToString("#,#,0")+" MB";
+			this->label4->Text =  (offset / 1024.0/1024.0).ToString("#,#,0.0")+" "+lang::u_mb+" / "+(size/1024.0/1024.0).ToString("#,#,0")+" "+lang::u_mb;
 			
 			/*
 			long long int offset_MB = offset / 1024LL/1024LL;
@@ -655,7 +655,8 @@ namespace Antares {
 
 
 
-			this->label5->Text =  (total_offset / 1024.0 / 1024.0).ToString("#,#,0.0")+" MB / "+(total_size/1024.0 / 1024.0).ToString("#,#,0")+" MB  Total";
+			this->label5->Text =  (total_offset / 1024.0 / 1024.0).ToString("#,#,0.0")+" "+lang::u_mb+" / "
+				+  (total_size/1024.0 / 1024.0).ToString("#,#,0")+" "+lang::u_mb+"  "+lang::st_total;
 			/*
 			long long int total_offset_MB = total_offset / 1024LL/1024LL;
 			int total_offset_dec_MB = (int)  ( (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024 );
