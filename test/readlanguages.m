@@ -42,7 +42,7 @@ for j =1:nc-1
         
         if any(label=='_')
             
-            fprintf('%s\n      %s\n      %s\n      %s\n',label,en,fi,de);
+            %fprintf('%s\n      %s\n      %s\n      %s\n',label,en,fi,de);
             ind=ind+1;
             all_items{ind,1} = label;
             all_items{ind,2} = en;
@@ -96,6 +96,11 @@ for j=1:ni
     x=all_items{j,1};
      y=all_items{j,4}; if length(y)==0; y=all_items{j,2};end
     sp=repmat(' ',ml-length(x),1);
+    if strcmp(all_items{j,1},'cb_move') && strcmp(y,'verschiebe')
+        yold=y;
+        y='ver-\r\nschiebe';
+        fprintf('Replaced %s with %s  in German.\n',yold,y);
+    end
     fprintf(f,'%s%s= "%s";\n',all_items{j,1},sp,y);
 end
 fprintf(f,'}\n');
@@ -113,6 +118,7 @@ for j=1:ni
     if ~strcmp(y,z)
         sp=repmat(' ',ml-length(x),1);
         fprintf(f,'%s%s= "%s";\n',all_items{j,1},sp,z);
+        fprintf('Replaced %s with %s in English(UK)\n',y,z);
     end
 end
 fprintf(f,'}\n');

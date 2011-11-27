@@ -2120,7 +2120,7 @@ repeat:
 	private: System::Windows::Forms::Panel^  panel3;
 
 	private: 
-	private: System::Windows::Forms::CheckBox^  checkBox1;
+
 	public: 
 	private: System::Windows::Forms::Label^  label2;
 	private: System::Windows::Forms::ToolStrip^  toolStrip2;
@@ -2145,6 +2145,8 @@ repeat:
 
 	private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip2;
+private: System::Windows::Forms::CheckBox^  checkBox1;
+
 
 
 
@@ -2207,9 +2209,9 @@ repeat:
 			this->statusStrip1 = (gcnew System::Windows::Forms::StatusStrip());
 			this->toolStripStatusLabel1 = (gcnew System::Windows::Forms::ToolStripStatusLabel());
 			this->panel1 = (gcnew System::Windows::Forms::Panel());
+			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
 			this->panel3 = (gcnew System::Windows::Forms::Panel());
 			this->textBox2 = (gcnew System::Windows::Forms::ComboBox());
-			this->checkBox1 = (gcnew System::Windows::Forms::CheckBox());
 			this->label2 = (gcnew System::Windows::Forms::Label());
 			this->toolStrip2 = (gcnew System::Windows::Forms::ToolStrip());
 			this->toolStripButton5 = (gcnew System::Windows::Forms::ToolStripButton());
@@ -2277,6 +2279,7 @@ repeat:
 			// 
 			// panel1
 			// 
+			this->panel1->Controls->Add(this->checkBox1);
 			this->panel1->Controls->Add(this->panel3);
 			this->panel1->Controls->Add(this->panel2);
 			this->panel1->Controls->Add(this->panel4);
@@ -2286,12 +2289,23 @@ repeat:
 			this->panel1->Size = System::Drawing::Size(880, 580);
 			this->panel1->TabIndex = 10;
 			// 
+			// checkBox1
+			// 
+			this->checkBox1->AutoSize = true;
+			this->checkBox1->BackColor = System::Drawing::Color::Transparent;
+			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F));
+			this->checkBox1->Location = System::Drawing::Point(472, 13);
+			this->checkBox1->Name = L"checkBox1";
+			this->checkBox1->Size = System::Drawing::Size(83, 17);
+			this->checkBox1->TabIndex = 14;
+			this->checkBox1->Text = L"Turbo mode";
+			this->checkBox1->UseVisualStyleBackColor = false;
+			// 
 			// panel3
 			// 
 			this->panel3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel3->Controls->Add(this->textBox2);
-			this->panel3->Controls->Add(this->checkBox1);
 			this->panel3->Controls->Add(this->label2);
 			this->panel3->Controls->Add(this->toolStrip2);
 			this->panel3->Controls->Add(this->listView1);
@@ -2316,20 +2330,6 @@ repeat:
 			this->textBox2->TabIndex = 12;
 			this->textBox2->Text = L"\\ProgramFiles";
 			this->textBox2->SelectionChangeCommitted += gcnew System::EventHandler(this, &Form1::textBox2_SelectionChangeCommitted);
-			// 
-			// checkBox1
-			// 
-			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
-			this->checkBox1->AutoSize = true;
-			this->checkBox1->BackColor = System::Drawing::Color::Transparent;
-			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F));
-			this->checkBox1->Location = System::Drawing::Point(417, 13);
-			this->checkBox1->Name = L"checkBox1";
-			this->checkBox1->Size = System::Drawing::Size(83, 17);
-			this->checkBox1->TabIndex = 7;
-			this->checkBox1->Text = L"Turbo mode";
-			this->checkBox1->UseVisualStyleBackColor = false;
-			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &Form1::checkBox1_CheckedChanged);
 			// 
 			// label2
 			// 
@@ -2523,6 +2523,7 @@ repeat:
 			this->panel2->Controls->Add(this->panel8);
 			this->panel2->Dock = System::Windows::Forms::DockStyle::Right;
 			this->panel2->Location = System::Drawing::Point(495, 0);
+			this->panel2->Margin = System::Windows::Forms::Padding(0);
 			this->panel2->Name = L"panel2";
 			this->panel2->Size = System::Drawing::Size(47, 580);
 			this->panel2->TabIndex = 7;
@@ -2881,8 +2882,8 @@ repeat:
 			this->statusStrip1->ResumeLayout(false);
 			this->statusStrip1->PerformLayout();
 			this->panel1->ResumeLayout(false);
+			this->panel1->PerformLayout();
 			this->panel3->ResumeLayout(false);
-			this->panel3->PerformLayout();
 			this->toolStrip2->ResumeLayout(false);
 			this->toolStrip2->PerformLayout();
 			this->panel2->ResumeLayout(false);
@@ -3629,8 +3630,30 @@ repeat:
 
 			Point p5 = this->checkBox2->Location;
 			p5.Y = bp1-this->panel8->Height - 20;
+
+			int cw = this->checkBox2->Width;
+			int pw = this->panel2->Width;
+			//if (cw > pw)
+				p5.X = (pw-cw-1)/2;
+
+
 			this->checkBox2->Location=p5;
 
+
+
+			cw = this->checkBox1->Width;
+			Point p6 =  this->checkBox1->Location;
+			int x1,x2,x3;
+			x1 = this->panel3->Width - cw + 8;
+			x2 = this->toolStripButton11->Bounds.Right  + 12;
+			x3 = this->panel4->Location.X - cw  + 18;
+			int x = x1;
+			if (x2>x) x=x2;
+			if (x3<x) x=x3;
+			p6.X = x;
+
+			this->checkBox1->Location=p6;
+			this->checkBox1->BringToFront();
 
 
 			this->button1->Location=p1;
@@ -8762,7 +8785,7 @@ abort:  // If the transfer was cancelled before it began
 
 				 // move check
 
-				 this->checkBox2->Text = lang::cb_move;      // need to re-center ?
+				 this->checkBox2->Text = lang::cb_move;    
 
 
 				 ///////////////////// Headers
@@ -8796,6 +8819,8 @@ abort:  // If the transfer was cancelled before it began
 				 OnCompletionAction::option_strings[1] = lang::c_sleep;
 				 OnCompletionAction::option_strings[2] = lang::c_hibernate;
 				 OnCompletionAction::option_strings[3] = lang::c_shutdown;
+
+				 this->Arrange_Buttons(); // mainly to centre Move checkbox.
 
 			 }
 
