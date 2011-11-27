@@ -190,6 +190,7 @@ namespace Antares {
 				set_verbose(3,2);
 			}
 
+			this->watched_directory = "";
 
 
 			this->exit_on_completion=false;
@@ -241,8 +242,11 @@ namespace Antares {
 
 
 
+			trace(1,printf("Hiding form.\n"));
+			
 			this->Hide();
 			///////////////////////////
+			trace(1,printf("InitializeComponent()\n"));
 			InitializeComponent();
 			///////////////////////////
 
@@ -265,6 +269,7 @@ namespace Antares {
 
 			if (this->location_is_sane(sz.Width, sz.Height, loc.X, loc.Y))
 			{
+				trace(1,printf("Setting location.\n"));
 				this->Size =sz;
 				this->Location = loc;
 			}
@@ -294,6 +299,7 @@ namespace Antares {
 			this->fd  = NULL;//connect_device2(&reason);
 			//if (this->fd==NULL) this->label2->Text="PVR: Device not connected";
 
+			trace(1,printf("Constructing columns.\n"));
 			this->headerNames = gcnew array<String^>{"Name", "Size", "Type", "Date","Channel","Description"};
 
 
@@ -322,11 +328,14 @@ namespace Antares {
 
 
 
+			trace(1,printf("Applying language settings.\n"));
 			this->apply_language_setting();
 
+			trace(1,printf("Applying columns visible.\n"));
 			this->apply_columns_visible();
 
 
+			
 
 			if (String::Compare("on",settings["TurboMode"])==0) this->checkBox1->Checked = true; else this->checkBox1->Checked = false;
 
@@ -354,6 +363,7 @@ namespace Antares {
 				this->listView2->Sorting = SortOrder::Descending;
 			}
 
+			trace(1,printf("Applying history.\n"));
 
 			int hist_len = this->settings->maximum_history_length;
 			for (int j=0; j<hist_len; j++)
@@ -389,6 +399,7 @@ namespace Antares {
 
 
 
+			trace(1,printf("Checking connection.\n"));
 			this->CheckConnection();
 			this->last_layout_x = -1;this->last_layout_y=-1;
 			this->Arrange();
@@ -414,17 +425,21 @@ namespace Antares {
 			cbthread->Name = "cbthread";
 			tbthread->Name = "tbthread";
 
+
+			trace(1,printf("Starting background threads.\n"));
 			this->cbthread->Start();
 			this->tbthread->Start();
 
 			//this->ResumeDrawing(this);
 
 
+			trace(1,printf("Resuming layout.\n"));
 			this->ResumeLayout(false);
 
 			//Console::WriteLine("Constructed Form.");
 
 
+			trace(1,printf("Showing gui again.\n"));
 			if (this->commandline->showgui)
 			{
 				this->listView2->Focus();
@@ -440,12 +455,27 @@ namespace Antares {
 			}
 
 
-			this->loadTopfieldDir();
+			//this->fileSystemWatcher1->BeginInit();
+		
+		
+			trace(1,printf("topfield_background_event->Set.\n"));
+			this->topfield_background_event->Set();
+
+			this->fileSystemWatcher1->Path=".";
+
+
+			//this->loadTopfieldDir();
 			this->loadComputerDir();
 			//this->ResizeRedraw = true;
 
+			//this->fileSystemWatcher1->EndInit();
+			//this->fileSystemWatcher1->EnableRaisingEvents = true;
 
 
+
+
+
+				trace(1,printf("Finished constructing form1.\n"));
 
 
 		}
@@ -952,6 +982,7 @@ check_freespace:
 			int j;
 
 
+			trace(1,printf("GetFileSystemEntries\n"));
 			try 
 			{
 				list = System::IO::Directory::GetFileSystemEntries(dir);
@@ -975,6 +1006,7 @@ check_freespace:
 				}
 
 				items[ind] = item;
+				trace(1,printf("Adding computer item: %s.\n",item->filename));
 				ind++;
 			}
 			Array::Resize(items, ind);
@@ -1275,11 +1307,10 @@ repeat:
 			int j;
 			ComputerItem^ item;
 			array<ComputerItem^>^ items = {};
-			//Console::WriteLine("Load computer dir");
-
+			
 
 			String^ dir = this->computerCurrentDirectory;
-
+			trace(1,printf("Load computer dir: %s.\n",dir));
 
 
 
@@ -1301,6 +1332,7 @@ repeat:
 			if (dir->Equals(""))  // List drives
 			{
 				this->listView2->Items->Clear();
+				trace(1,printf("GetLogicalDrives\n"));
 				DWORD drives = GetLogicalDrives();
 				for (j=0; j<26; j++)
 				{
@@ -1314,6 +1346,7 @@ repeat:
 						else
 							item->ImageIndex=item->icon_index=this->icons->folder_index;
 						this->listView2->Items->Add(item);
+						trace(1,printf("Drive item %s.\n", item->filename));
 					}
 
 					drives>>=1;
@@ -1325,6 +1358,7 @@ repeat:
 			else   //List contents of actual directory
 			{
 
+				trace(1,printf("LoadComputerDirArrayOrNull.\n"));
 				items = this->loadComputerDirArrayOrNull(dir);
 
 				if (items==nullptr) return -1;
@@ -1348,6 +1382,7 @@ repeat:
 				for (j=0; j<items->Length; j++)
 				{
 					item = items[j];
+					trace(1,printf("GetCachedIconIndexFast: %s.\n",item->filename));
 					FileType^ info = this->icons->GetCachedIconIndexFast(item->full_filename,false, item->isdir);
 					int ic = info->icon_index;
 					if (ic >= 0)
@@ -1411,6 +1446,7 @@ repeat:
 
 				settings->changeSetting("ComputerDir",dir);
 				// Add a drive summary to label1:
+				trace(1,printf("Calculate free space.\n"));
 				array<long long int>^ freespaceArray = this->computerFreeSpace(dir);
 				if (freespaceArray[0] > -1)
 				{
@@ -1448,22 +1484,24 @@ repeat:
 				}
 
 
+				trace(1,printf("Set computer background enumerator.\n"));
 				this->computer_background_enumerator = q->GetEnumerator();
 				this->computer_background_event->Set();
 
-				try{
-					this->fileSystemWatcher1->Path = dir;
-					this->fileSystemWatcher1->NotifyFilter = NotifyFilters::LastWrite
-						| NotifyFilters::FileName | NotifyFilters::DirectoryName | NotifyFilters::Size;
-				}catch(...){};
+				trace(1,printf("set_filesystemwatcher()\n"));
+				this->set_filesystemwatcher(dir);
+				trace(1,printf("returned: set_filesystemwatcher()\n"));
+		
 
 				this->computer_needs_refreshing=false;
 
 
 
-			}
+			}   // (if "My Computer")
+			trace(1,printf("Setting listview tag\n"));
 			this->listView2->Tag = dir;
 			if (!rename_item) this->Arrange2();
+
 			return 0;
 
 		};
@@ -1943,6 +1981,7 @@ repeat:
 			array<ToolStripMenuItem^>^ mi_pc_choose_columns_array;
 			array<ToolStripMenuItem^>^ mi_pvr_choose_columns_array;
 
+			String^ watched_directory;
 
 			CommandLine^ commandline;
 			int idle_count;
@@ -2462,6 +2501,7 @@ repeat:
 			this->listView1->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView1_SelectedIndexChanged);
 			this->listView1->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView1_Layout);
 			this->listView1->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
+			this->listView1->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView2_MouseMove);
 			this->listView1->ColumnWidthChanging += gcnew System::Windows::Forms::ColumnWidthChangingEventHandler(this, &Form1::listView_ColumnWidthChanging);
 			this->listView1->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
 			// 
@@ -2770,6 +2810,7 @@ repeat:
 			this->listView2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView2_SelectedIndexChanged);
 			this->listView2->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView2_Layout);
 			this->listView2->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
+			this->listView2->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView2_MouseMove);
 			this->listView2->ColumnWidthChanging += gcnew System::Windows::Forms::ColumnWidthChangingEventHandler(this, &Form1::listView_ColumnWidthChanging);
 			this->listView2->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
 			// 
@@ -2809,6 +2850,7 @@ repeat:
 			// fileSystemWatcher1
 			// 
 			this->fileSystemWatcher1->EnableRaisingEvents = true;
+			this->fileSystemWatcher1->NotifyFilter = System::IO::NotifyFilters::FileName;
 			this->fileSystemWatcher1->SynchronizingObject = this;
 			this->fileSystemWatcher1->Renamed += gcnew System::IO::RenamedEventHandler(this, &Form1::fileSystemWatcher1_Renamed);
 			this->fileSystemWatcher1->Deleted += gcnew System::IO::FileSystemEventHandler(this, &Form1::fileSystemWatcher1_Changed);
@@ -2827,7 +2869,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  0.9.2-test-1";
+			this->Text = L"Antares  0.9.2-test-4";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -3101,6 +3143,7 @@ repeat:
 
 					try{
 						pc_path = Path::Combine(Environment::CurrentDirectory,path2);
+						pc_path = Path::GetFullPath(pc_path);
 						while(pc_path->EndsWith("\\"))
 							pc_path = pc_path->Substring(0,pc_path->Length-1);
 
@@ -3150,7 +3193,13 @@ repeat:
 					array<TopfieldItem^> ^arr = this->loadTopfieldDirArrayOrNull(src_folder);
 					if (arr==nullptr)
 					{
-						this->cmdline_error("ERROR: The source location could not be found: "+path2);
+						String^ x = "";
+						if (path1->Contains("/")) x="\nNote: you must use a backslash (not slash) to separate directories.\n";
+
+						this->cmdline_error("ERROR: The source location could not be found: "
+							+
+							path1
+							+"\n(Note: directory names are case sensitive.)"+x);
 						return;
 					}
 
@@ -3201,12 +3250,16 @@ repeat:
 
 			Application::Idle -= gcnew EventHandler(this, &Form1::Application_Idle);
 
+			//this->fileSystemWatcher1->EnableRaisingEvents=true;
+			//this->fileSystemWatcher1->EndInit();
+
 			if (this->commandline->the_command->Length==0 && !this->commandline->dont_free_console)
 			{
 
 				try{
 #ifndef _DEBUG
-					FreeConsole();
+
+					CloseConsole();
 #endif
 				}catch(...){}
 
@@ -3401,11 +3454,13 @@ repeat:
 
 			}
 
+			listview->BeginUpdate();
 			for (int j=0; j<nc; j++)
 			{
 				if (widths[j]<0) widths[j]=0;
 				cols[j]->Width = widths[j];
 			}
+			listview->EndUpdate();
 
 
 
@@ -3491,6 +3546,7 @@ repeat:
 
 		System::Void Arrange2(void)
 		{
+			trace(1,printf("Arrange2()\n"));
 			if (this->finished_constructing ==1)
 			{
 
@@ -3509,7 +3565,7 @@ repeat:
 
 				this->Arrange2a( this->computerHeaders, "PC", (int) cw1, listView2);
 
-
+				trace(1,printf("Arrange2()  (return--) \n"));
 
 				return;
 
@@ -3518,7 +3574,8 @@ repeat:
 			this->textBox2->Select(0,0);
 			this->textBox1->Select(0,0);
 
-
+			
+			trace(1,printf("Arrange2()  (return) \n"));
 
 		}
 
@@ -5319,7 +5376,7 @@ end_copy_to_pc:
 								if(overwrite_category[i]==2)  overwrite_action[i]=action3;
 
 					}
-					if (overwrite_action[i]==RESUME && dest_size[i]<2*resume_granularity) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
+					if (overwrite_action[i]==RESUME && dest_size[i]< 1048576 ) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
 					//  if (overwrite_action[i]==OVERWRITE) totalsize_notskip+=item->size;else
 					//	 if (overwrite_action[i]==RESUME) totalsize_notskip+=item->size-dest_size[i];
 
@@ -6638,7 +6695,7 @@ finish_transfer:
 								if(overwrite_category[i]==2)  overwrite_action[i]=action3;
 
 					}
-					if (overwrite_action[i]==RESUME && dest_size[i]<2*resume_granularity) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
+					if (overwrite_action[i]==RESUME && dest_size[i]< 1048576) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
 
 					if (overwrite_action[i]==OVERWRITE) current_offsets[i]=0; else
 						if (overwrite_action[i]==SKIP) {current_offsets[i]=item->size;num_skip++;} else
@@ -6955,7 +7012,7 @@ abort:  // If the transfer was cancelled before it began
 				Console::WriteLine(item->Text);
 				if (item->isdir) numdirs++; else numfiles++;
 				totalsize += item->size;
-				conf_str = item->filename;
+				conf_str = item->clean_filename(item->filename);
 				if (item->isdir) conf_str = conf_str + "\\          "+lang::d_folder;//[Folder -- Contents will be deleted!!!]";
 				confirmation->listBox1->Items->Add(conf_str);
 
@@ -7060,6 +7117,7 @@ abort:  // If the transfer was cancelled before it began
 					{
 
 						bool success=true;
+						String ^msg = "";
 						try {
 							if (item->isdir)
 							{
@@ -7071,17 +7129,20 @@ abort:  // If the transfer was cancelled before it began
 								File::Move(old_full_filename, new_full_filename); 
 							}
 						}
-						catch(...)
+							
+						catch(Exception ^ex)
 						{
 							success=false;
 
+							msg ="\r\n"+ ex->Message;
 
 						}
+					
 						if (!success)
 						{
 							e->CancelEdit = true;
 
-							MessageBox::Show(this,lang::m_rename_error,lang::st_error,MessageBoxButtons::OK);
+							MessageBox::Show(this,lang::m_rename_error + msg,lang::st_error,MessageBoxButtons::OK);
 							//this->listView2->Items->Clear();
 							this->loadComputerDir();
 						}
@@ -8251,7 +8312,7 @@ abort:  // If the transfer was cancelled before it began
 
 			 void watcher_event(String^ name, String^ fullpath)
 			 {
-				 //printf("Watcher event:  name=%s  fullpath=%s\n",name,fullpath);
+				 trace(1,printf("Watcher event:  name=%s  fullpath=%s\n",name,fullpath));
 				 this->computer_needs_refreshing=true;
 
 			 }
@@ -8773,7 +8834,189 @@ abort:  // If the transfer was cancelled before it began
 			 }
 
 
+/*
+	private: System::Void listView2_ItemMouseHover(System::Object^  sender, System::Windows::Forms::ListViewItemMouseHoverEventArgs^  e) {
+				 Console::WriteLine("ItemMouseHover, " + e->Item->Text);
+			 }
+*/
 
-	};    // class form1
+			static String^ wordwrap(String^ str, int w)
+			{
+				String^ s = "";
+
+				try{
+				if (str!=nullptr)
+				{
+					while(str->Length>0)
+					{
+						int q;
+						String ^chunk;
+						if (str->Length<w) 
+						{
+							q = str->Length;
+							chunk = str;
+							str="";
+						}
+						else
+						{
+						    q=w;
+							//chunk=str->Substring(0,q);
+							//str = str->Substring(q);
+							for (int j=w-1; j>0; j--)
+							{
+								if (str[j]==' ')
+								{
+									q=j;
+									chunk=str->Substring(0,q);
+									str=str->Substring(q+1);
+									break;
+								}
+							}
+							if (q==w)
+							{
+								chunk=str->Substring(0,q);
+								str=str->Substring(q+1);
+							}
+						}
+						if (s->Length>0) s = s+"\r\n";
+						s=s+chunk;
+
+
+					}
+
+				}
+				}
+				catch(...){}
+
+				return s;
+			}
+
+private: System::Void listView2_MouseMove(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e) {
+
+
+			 static int cnt = 0;
+			 static int lastx, lasty, lasthash;
+			 int hash=0;
+
+
+			 toolTip1->AutoPopDelay = 5000;
+			 toolTip1->InitialDelay = 1000;
+			 toolTip1->ReshowDelay = 500;
+
+			 ListView ^list = safe_cast<ListView^> (sender);
+
+
+
+			 FileItem ^item = safe_cast<FileItem^> (list->GetItemAt(e->X, e->Y));
+
+			 if (!(lastx==e->X && lasty==e->Y))
+			 {
+				 bool clear=true;
+				 if(item != nullptr  )
+				 {
+
+
+
+					 ListViewItem::ListViewSubItem ^subitem = item->GetSubItemAt(e->X, e->Y);
+
+
+					 hash = subitem->GetHashCode();
+					 //Console::WriteLine(hash.ToString());
+
+					 if (subitem->Tag == "desc")
+					 {
+
+						 if (hash != lasthash)
+
+						 {
+
+							 System::Drawing::Point p = subitem->Bounds.Location;
+							 p.Y = p.Y + item->Bounds.Height+8;
+							 //p.X = e->X+6;
+							 p.X = subitem->Bounds.Left;
+
+							
+							 String ^str = item->description->Trim();
+
+							 if (str->Length>0)
+							 {
+								 this->toolTip1->Show(wordwrap(item->description,60), list, p,20000);
+								 //Console::WriteLine("Set: "+wordwrap(item->description,60));
+								 clear=false;
+								 lasthash=hash;
+							 }
+							 
+
+						 }
+
+						 else
+							 clear=false;
+					 }
+					
+					 else
+					 {
+						 if (lasthash == hash) clear=false;
+					 }
+
+					 //this->toolTip1->SetToolTip(list,  "This\r\nis\r\na\r\ntest"+item->description);
+
+				 }
+				 if(clear)
+				 {
+					 this->toolTip1->SetToolTip(list, "");
+					 lasthash=0;
+					 //Console::WriteLine("Clear"+cnt.ToString() );cnt++;
+				 }
+			 }
+			// Console::WriteLine("MouseMove" + cnt.ToString());cnt++;
+
+			 lastx = e->X; lasty=e->Y;
+
+
+
+
+		 }
+
+		 static void set_filesystemwatcher_callback(Object^ obj)
+		 {
+
+			 Form1 ^frm = safe_cast<Form1^>(obj);
+			 String ^dir = frm->watched_directory;
+
+			 Monitor::Enter(frm->fileSystemWatcher1);
+
+			 trace(1,printf("Setting filesystemwatcher: %s\n",dir));
+			 try{
+
+				 frm->fileSystemWatcher1->Path = dir;
+				 frm->fileSystemWatcher1->NotifyFilter = NotifyFilters::LastWrite
+					 | NotifyFilters::FileName | NotifyFilters::DirectoryName | NotifyFilters::Size;
+				
+
+				 			frm->fileSystemWatcher1->EnableRaisingEvents=true;
+
+			 }catch(...){
+				 trace(0,printf("Exception caught setting filesystemwatcher.\n"));
+				};
+
+			  Monitor::Exit(frm->fileSystemWatcher1);
+
+		 }
+
+		 void set_filesystemwatcher(String ^ dir)
+		 {
+
+
+			 this->watched_directory = dir;
+			 ThreadPool::QueueUserWorkItem( gcnew WaitCallback( Form1::set_filesystemwatcher_callback ), this );
+
+			 //Form1::set_filesystemwatcher_callback(this);
+
+
+		 }
+
+
+
+};    // class form1
 };    // namespace antares
 

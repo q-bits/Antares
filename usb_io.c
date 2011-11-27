@@ -79,7 +79,7 @@ void print_time(void)
 {
 	SYSTEMTIME t;
     GetSystemTime(&t);
-	printf("%02d.%03d: ",t.wSecond,t.wMilliseconds);
+	printf("%02d:%02d.%03d: ",t.wMinute, t.wSecond,t.wMilliseconds);
 }
 
 

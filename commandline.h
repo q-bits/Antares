@@ -122,12 +122,14 @@ namespace Antares {
 			{
 				String^ tok = this->tokens[ind];
 
-				if (tok=="cp" || tok=="mv") tok="-"+tok;
+				if (tok=="cp" || tok=="mv" || tok=="info") tok="-"+tok;
 
-				if (tok=="-cp" || tok=="-mv" || tok=="/cp" || tok=="/mv")
+				if (tok=="-cp" || tok=="-mv" || tok=="/cp" || tok=="/mv" || tok=="-info")
 
 				{
-					String^ cmd = tok->Substring(1,2);
+					String^ cmd = tok->Substring(1,tok->Length-1);
+					int nargs = 2;
+					if (cmd=="info") nargs=1;
 					if (the_command->Length>0)
 					{
 						this->error("ERROR: The commands "+the_command+" and "+cmd+" can't be used at the same time.");
@@ -136,7 +138,7 @@ namespace Antares {
 					this->the_command = cmd;
 
 
-					if (ind + 2 >= nt)
+					if (ind + nargs >= nt)
 					{
 						this->error("ERROR: The command "+the_command+" requires both a source and destination.");
 						goto out;
@@ -144,8 +146,11 @@ namespace Antares {
 					ind++;
 					this->cmd_param1 = this->tokens[ind];
 					ind++;
-					this->cmd_param2 = this->tokens[ind];
-					ind++;
+					if (nargs>1)
+					{
+						this->cmd_param2 = this->tokens[ind];
+						ind++;
+					}
 					continue;
 				}
 

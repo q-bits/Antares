@@ -94,8 +94,10 @@ namespace Antares {
 	System::String^ DateString(System::DateTime time);
 	System::String^ safeString( char* filename );
 	System::String^ safeString( String^ filename );
+	System::String^ cleanString( String^ filename );
 	System::DateTime Time_T2DateTime(time_t t);
 	String^ combineTopfieldPath(String^ path1,  String^ path2);
+	void CloseConsole(void);
 
 
 	///////////////////////////////////////////////////////
@@ -539,16 +541,23 @@ namespace Antares {
 			}
 			catch(...){}
 
+			//this->description="\r\nTesting, \r\n one, \r\ntwo, \r\nthree\r\n";
 			int nc = this->get_num_columns();
 			for (int j=0; j<nc; j++)
 			{
 				if (this->get_column_visible(j))
 				{
 					dest_ind++;
-					this->SubItems[dest_ind]->Text=data[j];
+					this->SubItems[dest_ind]->Text=data[j];   /*  */
+					this->SubItems[dest_ind]->Tag = (j==5) ? "desc" : ""; 
+					
 				}
 			}
 			for (dest_ind++ ; dest_ind<this->SubItems->Count; dest_ind++) this->SubItems[dest_ind]->Text="";
+
+			//this->ToolTipText = this->description;   /*     */
+
+
 		}
 
 		void update(FileItem^ item)
@@ -710,19 +719,38 @@ namespace Antares {
 			return num_topfield_columns;
 		}
 
-		
+
 		virtual String^ clean_filename(String^ str) override
 		{
 			wchar_t ch;
-			if (str->Length > 0)
+			int len = str->Length;
+			int maxpos = -1;
+			if (len > 0)
 			{
-				ch = str[0];
-				if (ch<32)  return str->Substring(1);
+				for (int j=0; j<len; j++)
+				{
+					ch = str[j];
+					if (ch<32)
+					{
+						maxpos=j;
+						if (maxpos>0) break;
+					}
+
+
+				}
+				if (maxpos>-1)
+				{
+					if (maxpos==0)
+						return str->Substring(1);
+					else
+						return Antares::cleanString(str);
+
+				}
 			}
 			return str;
 
 		}
-		
+
 
 		TopfieldItem(typefile *entry, String^ containing_directory) : FileItem()
 		{

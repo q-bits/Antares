@@ -11,8 +11,8 @@ extern "C"
 {
 #include <time.h>
 #include <types.h>
-//	extern int verbose;
-//	extern int packet_trace;
+	//	extern int verbose;
+	//	extern int packet_trace;
 }
 
 
@@ -35,7 +35,15 @@ FILE* hf;
 
 namespace Antares {
 
+	void CloseConsole(void)
+	{
 
+		trace(1,printf("FreeConsole()\n"));	
+		Console::SetOut(gcnew StreamWriter(Stream::Null));
+		Console::SetIn(gcnew StreamReader(Stream::Null));
+		FreeConsole();
+
+	}
 
 	void disable_sleep_mode(void)
 	{
@@ -78,6 +86,24 @@ namespace Antares {
 		return sb->ToString();
 	}
 
+	String^ cleanString( String^ filename_str)
+	{
+		int i, dest_i, len;
+		System::Text::StringBuilder^ sb = gcnew System::Text::StringBuilder(filename_str);
+		len = filename_str->Length;
+		wchar_t c;
+		for (i=0, dest_i=0;i<len; i++)
+		{
+			c = sb[i];
+			if (c<32) continue; //c='_';
+			sb[dest_i]=c;
+			dest_i++;
+		}
+		if (dest_i < len && dest_i>0) sb->Length = dest_i;
+		return sb->ToString();
+	}
+
+
 	String^ safeString( char* filename )
 	{
 		return safeString(gcnew System::String(filename));
@@ -106,13 +132,13 @@ namespace Antares {
 	/*
 	String^ DateString(time_t time)
 	{
-		struct tm *newtime;
-		char str[100];
-		newtime = localtime(&time);
-		sprintf_s(str,99,"%4d - %02d - %02d    %02d:%02d",1900+newtime->tm_year,newtime->tm_mon+1,newtime->tm_mday,newtime->tm_hour,newtime->tm_min);
-		System::String ^s = gcnew System::String(str);
+	struct tm *newtime;
+	char str[100];
+	newtime = localtime(&time);
+	sprintf_s(str,99,"%4d - %02d - %02d    %02d:%02d",1900+newtime->tm_year,newtime->tm_mon+1,newtime->tm_mday,newtime->tm_hour,newtime->tm_min);
+	System::String ^s = gcnew System::String(str);
 
-		return s;
+	return s;
 
 	}
 	*/
@@ -128,7 +154,7 @@ namespace Antares {
 		System::String ^s = gcnew System::String(str);
 		return s;
 		*/
-		
+
 	}
 
 	String^ combineTopfieldPath(String^ path1,  String^ path2)
@@ -212,8 +238,8 @@ namespace Antares {
 					//sprintf_s(str,99,"%5.3g",x);
 					s = x.ToString("G3");
 				else
-				s=x.ToString("###0");
-					//sprintf_s(str,99,"%3d",(int) x);
+					s=x.ToString("###0");
+				//sprintf_s(str,99,"%3d",(int) x);
 				break;
 			}
 			x=x/1024;
@@ -244,6 +270,7 @@ namespace Antares {
 
 void InitConsoleHandles()
 {
+	return;
 	//SafeFileHandle ^hStdOut, ^hStdErr, ^hStdOutDup, ^hStdErrDup;
 	HANDLE hStdOut, hStdErr, hStdOutDup, hStdErrDup;
 
@@ -261,7 +288,10 @@ void InitConsoleHandles()
 	DuplicateHandle(hProcess, hStdErr, hProcess, &hStdErrDup,
 		0, true, DUPLICATE_SAME_ACCESS);
 	// Attach to console window – this may modify the standard handles
-	AttachConsole(ATTACH_PARENT_PROCESS);
+	int r = AttachConsole(ATTACH_PARENT_PROCESS);
+
+
+
 	// Adjust the standard handles
 	if (GetFileInformationByHandle(GetStdHandle(STD_OUTPUT_HANDLE), &bhfi))
 	{
@@ -279,7 +309,11 @@ void InitConsoleHandles()
 	{
 		SetStdHandle(STD_ERROR_HANDLE, hStdErr);
 	}
+
+	printf("AttachConsole returned %d\n",r);
 }
+
+
 
 
 
@@ -308,7 +342,7 @@ int main(array<System::String ^> ^args)
 		//}
 		//printf("cmdline: %s\n",Environment::CommandLine);
 
-		
+
 
 
 
@@ -318,11 +352,11 @@ int main(array<System::String ^> ^args)
 	else
 	{
 #ifndef _DEBUG
-		FreeConsole();
+		Antares::CloseConsole();
 #endif
 	}
 
-	
+
 
 	//Thread::Sleep(20000);
 
@@ -389,7 +423,11 @@ int main(array<System::String ^> ^args)
 
 
 	if (form->commandline->dont_free_console)
-	InitConsoleHandles();
+	{
+		trace(0,printf("InitConsoleHandles.\n"));
+
+		InitConsoleHandles();
+	}
 
 
 	Settings ^settings = form->settings;
@@ -404,6 +442,9 @@ int main(array<System::String ^> ^args)
 	//Console::WriteLine("Application::Run");
 
 
+	trace(1,printf("Run(form).\n"));
+
+
 	if (form->commandline->showgui)
 		Application::Run(form);
 	else
@@ -411,8 +452,10 @@ int main(array<System::String ^> ^args)
 	//Console::WriteLine("End.");
 	form->topfield_background_enumerator=nullptr;
 
+	trace(1,printf("Run completed.\n"));
 
-    if (nullptr == settings->backup_dic)
+
+	if (nullptr == settings->backup_dic)
 		settings->writeXmlSettings();
 
 	if (form->fd != NULL)
