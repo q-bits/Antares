@@ -1,6 +1,7 @@
 #ifndef FBLIB_REC_H
 #define FBLIB_REC_H
 
+#include "mjd.h"
 #include "types.h"
 
 typedef __u8 byte;
@@ -73,12 +74,12 @@ typedef __u32 dword;
     byte                TPReserved5;        //C
 
     byte                EventDurationHour;
-    byte                EventDurationMin;
-    dword               EventEventID;
-    dword               EventStartTime;
-    dword               EventEndTime;
-    byte                EventRunningStatus;
-    byte                EventTextLength;
+	byte                EventDurationMin;
+	dword              EventEventID;
+	struct    tf_datetime              EventStartTime;
+	struct    tf_datetime              EventEndTime;
+	byte                EventRunningStatus;
+	byte                EventTextLength;
     byte                EventParentalRate;
     char                EventEventName [257];
     char                EventEventDescription [257];

@@ -527,6 +527,17 @@ namespace Antares {
 			int nc = num_topfield_columns < num_computer_columns ? num_computer_columns : num_topfield_columns;
 			for (int j=1; j<nc; j++)
 				this->SubItems->Add("");
+			this->channel="";
+			this->description="";
+			this->title="";
+			this->proglen = 0;
+			this->reclen = 0;
+			this->svcid = 0;
+			this->prog_start_time = DateTime(1999,9,9,9,9,9);
+			this->datetime = DateTime(1999,9,9,9,9,9);
+
+
+
 			return;
 		}
 
@@ -575,6 +586,12 @@ namespace Antares {
 
 			this->channel = item->channel;
 			this->description=item->description;
+			this->title = item->title;
+
+			this->proglen = item->proglen;
+			this->reclen = item->reclen;
+			this->svcid = item->svcid;
+
 			this->populate_subitems();
 
 		//	for (int j=0; j<nc; j++)
@@ -611,6 +628,9 @@ namespace Antares {
 
 		System::String^ channel;
 		System::String^ description;
+		System::String^ title;
+		int proglen, reclen, svcid;
+		System::DateTime prog_start_time;
 
 		System::DateTime datetime;
 		char type;
@@ -658,6 +678,7 @@ namespace Antares {
 			this->isdrive = true;
 			this->channel="";
 			this->description="";
+			this->title="";
 			this->file_type="";
 			this->sizestring="";
 
@@ -674,6 +695,7 @@ namespace Antares {
 			this->recursion_offset="";
 			this->channel="";
 			this->description="";
+			this->title="";
 			this->directory = dir;
 			if ( (attr & FileAttributes::Directory) == FileAttributes::Directory)
 			{
@@ -792,6 +814,7 @@ namespace Antares {
 			
 			this->channel="";
 			this->description="";
+			this->title="";
 
 			this->datetime = Time_T2DateTime(timestamp);
 			this->datestring = DateString(this->datetime);
@@ -813,16 +836,24 @@ namespace Antares {
 	public:
 		String^ channel;
 		String^ description;
-		CachedProgramInformation(String^ ch, String ^ desc)
+		String^ title;
+		int proglen, reclen;
+		CachedProgramInformation(String^ ch, String ^ desc, String^ tit, int plen, int rlen)
 		{
 			this->channel = ch;
 			this->description=desc;
+			this->title=tit;
+			this->proglen=plen;
+			this->reclen=rlen;
 		}
 
 		void apply_to_item(FileItem^ item)
 		{
 			item->channel = this->channel;
 			item->description = this->description;
+			item->title = this->title;
+			item->proglen=this->proglen;
+			item->reclen = this->reclen;
 			//item->SubItems[4]->Text = item->channel;
 			//item->SubItems[5]->Text = item->description;
 		}
@@ -854,7 +885,7 @@ namespace Antares {
 		void add(FileItem^ item)
 		{
 			String^ key = dic_key(item);
-			CachedProgramInformation^ pi = gcnew CachedProgramInformation(item->channel, item->description);
+			CachedProgramInformation^ pi = gcnew CachedProgramInformation(item->channel, item->description, item->title, item->proglen, item->reclen);
 			dic[key]=pi;
 
 		}

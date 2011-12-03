@@ -424,7 +424,7 @@ int main(array<System::String ^> ^args)
 
 	if (form->commandline->dont_free_console)
 	{
-		trace(0,printf("InitConsoleHandles.\n"));
+		trace(1,printf("InitConsoleHandles.\n"));
 
 		InitConsoleHandles();
 	}
@@ -463,8 +463,13 @@ int main(array<System::String ^> ^args)
 		//disconnect_device(form->fd);
 		//TODO: write proper disconnect code
 	}
-	form->cbthread->Abort();
-	form->tbthread->Abort();
+
+	//form->cbthread->Abort();
+	//form->tbthread->Abort();
+
+	//Monitor::Enter(form->locker);    // Should I use this to ensure that no transfer is in progress at exit?
+
+
 	libusb_exit(NULL);
 
 

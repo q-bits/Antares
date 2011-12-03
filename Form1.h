@@ -425,6 +425,9 @@ namespace Antares {
 			cbthread->Name = "cbthread";
 			tbthread->Name = "tbthread";
 
+			cbthread->IsBackground = true;
+			tbthread->IsBackground = true;
+
 
 			trace(1,printf("Starting background threads.\n"));
 			this->cbthread->Start();
@@ -2870,7 +2873,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  0.9.2-test-4";
+			this->Text = L"Antares  0.9.2-test-5";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -7641,8 +7644,15 @@ abort:  // If the transfer was cancelled before it began
 			if (!ret) return false;
 
 			item->channel = gcnew String(ri->SISvcName);
-			//String^ title = gcnew String(ri->EventEventName);
+			item->title = gcnew String(ri->EventEventName);
 			item->description = gcnew String(ri->EventEventDescription);
+		
+            item->svcid = ri->SIServiceID;
+			item->reclen = ri->HeaderDuration;
+			item->proglen = ri->EventDurationMin + 60*ri->EventDurationHour;
+			item->prog_start_time = Time_T2DateTime(tfdt_to_time( & ri->EventStartTime));
+			
+
 			String^ ext = gcnew String(ri->ExtEventText);
 			if (item->description->Length >0 && ext->Length >0 )
 			{
@@ -7797,6 +7807,17 @@ abort:  // If the transfer was cancelled before it began
 
 			if (verbose) printf("read_topfield_file_snippet, %s : %lld\n",filename, offset);
 
+			return this->read_topfield_file(filename, offset, 32768);
+
+		}
+
+		array<Byte>^ read_topfield_file(String^ filename, long long offset, long long max_bytes) {
+
+			// Read a section of a file on the Topfield, starting at specified offset, and stopping
+			// after max_bytes number of bytes (rounded up to the nearest packet) have been read.
+			// Return as an array of Bytes.
+
+
 			array<Byte>^ out_array = gcnew array<Byte>(0); 
 			struct tf_packet reply;
 			int r;
@@ -7827,6 +7848,7 @@ abort:  // If the transfer was cancelled before it began
 
 
 
+			long long tot_num_bytes=0;
 
 			while(0 < (r = get_tf_packet(fd, &reply)))
 			{
@@ -7873,11 +7895,18 @@ abort:  // If the transfer was cancelled before it began
 						}
 
 
-						Array::Resize(out_array,dataLen);
-						Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , out_array, 0,(int) dataLen);
+						Array::Resize(out_array,tot_num_bytes+dataLen);
+						Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , out_array, tot_num_bytes  ,(int) dataLen);
 
-						send_cancel(fd);
-						state = ABORT;
+						tot_num_bytes += dataLen;
+						if (tot_num_bytes > max_bytes)
+
+						{
+							send_cancel(fd);
+							state = ABORT;
+						}
+						else
+							send_success(fd);
 
 
 					}
@@ -8961,11 +8990,34 @@ private: System::Void listView2_MouseMove(System::Object^  sender, System::Windo
 							 p.X = subitem->Bounds.Left;
 
 							
+							 int ww=60;
 							 String ^str = item->description->Trim();
+							 DateTime prog_end_time = item->prog_start_time.AddMinutes(item->proglen);
+							
+							// String^ str2 = item->channel +"\r\n"+item->prog_start_time.ToString("f") ;
+
+							 
+							 String^ str2b = (item->proglen % 60).ToString() +lang::u_minutes;
+							 int prog_hr = item->proglen/60;
+							 if (prog_hr>0) str2b = prog_hr.ToString() + lang::u_hours+" " + str2b;
+
+							 str2b = lang::p_proglen +"   "+str2b;
+
+							 String^ str3 = (item->reclen % 60).ToString() +lang::u_minutes;
+			                 int recorded_hr = item->reclen/60;
+			                 if (recorded_hr>0) str3 = recorded_hr.ToString() + lang::u_hours+" " + str3;
+			                 str3 =lang::p_reclen+"   "+str3;
 
 							 if (str->Length>0)
 							 {
-								 this->toolTip1->Show(wordwrap(item->description,60), list, p,20000);
+								 str = wordwrap(str,ww);
+								 //String ^s = str2+"\r\n"+str3;
+								 //str = item->title + "\r\n\r\n("+item->channel+")\r\n"+str+"\r\n\r\n" +str2b+"\r\n"+str3;
+								 str = item->title + "\r\n\r\n" +str + "\r\n\r\n"+item->channel+"\r\n"+str2b+"\r\n"+str3;
+								 str2b+"\r\n"+str3;
+								 
+								 
+								 this->toolTip1->Show(str, list, p,20000);
 								 //Console::WriteLine("Set: "+wordwrap(item->description,60));
 								 clear=false;
 								 lasthash=hash;
@@ -9011,6 +9063,7 @@ private: System::Void listView2_MouseMove(System::Object^  sender, System::Windo
 			 Monitor::Enter(frm->fileSystemWatcher1);
 
 			 trace(1,printf("Setting filesystemwatcher: %s\n",dir));
+		
 			 try{
 
 				 frm->fileSystemWatcher1->Path = dir;

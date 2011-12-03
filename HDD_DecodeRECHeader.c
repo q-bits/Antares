@@ -314,6 +314,10 @@ void HDD_DecodeRECHeader (char *Buffer, tRECHeaderInfo *RECHeaderInfo)
 	RECHeaderInfo->EventDurationHour   = get_byte(&Buffer [p +  2]);
 	RECHeaderInfo->EventDurationMin    = get_byte(&Buffer [p +  3]);
 	RECHeaderInfo->EventEventID        = get_dword(&Buffer [p +  4]);
+
+	RECHeaderInfo->EventStartTime.second=0;
+	RECHeaderInfo->EventEndTime.second=0;
+
 	memcpy (&RECHeaderInfo->EventStartTime, &Buffer [p +  8], 4);
 	memcpy (&RECHeaderInfo->EventEndTime  , &Buffer [p + 12], 4);
 	RECHeaderInfo->EventRunningStatus  = get_byte(&Buffer [p + 16]);
