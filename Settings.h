@@ -99,6 +99,8 @@ namespace Antares {
 
 			dic->Add("language","auto");   // auto, en-gb, en-au, fi, de
 
+			dic->Add("prevent_turbo_while_recording","1");
+
 
 			String ^folder = Path::Combine(Environment::GetFolderPath(Environment::SpecialFolder::ApplicationData) , "Antares\\");
 			

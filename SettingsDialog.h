@@ -71,6 +71,10 @@ namespace Antares {
 
 			 this->rescaleCheck->Checked = this->settings["RescaleColumns"]=="1";
 			 this->nosleep_check->Checked = this->settings["prevent_sleep_during_transfer"]=="1";
+			
+			  this->noTurboCheck->Checked = this->settings["prevent_turbo_while_recording"]=="1";
+			
+			 
 
 
 		}
@@ -143,6 +147,7 @@ namespace Antares {
 	private: System::Windows::Forms::CheckBox^  nosleep_check;
 	private: System::Windows::Forms::GroupBox^  groupBox2;
 	private: System::Windows::Forms::ComboBox^  comboBox1;
+private: System::Windows::Forms::CheckBox^  noTurboCheck;
 
 
 
@@ -177,6 +182,7 @@ namespace Antares {
 			this->nosleep_check = (gcnew System::Windows::Forms::CheckBox());
 			this->groupBox2 = (gcnew System::Windows::Forms::GroupBox());
 			this->comboBox1 = (gcnew System::Windows::Forms::ComboBox());
+			this->noTurboCheck = (gcnew System::Windows::Forms::CheckBox());
 			this->groupBox1->SuspendLayout();
 			this->groupBox2->SuspendLayout();
 			this->SuspendLayout();
@@ -297,7 +303,7 @@ namespace Antares {
 			// nosleep_check
 			// 
 			this->nosleep_check->AutoSize = true;
-			this->nosleep_check->Location = System::Drawing::Point(267, 160);
+			this->nosleep_check->Location = System::Drawing::Point(267, 138);
 			this->nosleep_check->Name = L"nosleep_check";
 			this->nosleep_check->Size = System::Drawing::Size(280, 30);
 			this->nosleep_check->TabIndex = 5;
@@ -327,6 +333,16 @@ namespace Antares {
 			this->comboBox1->Size = System::Drawing::Size(176, 23);
 			this->comboBox1->TabIndex = 0;
 			// 
+			// noTurboCheck
+			// 
+			this->noTurboCheck->AutoSize = true;
+			this->noTurboCheck->Location = System::Drawing::Point(267, 199);
+			this->noTurboCheck->Name = L"noTurboCheck";
+			this->noTurboCheck->Size = System::Drawing::Size(193, 17);
+			this->noTurboCheck->TabIndex = 7;
+			this->noTurboCheck->Text = L"Prevent turbo mode while recording";
+			this->noTurboCheck->UseVisualStyleBackColor = true;
+			// 
 			// SettingsDialog
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
@@ -334,6 +350,7 @@ namespace Antares {
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->ClientSize = System::Drawing::Size(565, 301);
+			this->Controls->Add(this->noTurboCheck);
 			this->Controls->Add(this->groupBox2);
 			this->Controls->Add(this->nosleep_check);
 			this->Controls->Add(this->checkBox1);
@@ -376,8 +393,11 @@ namespace Antares {
 				 else
 					  this->settings->changeSetting("TurboMode","off");
 
+
+
 				 this->settings->changeSetting("RescaleColumns", (  (int)  this->rescaleCheck->Checked ).ToString() );
 				 this->settings->changeSetting("prevent_sleep_during_transfer", (  (int)  this->nosleep_check->Checked ).ToString() );
+				 this->settings->changeSetting("prevent_turbo_while_recording", (  (int)  this->noTurboCheck->Checked ).ToString() );
 
 
 				 int lang_index = this->comboBox1->SelectedIndex;

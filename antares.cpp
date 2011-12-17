@@ -367,7 +367,7 @@ int main(array<System::String ^> ^args)
 	Application::SetCompatibleTextRenderingDefault(false); 
 
 
-	int hCrt, i;
+//	int hCrt, i;
 
 
 

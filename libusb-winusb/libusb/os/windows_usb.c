@@ -436,7 +436,7 @@ int husb_bulk_read_winusb(struct husb_device_handle *fd,  int ep,  char *bytes, 
     ULONG bytes_read, bytes_written_reply;
 	static unsigned char success_packet[8] = {0x08, 0x00, 0x81, 0xc1, 0x00, 0x00, 0x02, 0x00};
 	if (fd->read_timeout != timeout) set_pipe_timeout(fd, fd->bulkInPipe, timeout);
-
+    
     r = WinUsb_ReadPipe(fd->usbHandle,
                              fd->bulkInPipe,
                              bytes,

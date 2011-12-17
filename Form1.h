@@ -191,7 +191,10 @@ namespace Antares {
 			}
 
 			this->watched_directory = "";
+			this->recording_in_progress_last_checked=DateTime::Now;
 
+
+			this->data_files_cached = nullptr;
 
 			this->exit_on_completion=false;
 			this->no_prompt = false;
@@ -233,6 +236,7 @@ namespace Antares {
 			this->listView1SortColumn = -1;
 			this->listView2SortColumn=-1;
 			this->turbo_mode = gcnew System::Boolean;
+			this->turbo_mode2 = gcnew System::Boolean;
 
 			this->finished_constructing = 0;
 			this->last_layout_x=-1;
@@ -901,6 +905,23 @@ check_freespace:
 			//return 0;
 			//turbo_on=0;
 			*this->turbo_mode = (turbo_on!=0);
+
+
+
+			if (turbo_on)
+			{
+				if (this->recording_in_progress() )
+				{
+					printf("Not enabling turbo mode. (Recording in progress).\n");
+					turbo_on = 0;
+				}
+
+			}
+
+			
+			*this->turbo_mode2 = (turbo_on!=0);
+
+
 			int r;
 			printf("Setting turbo mode: %d\n",turbo_on);  
 			struct tf_packet reply;
@@ -1145,6 +1166,7 @@ repeat:
 					if (en==nullptr) continue;
 					if (this->Visible==false) continue;
 
+					// First, update the icon of all items
 
 					while(en->MoveNext())
 					{
@@ -1167,9 +1189,11 @@ repeat:
 
 						}
 					}
+					bool proginfo_columns_visible = (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1");
 
-					if (! (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1")) continue;
+					
 
+					DateTime now = DateTime::Now;
 					en->Reset();
 					tRECHeaderInfo ri;
 					while (en->MoveNext())
@@ -1179,6 +1203,25 @@ repeat:
 
 						if (!item->isdir && this->proginfo_cache->query(item)==nullptr)
 						{
+
+							if (!proginfo_columns_visible)
+							{
+
+								// Even if Channel or Description are not visible, load info for programs which started recording
+								// within the last day, but only if located directly in the \DataFiles\ folder.
+							    // This will allow current-recording detection to be done faster.
+
+								if (!item->filename->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase) ) continue;
+                                if (!item->full_filename->StartsWith("\\DataFiles\\")) continue;
+								if ( Math::Abs ( (now-item->datetime).TotalDays ) > 1.0 ) continue;
+								bool in_data_files=false;
+								try{ in_data_files = item->full_filename->IndexOf("\\",11)  == -1;} catch(...){};
+								if (!in_data_files) continue;
+
+
+							}
+
+
 							ri.readsize=0;
 							if (this->transfer_in_progress) break;
 							this->loadInfo(item,&ri);
@@ -1626,6 +1669,12 @@ repeat:
 
 				case DATA_HDD_DIR_END:
 					Array::Resize(items,numitems);
+					if (path=="\\DataFiles\\" || path=="\\DataFiles")
+					{
+						this->data_files_cached = items;
+						this->data_files_read_time = DateTime::Now;
+
+					}
 					return items;
 					break;
 
@@ -1643,8 +1692,14 @@ repeat:
 				}
 
 			}
+
+
+			
+
 			return items;
 		}
+
+
 
 		array<TopfieldItem^>^ loadTopfieldDirArray(String^ path)       
 		{
@@ -1984,6 +2039,11 @@ repeat:
 			array<ToolStripMenuItem^>^ mi_pc_choose_columns_array;
 			array<ToolStripMenuItem^>^ mi_pvr_choose_columns_array;
 
+			array<TopfieldItem^>^ data_files_cached;   // Stores last known copy of \DataFiles\ directory.
+			DateTime data_files_read_time;  // Time that the \DataFiles\ directory was last loaded
+			DateTime recording_in_progress_last_checked; // Time that recording_in_progress() was last called
+
+
 			String^ watched_directory;
 
 			CommandLine^ commandline;
@@ -2003,9 +2063,16 @@ repeat:
 			bool computer_needs_refreshing;
 
 
-			// "turbo_mode" is what we believe the actual current turbo mode of the PVR is
-			// (which is not necessarily equal to the requested turbo mode setting)
+			// "turbo_mode" is equal to the value most recently passed to set_turbo_mode( ).
+			// It is usually equal to the actual current turbo mode of the device, except if 
+			// set_turbo_mode chose not to enable turbo mode because of a current recording.
 			bool^ turbo_mode; 
+
+
+			// turbo_mode2 is like turbo_mode, except it reflects whether or not set_turbo_mode
+			// actually set the turbo mode, after it detected whether there was a current recording
+			bool^ turbo_mode2;
+
 
 
 			int listView1SortColumn;
@@ -4969,6 +5036,18 @@ out:
 					goto restart_copy_to_pc;
 				}
 
+				// If turbo mode currently disabled due to recording, occasionally re-check current recording
+				if (*this->turbo_mode 
+					&& (*this->turbo_mode != *this->turbo_mode2) 
+					&& Math::Abs( (DateTime::Now - this->recording_in_progress_last_checked).TotalSeconds) > 30
+					&& !copydialog->cancelled
+					)
+				{
+					this->set_turbo_mode(*this->turbo_mode);
+					copydialog->reset_rate();
+				}
+
+
 				if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
 
 check_delete:
@@ -5492,6 +5571,7 @@ end_copy_to_pc:
 
 			//copydialog->current_file="Waiting for PVR...";
 			copydialog->turbo_mode = this->turbo_mode;
+			copydialog->turbo_mode2 = this->turbo_mode2;
 			//copydialog->update_dialog_threadsafe();
 
 
@@ -6227,8 +6307,19 @@ out:
 						copydialog->update_dialog_threadsafe();
 						this->set_turbo_mode( copydialog->turbo_request ? 1:0);
 						copydialog->reset_rate();
-
 					}
+
+					// If turbo mode currently disabled due to recording, occasionally re-check current recording
+					if (*this->turbo_mode 
+						&& (*this->turbo_mode != *this->turbo_mode2) 
+						&& Math::Abs( (DateTime::Now - this->recording_in_progress_last_checked).TotalSeconds) > 30
+						&& !copydialog->cancelled
+						)
+					{
+						this->set_turbo_mode(*this->turbo_mode);
+						copydialog->reset_rate();
+					}
+
 
 					if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
 					if (copydialog->cancelled)
@@ -6829,6 +6920,7 @@ finish_transfer:
 
 
 			copydialog->turbo_mode = this->turbo_mode;
+			copydialog->turbo_mode2 = this->turbo_mode2;
 			copydialog->parent_checkbox = this->checkBox1;
 			copydialog->copymode=copymode;
 			copydialog->action1_skipdelete = action1_skipdelete;
@@ -7932,7 +8024,7 @@ abort:  // If the transfer was cancelled before it began
 					break;
 
 				case FAIL:
-					fprintf(stdout, "ERROR: Device reports %s in read_topfield_file_snippet\n",
+					if (verbose) printf( "ERROR: Device reports %s in read_topfield_file_snippet\n",
 						decode_error(&reply));
 					send_cancel(fd);
 					this->connection_error_occurred();
@@ -8378,9 +8470,9 @@ abort:  // If the transfer was cancelled before it began
 
 			 }
 
-			 System::Void init_contextMenuStrip1 (void)
+			 System::Void init_contextMenuStrip1 (bool force_init)
 			 {
-				 if (this->mi_pvr_copy != nullptr) return;
+				 if (this->mi_pvr_copy != nullptr && !force_init) return;
 
 
 				 System::ComponentModel::ComponentResourceManager^  resources = (gcnew System::ComponentModel::ComponentResourceManager(Form1::typeid));
@@ -8404,6 +8496,7 @@ abort:  // If the transfer was cancelled before it began
 
 				 ToolStripItemCollection ^ic = cm->Items;
 
+				 ic->Clear();
 				 ic->Add(mi_pvr_copy);
 				 ic->Add(mi_pvr_move);
 				 ic->Add(mi_pvr_proginfo);
@@ -8427,9 +8520,11 @@ abort:  // If the transfer was cancelled before it began
 
 			 }
 
-			 System::Void init_contextMenuStrip2 (void)
+			 System::Void init_contextMenuStrip2 (bool force_init)
 			 {
-				 if (this->mi_pc_copy != nullptr) return;
+				 if (this->mi_pc_copy != nullptr && !force_init) return;
+
+
 
 				 System::ComponentModel::ComponentResourceManager^  resources = (gcnew System::ComponentModel::ComponentResourceManager(Form1::typeid));
 
@@ -8454,7 +8549,7 @@ abort:  // If the transfer was cancelled before it began
 
 				 ToolStripItemCollection ^ic = cm->Items;
 
-				 // ic->Clear();
+				 ic->Clear();
 				 ic->Add(mi_pc_copy);
 				 ic->Add(mi_pc_move);
 				 ic->Add(mi_pc_proginfo);
@@ -8493,7 +8588,7 @@ abort:  // If the transfer was cancelled before it began
 	private: System::Void contextMenuStrip1_Opening(System::Object^  sender, System::ComponentModel::CancelEventArgs^  e) {
 
 
-				 this->init_contextMenuStrip1();
+				 this->init_contextMenuStrip1(false);
 				 double dt =   this->stopwatch->Elapsed.TotalSeconds - this->listview_click_time;
 				 printf("dt=%f\n",dt);
 
@@ -8539,7 +8634,7 @@ abort:  // If the transfer was cancelled before it began
 
 			 }
 	private: System::Void contextMenuStrip2_Opening(System::Object^  sender, System::ComponentModel::CancelEventArgs^  e) {
-				 this->init_contextMenuStrip2();
+				 this->init_contextMenuStrip2(false);
 
 				 double dt =   this->stopwatch->Elapsed.TotalSeconds - this->listview_click_time;
 				 printf("dt=%f\n",dt);
@@ -8849,6 +8944,11 @@ abort:  // If the transfer was cancelled before it began
 				 OnCompletionAction::option_strings[2] = lang::c_hibernate;
 				 OnCompletionAction::option_strings[3] = lang::c_shutdown;
 
+				 // Right-click context menu
+				 this->init_contextMenuStrip1(true);
+				 this->init_contextMenuStrip2(true);
+
+
 				 this->Arrange_Buttons(); // mainly to centre Move checkbox.
 
 			 }
@@ -9008,13 +9108,21 @@ private: System::Void listView2_MouseMove(System::Object^  sender, System::Windo
 			                 if (recorded_hr>0) str3 = recorded_hr.ToString() + lang::u_hours+" " + str3;
 			                 str3 =lang::p_reclen+"   "+str3;
 
+							 String^ tit_chan = item->title;
+							 //try {
+							//	 tit_chan = tit_chan->PadRight(ww + 3 - item->channel->Length);
+							// } catch(...){}
+							 tit_chan = tit_chan + "  ("+item->channel+")";
+
 							 if (str->Length>0)
 							 {
 								 str = wordwrap(str,ww);
-								 //String ^s = str2+"\r\n"+str3;
-								 //str = item->title + "\r\n\r\n("+item->channel+")\r\n"+str+"\r\n\r\n" +str2b+"\r\n"+str3;
-								 str = item->title + "\r\n\r\n" +str + "\r\n\r\n"+item->channel+"\r\n"+str2b+"\r\n"+str3;
-								 str2b+"\r\n"+str3;
+					
+								 //str = item->title + "\r\n\r\n" +str + "\r\n\r\n"+item->channel+"\r\n"+str2b+"\r\n"+str3;
+
+								 str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
+
+
 								 
 								 
 								 this->toolTip1->Show(str, list, p,20000);
@@ -9091,6 +9199,61 @@ private: System::Void listView2_MouseMove(System::Object^  sender, System::Windo
 			 //Form1::set_filesystemwatcher_callback(this);
 
 
+		 }
+
+		 // Try to determine if a recording is currently in progress.
+		 // The answer might be a little out of date, since caching is used.
+		 bool recording_in_progress(void)
+		 {
+
+
+			 if (this->settings["prevent_turbo_while_recording"]=="0") return false;
+			 
+			 //printf("Is recording in progress?\n");
+			 
+
+			 bool needs_refreshing = (this->data_files_cached == nullptr);
+
+			 if (this->data_files_cached != nullptr)
+			 {
+				if ( (DateTime::Now-this->data_files_read_time).TotalSeconds > 5)
+					needs_refreshing=true;
+	
+			 }
+
+			 if (needs_refreshing)
+			 {
+				 Monitor::Enter(this->locker);
+				 this->loadTopfieldDirArrayOrNull("\\DataFiles");
+				 Monitor::Exit(this->locker);
+			 }
+
+			 this->recording_in_progress_last_checked = DateTime::Now;
+
+			 if (this->data_files_cached == nullptr) return false;  // If in doubt, return false.
+
+
+			 for each (TopfieldItem^ item in this->data_files_cached)
+			 {
+				 if (item->isdir) continue;
+				 if (! item->filename->EndsWith(".rec",StringComparison::CurrentCultureIgnoreCase)) continue;
+			
+				 if (  Math::Abs (  (DateTime::Now - item->datetime).TotalHours ) > 24.0 )  continue;
+				 //printf(" ### %s : %g\n", item->filename,(DateTime::Now - item->datetime).TotalHours );
+				 if (item->description->Length > 0 || item->channel->Length	> 0 ) continue;
+
+				 if (item->size == 0 ) return true;
+
+				 Monitor::Enter(this->locker);
+				 array <unsigned char>^ arr = this->read_topfield_file_snippet(item->full_filename, 0);
+				 Monitor::Exit(this->locker);
+
+				 if (arr == nullptr) return true;
+				 if (arr->Length==0) return true;
+			 }
+
+
+			 return false;
 		 }
 
 

@@ -622,10 +622,17 @@ namespace Antares {
 				*/
 
 			};
+			//printf(" turbo_mode = %d  turbo_mode2=%d  turbo_request = %d  len=%d\n",(int) *this->turbo_mode, (int) *this->turbo_mode2, (int) this->turbo_request,this->current_error->Length);
 			if (*this->turbo_mode != this->turbo_request && this->current_error->Length == 0)
 			{
 				this->checkBox1->Text = lang::c_turbo_changing;//"Turbo mode [Changing...]";
 			}
+			else if (*this->turbo_mode != *this->turbo_mode2 && this->current_error->Length == 0)
+
+			{
+                this->checkBox1->Text = lang::tb_turbo_mode + "\n(Disabled due to current recording)";
+ 			}
+
 			else
 			{
 				this->checkBox1->Text = lang::tb_turbo_mode;//"Turbo mode";
@@ -782,6 +789,7 @@ namespace Antares {
 		bool is_closed;
 		bool turbo_request;
 		bool^ turbo_mode;
+		bool^ turbo_mode2;
 
 		int on_completion;
 
@@ -1074,6 +1082,7 @@ private: System::Windows::Forms::Label^  label10;
 			this->checkBox1->TabIndex = 11;
 			this->checkBox1->Text = L"Turbo mode";
 			this->checkBox1->UseVisualStyleBackColor = true;
+			this->checkBox1->MouseClick += gcnew System::Windows::Forms::MouseEventHandler(this, &CopyDialog::checkBox1_MouseClick);
 			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &CopyDialog::checkBox1_CheckedChanged);
 			// 
 			// comboBox1
@@ -1170,6 +1179,7 @@ private: System::Windows::Forms::Label^  label10;
 			 }
 
 	private: System::Void checkBox1_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+				// printf("CheckedChanged\n");
 				 this->turbo_request  = this->checkBox1->Checked;
 				 if (this->checkBox1->Checked) this->settings->changeSetting("TurboMode","on"); else this->settings->changeSetting("TurboMode","off");
 
@@ -1402,5 +1412,8 @@ private: System::Windows::Forms::Label^  label10;
 
 
 
-	};
+	private: System::Void checkBox1_MouseClick(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e) {
+				 //printf("MouseClick\n");
+			 }
+};
 }
