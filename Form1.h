@@ -177,10 +177,18 @@ namespace Antares {
 
 
 	public:
+
 		// Form1 constructor
 		Form1(void)
 		{
 
+			this->tooltip_timer = gcnew System::Timers::Timer(200);
+			this->tooltip_timer->AutoReset = false;
+			this->tooltip_timer->SynchronizingObject = this;
+			this->tooltip_timer->Elapsed += gcnew System::Timers::ElapsedEventHandler(this,&Form1::tooltip_timer_elapsed);
+			this->tooltip_string = "";
+			this->tooltip_location = System::Drawing::Point(0,0);
+			
 
 			this->commandline = gcnew CommandLine(Environment::CommandLine);
 
@@ -2062,6 +2070,11 @@ repeat:
 
 			bool computer_needs_refreshing;
 
+			System::Timers::Timer ^tooltip_timer;
+			String ^ tooltip_string;
+			Point tooltip_location;
+			ListView ^tooltip_listview;
+
 
 			// "turbo_mode" is equal to the value most recently passed to set_turbo_mode( ).
 			// It is usually equal to the actual current turbo mode of the device, except if 
@@ -2218,6 +2231,7 @@ repeat:
 	private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip2;
 	private: System::Windows::Forms::CheckBox^  checkBox1;
+
 
 
 
@@ -2944,7 +2958,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  0.9.2-test-5";
+			this->Text = L"Antares  0.9.2-test-6";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -9177,9 +9191,15 @@ abort:  // If the transfer was cancelled before it began
 									 str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
 
 
+									 this->tooltip_string = str;
+									 this->tooltip_location = p;
+									 this->tooltip_listview = list;
+									 this->tooltip_timer->Interval=100;
+									 this->tooltip_timer->Start();
 
 
-									 this->toolTip1->Show(str, list, p,20000);
+									 //this->toolTip1->Show(str, list, p,20000);
+									
 									 //Console::WriteLine("Set: "+wordwrap(item->description,60));
 									 clear=false;
 									 lasthash=hash;
@@ -9202,7 +9222,9 @@ abort:  // If the transfer was cancelled before it began
 					 }     // if item != nullptr
 					 if(clear)
 					 {
+						 this->tooltip_string="";
 						 this->toolTip1->SetToolTip(list, "");
+						 
 						 lasthash=0;
 						 //Console::WriteLine("Clear"+cnt.ToString() );cnt++;
 					 }
@@ -9322,6 +9344,15 @@ abort:  // If the transfer was cancelled before it began
 				 lasthash=0;
 
 			 }
+
+			 void tooltip_timer_elapsed(System::Object ^sender, System::Timers::ElapsedEventArgs ^e)
+			 {
+				 static int cnt=0;
+				 if (this->tooltip_listview == nullptr || this->tooltip_string == nullptr) return;
+				 printf("Elapsed.  %d\n",cnt++);
+				 this->toolTip1->Show(this->tooltip_string, this->tooltip_listview, this->tooltip_location,20000);
+			 }
+
 
 	};    // class form1
 };    // namespace antares
