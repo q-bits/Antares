@@ -92,6 +92,7 @@ namespace Antares {
 			this->nosleep_check->AutoSize=false;
 			this->nosleep_check->Size=sz;
 
+			this->noTurboCheck->Text = lang::s_prevent_turbo;
 
 			this->Text = lang::s_title;
 			this->Name = lang::s_title;

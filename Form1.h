@@ -247,7 +247,7 @@ namespace Antares {
 
 
 			trace(1,printf("Hiding form.\n"));
-			
+
 			this->Hide();
 			///////////////////////////
 			trace(1,printf("InitializeComponent()\n"));
@@ -339,7 +339,7 @@ namespace Antares {
 			this->apply_columns_visible();
 
 
-			
+
 
 			if (String::Compare("on",settings["TurboMode"])==0) this->checkBox1->Checked = true; else this->checkBox1->Checked = false;
 
@@ -463,8 +463,8 @@ namespace Antares {
 
 
 			//this->fileSystemWatcher1->BeginInit();
-		
-		
+
+
 			trace(1,printf("topfield_background_event->Set.\n"));
 			this->topfield_background_event->Set();
 
@@ -482,7 +482,7 @@ namespace Antares {
 
 
 
-				trace(1,printf("Finished constructing form1.\n"));
+			trace(1,printf("Finished constructing form1.\n"));
 
 
 		}
@@ -918,7 +918,7 @@ check_freespace:
 
 			}
 
-			
+
 			*this->turbo_mode2 = (turbo_on!=0);
 
 
@@ -1191,7 +1191,7 @@ repeat:
 					}
 					bool proginfo_columns_visible = (this->settings["PVR_Column4Visible"]=="1" || this->settings["PVR_Column5Visible"]=="1");
 
-					
+
 
 					DateTime now = DateTime::Now;
 					en->Reset();
@@ -1209,10 +1209,10 @@ repeat:
 
 								// Even if Channel or Description are not visible, load info for programs which started recording
 								// within the last day, but only if located directly in the \DataFiles\ folder.
-							    // This will allow current-recording detection to be done faster.
+								// This will allow current-recording detection to be done faster.
 
 								if (!item->filename->EndsWith(".rec",StringComparison::InvariantCultureIgnoreCase) ) continue;
-                                if (!item->full_filename->StartsWith("\\DataFiles\\")) continue;
+								if (!item->full_filename->StartsWith("\\DataFiles\\")) continue;
 								if ( Math::Abs ( (now-item->datetime).TotalDays ) > 1.0 ) continue;
 								bool in_data_files=false;
 								try{ in_data_files = item->full_filename->IndexOf("\\",11)  == -1;} catch(...){};
@@ -1353,7 +1353,7 @@ repeat:
 			int j;
 			ComputerItem^ item;
 			array<ComputerItem^>^ items = {};
-			
+
 
 			String^ dir = this->computerCurrentDirectory;
 			trace(1,printf("Load computer dir: %s.\n",dir));
@@ -1537,7 +1537,7 @@ repeat:
 				trace(1,printf("set_filesystemwatcher()\n"));
 				this->set_filesystemwatcher(dir);
 				trace(1,printf("returned: set_filesystemwatcher()\n"));
-		
+
 
 				this->computer_needs_refreshing=false;
 
@@ -1694,7 +1694,7 @@ repeat:
 			}
 
 
-			
+
 
 			return items;
 		}
@@ -2078,6 +2078,7 @@ repeat:
 			int listView1SortColumn;
 			int listView2SortColumn;
 
+			int lasthash;  // (relates to displaying of the program description tooltip)
 
 			array<String^>^ TopfieldClipboard;  
 			String^ TopfieldClipboardDirectory;
@@ -2096,6 +2097,7 @@ repeat:
 
 			bool listView2_selection_was_changed, listView1_selection_was_changed;
 			static const long long resume_granularity = 8192;
+			static const double check_recording_interval = 120.0; 
 			bool transfer_in_progress;
 			bool firmware_transfer_in_progress;
 
@@ -2215,7 +2217,7 @@ repeat:
 
 	private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip2;
-private: System::Windows::Forms::CheckBox^  checkBox1;
+	private: System::Windows::Forms::CheckBox^  checkBox1;
 
 
 
@@ -2571,9 +2573,10 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->listView1->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView1_SelectedIndexChanged);
 			this->listView1->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView1_Layout);
 			this->listView1->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
-			this->listView1->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView2_MouseMove);
+			this->listView1->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView_MouseMove);
 			this->listView1->ColumnWidthChanging += gcnew System::Windows::Forms::ColumnWidthChangingEventHandler(this, &Form1::listView_ColumnWidthChanging);
 			this->listView1->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
+			this->listView1->MouseLeave += gcnew System::EventHandler(this, &Form1::listView_MouseLeave);
 			// 
 			// contextMenuStrip1
 			// 
@@ -2881,9 +2884,10 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->listView2->SelectedIndexChanged += gcnew System::EventHandler(this, &Form1::listView2_SelectedIndexChanged);
 			this->listView2->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &Form1::listView2_Layout);
 			this->listView2->ColumnClick += gcnew System::Windows::Forms::ColumnClickEventHandler(this, &Form1::listView_ColumnClick);
-			this->listView2->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView2_MouseMove);
+			this->listView2->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &Form1::listView_MouseMove);
 			this->listView2->ColumnWidthChanging += gcnew System::Windows::Forms::ColumnWidthChangingEventHandler(this, &Form1::listView_ColumnWidthChanging);
 			this->listView2->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &Form1::listView_KeyDown);
+			this->listView2->MouseLeave += gcnew System::EventHandler(this, &Form1::listView_MouseLeave);
 			// 
 			// contextMenuStrip2
 			// 
@@ -3645,7 +3649,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			this->textBox2->Select(0,0);
 			this->textBox1->Select(0,0);
 
-			
+
 			trace(1,printf("Arrange2()  (return) \n"));
 
 		}
@@ -3704,7 +3708,7 @@ private: System::Windows::Forms::CheckBox^  checkBox1;
 			int cw = this->checkBox2->Width;
 			int pw = this->panel2->Width;
 			//if (cw > pw)
-				p5.X = (pw-cw-1)/2;
+			p5.X = (pw-cw-1)/2;
 
 
 			this->checkBox2->Location=p5;
@@ -4428,11 +4432,11 @@ out:
 						Console::WriteLine(copydialog->file_error);
 				}
 
-				if (copydialog->copydirection == CopyDirection::PVR_TO_PC || copydialog->copymode == CopyMode::MOVE)
-					this->loadComputerDir();
+				//if (copydialog->copydirection == CopyDirection::PVR_TO_PC || copydialog->copymode == CopyMode::MOVE)
+				this->loadComputerDir();
 
-				if (copydialog->copydirection == CopyDirection::PC_TO_PVR || copydialog->copymode == CopyMode::MOVE)
-					this->loadTopfieldDir();
+				//if (copydialog->copydirection == CopyDirection::PC_TO_PVR || copydialog->copymode == CopyMode::MOVE)
+				this->loadTopfieldDir();
 
 
 				if (!copydialog->is_closed)
@@ -4605,12 +4609,14 @@ out:
 				long long total_bytes_received=0;
 
 				bool has_restarted=false;
+				bool recording_in_progress_needs_checking = false;
 
 				if(0)
 				{
 restart_copy_to_pc:
 					copydialog->usb_error=false;
 					has_restarted=true;
+					recording_in_progress_needs_checking = false;
 					topfield_file_offset=0;
 					copydialog->reset_rate();
 
@@ -4878,26 +4884,14 @@ restart_copy_to_pc:
 							copydialog->total_bytes_received = total_bytes_received;
 							if (update%4==0)
 							{
-								//this->Update();
 								if (verbose) printf("update_dialog_threadsafe\n");
 								copydialog->update_dialog_threadsafe();
 							}
-							//if(w < dataLen)
-							//{
-							//	 /* Can't write data - abort transfer */
-							//	 fprintf(stderr, "ERROR: Can not write data: %s\n",
-							//		 strerror(errno));
-							//	 send_cancel(fd);
-							//	 state = ABORT;
-							//}
-
-
 
 							if (copydialog->cancelled == true)
 							{
 								if (verbose) printf("CANCELLING because of copy dialog.\n");
 								send_cancel(fd);
-								//was_cancelled=true;
 								state = ABORT;
 								goto out;
 
@@ -4913,6 +4907,28 @@ restart_copy_to_pc:
 								state=ABORT;
 								goto out;
 							}
+
+							if (update % 16 == 0)
+							{
+								// If turbo mode currently disabled due to recording, occasionally re-check current recording
+								if (*this->turbo_mode 
+									&& (*this->turbo_mode != *this->turbo_mode2) 
+									&& Math::Abs( (DateTime::Now - this->recording_in_progress_last_checked).TotalSeconds) > this->check_recording_interval
+									&& !copydialog->cancelled
+									&& copydialog->current_offsets[i] > 0
+									&& copydialog->current_offsets[i] < copydialog->filesizes[i]
+								)
+								{
+
+									send_cancel(fd);
+									state=ABORT;
+									absorb_late_packets(4,100);
+									recording_in_progress_needs_checking=true;
+									goto out;
+
+								}
+							}
+
 
 
 
@@ -5039,16 +5055,25 @@ out:
 				// If turbo mode currently disabled due to recording, occasionally re-check current recording
 				if (*this->turbo_mode 
 					&& (*this->turbo_mode != *this->turbo_mode2) 
-					&& Math::Abs( (DateTime::Now - this->recording_in_progress_last_checked).TotalSeconds) > 30
+					&& Math::Abs( (DateTime::Now - this->recording_in_progress_last_checked).TotalSeconds) > this->check_recording_interval/4.0
 					&& !copydialog->cancelled
 					)
 				{
 					this->set_turbo_mode(*this->turbo_mode);
 					copydialog->reset_rate();
+					if (recording_in_progress_needs_checking)
+						goto restart_copy_to_pc;
 				}
 
 
-				if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
+				if (!copydialog->cancelled) {
+
+					if (copydialog->current_offsets[i] == copydialog->filesizes[i])
+						copydialog->maximum_successful_index=i;
+					else
+						goto restart_copy_to_pc;   // This path probably shouldn't ever happen
+
+				};
 
 check_delete:
 
@@ -5565,14 +5590,11 @@ end_copy_to_pc:
 			copydialog->total_start_time = time(NULL);
 			copydialog->current_start_time = 0 ;
 			copydialog->filesizes = src_sizes;
-			copydialog->current_offsets = current_offsets;
 			copydialog->numfiles = num_files;
 			copydialog->current_index = 0;
 
-			//copydialog->current_file="Waiting for PVR...";
 			copydialog->turbo_mode = this->turbo_mode;
 			copydialog->turbo_mode2 = this->turbo_mode2;
-			//copydialog->update_dialog_threadsafe();
 
 
 			copydialog->current_offsets = current_offsets;
@@ -5777,6 +5799,7 @@ aborted:   // If the transfer was cancelled before it began
 
 					FileStream^ src_file;
 					bool has_restarted = false;
+					bool recording_in_progress_needs_checking = false;
 
 					copydialog->usb_error=false;
 					copydialog->file_error="";
@@ -5787,6 +5810,7 @@ aborted:   // If the transfer was cancelled before it began
 restart_copy_to_pvr:     
 						copydialog->usb_error=false;
 						has_restarted=true;
+						recording_in_progress_needs_checking = false;
 						topfield_file_offset=0;
 						copydialog->reset_rate();
 						TopfieldItem^ reloaded = this->reloadTopfieldItem(full_dest_filename);
@@ -6026,7 +6050,7 @@ restart_copy_to_pvr:
 							goto out;
 						}
 
-						update = (update + 1) % 2;
+						update = update + 1;
 						switch (get_u32(&reply.cmd))
 						{
 						case SUCCESS:
@@ -6122,6 +6146,25 @@ restart_copy_to_pvr:
 										state=END;
 									}
 
+									if (update % 8 == 0)
+									{
+										// If turbo mode currently disabled due to recording, occasionally re-check current recording
+										if (*this->turbo_mode 
+											&& (*this->turbo_mode != *this->turbo_mode2) 
+											&& Math::Abs( (DateTime::Now - this->recording_in_progress_last_checked).TotalSeconds) > this->check_recording_interval
+											&& !copydialog->cancelled
+											&& copydialog->current_offsets[i] > 0
+											&& copydialog->current_offsets[i] < copydialog->filesizes[i]
+										)
+										{
+											state=END;
+											recording_in_progress_needs_checking=true;
+
+										}
+									}
+
+
+
 									/* Detect EOF and transition to END */
 									if((w < 0) || (topfield_file_offset >= fileSize))
 									{
@@ -6145,7 +6188,7 @@ restart_copy_to_pvr:
 										copydialog->new_packet(r);
 									}
 
-									if (update==0)
+									if ( (update%2)==0)
 									{
 										//this->Update();
 
@@ -6312,19 +6355,30 @@ out:
 					// If turbo mode currently disabled due to recording, occasionally re-check current recording
 					if (*this->turbo_mode 
 						&& (*this->turbo_mode != *this->turbo_mode2) 
-						&& Math::Abs( (DateTime::Now - this->recording_in_progress_last_checked).TotalSeconds) > 30
+						&& Math::Abs( (DateTime::Now - this->recording_in_progress_last_checked).TotalSeconds) > this->check_recording_interval / 4.0
 						&& !copydialog->cancelled
 						)
 					{
+						if (recording_in_progress_needs_checking)
+							this->absorb_late_packets(2,100);
+
 						this->set_turbo_mode(*this->turbo_mode);
 						copydialog->reset_rate();
+
+						if (recording_in_progress_needs_checking)
+							goto restart_copy_to_pvr;
+
 					}
 
 
-					if (!copydialog->cancelled) {copydialog->maximum_successful_index=i;};
+					if (!copydialog->cancelled) {
+						if (copydialog->current_offsets[i] == copydialog->filesizes[i])
+							copydialog->maximum_successful_index=i;
+						else
+							goto restart_copy_to_pvr;   // This path probably shouldn't ever happen
+					};
 					if (copydialog->cancelled)
 					{
-						//copydialog->close_request_threadsafe();
 						break;
 					}
 
@@ -7247,7 +7301,7 @@ abort:  // If the transfer was cancelled before it began
 								File::Move(old_full_filename, new_full_filename); 
 							}
 						}
-							
+
 						catch(Exception ^ex)
 						{
 							success=false;
@@ -7255,7 +7309,7 @@ abort:  // If the transfer was cancelled before it began
 							msg ="\r\n"+ ex->Message;
 
 						}
-					
+
 						if (!success)
 						{
 							e->CancelEdit = true;
@@ -7738,12 +7792,12 @@ abort:  // If the transfer was cancelled before it began
 			item->channel = gcnew String(ri->SISvcName);
 			item->title = gcnew String(ri->EventEventName);
 			item->description = gcnew String(ri->EventEventDescription);
-		
-            item->svcid = ri->SIServiceID;
+
+			item->svcid = ri->SIServiceID;
 			item->reclen = ri->HeaderDuration;
 			item->proglen = ri->EventDurationMin + 60*ri->EventDurationHour;
 			item->prog_start_time = Time_T2DateTime(tfdt_to_time( & ri->EventStartTime));
-			
+
 
 			String^ ext = gcnew String(ri->ExtEventText);
 			if (item->description->Length >0 && ext->Length >0 )
@@ -8988,276 +9042,287 @@ abort:  // If the transfer was cancelled before it began
 			 }
 
 
-/*
-	private: System::Void listView2_ItemMouseHover(System::Object^  sender, System::Windows::Forms::ListViewItemMouseHoverEventArgs^  e) {
-				 Console::WriteLine("ItemMouseHover, " + e->Item->Text);
+			 /*
+			 private: System::Void listView2_ItemMouseHover(System::Object^  sender, System::Windows::Forms::ListViewItemMouseHoverEventArgs^  e) {
+			 Console::WriteLine("ItemMouseHover, " + e->Item->Text);
 			 }
-*/
+			 */
 
-			static String^ wordwrap(String^ str, int w)
-			{
-				String^ s = "";
-
-				try{
-				if (str!=nullptr)
-				{
-					while(str->Length>0)
-					{
-						int q;
-						String ^chunk;
-						if (str->Length<w) 
-						{
-							q = str->Length;
-							chunk = str;
-							str="";
-						}
-						else
-						{
-						    q=w;
-							//chunk=str->Substring(0,q);
-							//str = str->Substring(q);
-							for (int j=w-1; j>0; j--)
-							{
-								if (str[j]==' ')
-								{
-									q=j;
-									chunk=str->Substring(0,q);
-									str=str->Substring(q+1);
-									break;
-								}
-							}
-							if (q==w)
-							{
-								chunk=str->Substring(0,q);
-								str=str->Substring(q+1);
-							}
-						}
-						if (s->Length>0) s = s+"\r\n";
-						s=s+chunk;
-
-
-					}
-
-				}
-				}
-				catch(...){}
-
-				return s;
-			}
-
-private: System::Void listView2_MouseMove(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e) {
-
-
-			 static int cnt = 0;
-			 static int lastx, lasty, lasthash;
-			 int hash=0;
-
-
-			 toolTip1->AutoPopDelay = 5000;
-			 toolTip1->InitialDelay = 1000;
-			 toolTip1->ReshowDelay = 500;
-
-			 ListView ^list = safe_cast<ListView^> (sender);
-
-
-
-			 FileItem ^item = safe_cast<FileItem^> (list->GetItemAt(e->X, e->Y));
-
-			 if (!(lastx==e->X && lasty==e->Y))
+			 static String^ wordwrap(String^ str, int w)
 			 {
-				 bool clear=true;
-				 if(item != nullptr  )
-				 {
+				 String^ s = "";
 
-
-
-					 ListViewItem::ListViewSubItem ^subitem = item->GetSubItemAt(e->X, e->Y);
-
-
-					 hash = subitem->GetHashCode();
-					 //Console::WriteLine(hash.ToString());
-
-					 if (subitem->Tag == "desc")
+				 try{
+					 if (str!=nullptr)
 					 {
-
-						 if (hash != lasthash)
-
+						 while(str->Length>0)
 						 {
-
-							 System::Drawing::Point p = subitem->Bounds.Location;
-							 p.Y = p.Y + item->Bounds.Height+8;
-							 //p.X = e->X+6;
-							 p.X = subitem->Bounds.Left;
-
-							
-							 int ww=60;
-							 String ^str = item->description->Trim();
-							 DateTime prog_end_time = item->prog_start_time.AddMinutes(item->proglen);
-							
-							// String^ str2 = item->channel +"\r\n"+item->prog_start_time.ToString("f") ;
-
-							 
-							 String^ str2b = (item->proglen % 60).ToString() +lang::u_minutes;
-							 int prog_hr = item->proglen/60;
-							 if (prog_hr>0) str2b = prog_hr.ToString() + lang::u_hours+" " + str2b;
-
-							 str2b = lang::p_proglen +"   "+str2b;
-
-							 String^ str3 = (item->reclen % 60).ToString() +lang::u_minutes;
-			                 int recorded_hr = item->reclen/60;
-			                 if (recorded_hr>0) str3 = recorded_hr.ToString() + lang::u_hours+" " + str3;
-			                 str3 =lang::p_reclen+"   "+str3;
-
-							 String^ tit_chan = item->title;
-							 //try {
-							//	 tit_chan = tit_chan->PadRight(ww + 3 - item->channel->Length);
-							// } catch(...){}
-							 tit_chan = tit_chan + "  ("+item->channel+")";
-
-							 if (str->Length>0)
+							 int q;
+							 String ^chunk;
+							 if (str->Length<w) 
 							 {
-								 str = wordwrap(str,ww);
-					
-								 //str = item->title + "\r\n\r\n" +str + "\r\n\r\n"+item->channel+"\r\n"+str2b+"\r\n"+str3;
-
-								 str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
-
-
-								 
-								 
-								 this->toolTip1->Show(str, list, p,20000);
-								 //Console::WriteLine("Set: "+wordwrap(item->description,60));
-								 clear=false;
-								 lasthash=hash;
+								 q = str->Length;
+								 chunk = str;
+								 str="";
 							 }
-							 
+							 else
+							 {
+								 q=w;
+								 //chunk=str->Substring(0,q);
+								 //str = str->Substring(q);
+								 for (int j=w-1; j>0; j--)
+								 {
+									 if (str[j]==' ')
+									 {
+										 q=j;
+										 chunk=str->Substring(0,q);
+										 str=str->Substring(q+1);
+										 break;
+									 }
+								 }
+								 if (q==w)
+								 {
+									 chunk=str->Substring(0,q);
+									 str=str->Substring(q+1);
+								 }
+							 }
+							 if (s->Length>0) s = s+"\r\n";
+							 s=s+chunk;
+
 
 						 }
 
-						 else
-							 clear=false;
 					 }
-					
-					 else
-					 {
-						 if (lasthash == hash) clear=false;
-					 }
-
-					 //this->toolTip1->SetToolTip(list,  "This\r\nis\r\na\r\ntest"+item->description);
-
 				 }
-				 if(clear)
+				 catch(...){}
+
+				 return s;
+			 }
+
+	private: System::Void listView_MouseMove(System::Object^  sender, System::Windows::Forms::MouseEventArgs^  e) {
+
+
+				 static int cnt = 0;
+				 static int lastx, lasty;// lasthash;
+				 int hash=0;
+
+
+				 toolTip1->AutoPopDelay = 5000;
+				 toolTip1->InitialDelay = 1000;
+				 toolTip1->ReshowDelay = 500;
+
+				 ListView ^list = safe_cast<ListView^> (sender);
+
+
+
+				 FileItem ^item = safe_cast<FileItem^> (list->GetItemAt(e->X, e->Y));
+
+				 if (!(lastx==e->X && lasty==e->Y))
 				 {
-					 this->toolTip1->SetToolTip(list, "");
-					 lasthash=0;
-					 //Console::WriteLine("Clear"+cnt.ToString() );cnt++;
+					 bool clear=true;
+					 if(item != nullptr  )
+					 {
+
+
+
+						 ListViewItem::ListViewSubItem ^subitem = item->GetSubItemAt(e->X, e->Y);
+
+
+						 hash = subitem->GetHashCode();
+						 //Console::WriteLine(hash.ToString());
+
+						 if (subitem->Tag == "desc")
+						 {
+
+							 if (hash != lasthash)
+
+							 {
+
+								 System::Drawing::Point p = subitem->Bounds.Location;
+								 p.Y = p.Y + item->Bounds.Height+8;
+								 //p.X = e->X+6;
+								 p.X = subitem->Bounds.Left;
+
+
+								 int ww=60;
+								 String ^str = item->description->Trim();
+								 DateTime prog_end_time = item->prog_start_time.AddMinutes(item->proglen);
+
+								 // String^ str2 = item->channel +"\r\n"+item->prog_start_time.ToString("f") ;
+
+
+								 String^ str2b = (item->proglen % 60).ToString() +lang::u_minutes;
+								 int prog_hr = item->proglen/60;
+								 if (prog_hr>0) str2b = prog_hr.ToString() + lang::u_hours+" " + str2b;
+
+								 str2b = lang::p_proglen +"   "+str2b;
+
+								 String^ str3 = (item->reclen % 60).ToString() +lang::u_minutes;
+								 int recorded_hr = item->reclen/60;
+								 if (recorded_hr>0) str3 = recorded_hr.ToString() + lang::u_hours+" " + str3;
+								 str3 =lang::p_reclen+"   "+str3;
+
+								 String^ tit_chan = item->title;
+								 //try {
+								 //	 tit_chan = tit_chan->PadRight(ww + 3 - item->channel->Length);
+								 // } catch(...){}
+								 tit_chan = tit_chan + "  ("+item->channel+")";
+
+								 if (str->Length>0)
+								 {
+									 str = wordwrap(str,ww);
+
+									 //str = item->title + "\r\n\r\n" +str + "\r\n\r\n"+item->channel+"\r\n"+str2b+"\r\n"+str3;
+
+									 str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
+
+
+
+
+									 this->toolTip1->Show(str, list, p,20000);
+									 //Console::WriteLine("Set: "+wordwrap(item->description,60));
+									 clear=false;
+									 lasthash=hash;
+								 }
+
+
+							 }   // if hash != lasthash
+
+							 else
+								 clear=false;
+						 }   // if subitem->Tag == "desc"
+
+						 else
+						 {
+							 if (lasthash == hash) clear=false;
+						 }
+
+						 //this->toolTip1->SetToolTip(list,  "This\r\nis\r\na\r\ntest"+item->description);
+
+					 }     // if item != nullptr
+					 if(clear)
+					 {
+						 this->toolTip1->SetToolTip(list, "");
+						 lasthash=0;
+						 //Console::WriteLine("Clear"+cnt.ToString() );cnt++;
+					 }
+				 }   // if not (lastx==X && lasty==Y)
+
+				 // Console::WriteLine("MouseMove" + cnt.ToString());cnt++;
+
+				 lastx = e->X; lasty=e->Y;
+
+
+
+
+			 }
+
+			 static void set_filesystemwatcher_callback(Object^ obj)
+			 {
+
+				 Form1 ^frm = safe_cast<Form1^>(obj);
+				 String ^dir = frm->watched_directory;
+
+				 Monitor::Enter(frm->fileSystemWatcher1);
+
+				 trace(1,printf("Setting filesystemwatcher: %s\n",dir));
+
+				 try{
+
+					 frm->fileSystemWatcher1->Path = dir;
+					 frm->fileSystemWatcher1->NotifyFilter = NotifyFilters::LastWrite
+						 | NotifyFilters::FileName | NotifyFilters::DirectoryName | NotifyFilters::Size;
+
+
+					 frm->fileSystemWatcher1->EnableRaisingEvents=true;
+
+				 }catch(...){
+					 trace(0,printf("Exception caught setting filesystemwatcher.\n"));
+				 };
+
+				 Monitor::Exit(frm->fileSystemWatcher1);
+
+			 }
+
+			 void set_filesystemwatcher(String ^ dir)
+			 {
+
+
+				 this->watched_directory = dir;
+				 ThreadPool::QueueUserWorkItem( gcnew WaitCallback( Form1::set_filesystemwatcher_callback ), this );
+
+				 //Form1::set_filesystemwatcher_callback(this);
+
+
+			 }
+
+			 // Try to determine if a recording is currently in progress.
+			 // The answer might be a little out of date, since caching is used.
+			 bool recording_in_progress(void)
+			 {
+
+				 this->recording_in_progress_last_checked = DateTime::Now;
+
+				 if (this->settings["prevent_turbo_while_recording"]=="0") return false;
+
+				 //printf("Is recording in progress?\n");
+
+
+				 bool needs_refreshing = (this->data_files_cached == nullptr);
+
+				 if (this->data_files_cached != nullptr)
+				 {
+					 if ( (DateTime::Now-this->data_files_read_time).TotalSeconds > 5)
+						 needs_refreshing=true;
+
 				 }
-			 }
-			// Console::WriteLine("MouseMove" + cnt.ToString());cnt++;
 
-			 lastx = e->X; lasty=e->Y;
-
-
-
-
-		 }
-
-		 static void set_filesystemwatcher_callback(Object^ obj)
-		 {
-
-			 Form1 ^frm = safe_cast<Form1^>(obj);
-			 String ^dir = frm->watched_directory;
-
-			 Monitor::Enter(frm->fileSystemWatcher1);
-
-			 trace(1,printf("Setting filesystemwatcher: %s\n",dir));
-		
-			 try{
-
-				 frm->fileSystemWatcher1->Path = dir;
-				 frm->fileSystemWatcher1->NotifyFilter = NotifyFilters::LastWrite
-					 | NotifyFilters::FileName | NotifyFilters::DirectoryName | NotifyFilters::Size;
-				
-
-				 			frm->fileSystemWatcher1->EnableRaisingEvents=true;
-
-			 }catch(...){
-				 trace(0,printf("Exception caught setting filesystemwatcher.\n"));
-				};
-
-			  Monitor::Exit(frm->fileSystemWatcher1);
-
-		 }
-
-		 void set_filesystemwatcher(String ^ dir)
-		 {
+				 if (needs_refreshing)
+				 {
+					 Monitor::Enter(this->locker);
+					 this->loadTopfieldDirArrayOrNull("\\DataFiles");
+					 Monitor::Exit(this->locker);
+				 }
 
 
-			 this->watched_directory = dir;
-			 ThreadPool::QueueUserWorkItem( gcnew WaitCallback( Form1::set_filesystemwatcher_callback ), this );
 
-			 //Form1::set_filesystemwatcher_callback(this);
+				 if (this->data_files_cached == nullptr) return false;  // If in doubt, return false.
 
 
-		 }
+				 for each (TopfieldItem^ item in this->data_files_cached)
+				 {
+					 if (item->isdir) continue;
+					 if (! item->filename->EndsWith(".rec",StringComparison::CurrentCultureIgnoreCase)) continue;
 
-		 // Try to determine if a recording is currently in progress.
-		 // The answer might be a little out of date, since caching is used.
-		 bool recording_in_progress(void)
-		 {
+					 if (  Math::Abs (  (DateTime::Now - item->datetime).TotalHours ) > 24.0 )  continue;
+					 //printf(" ### %s : %g\n", item->filename,(DateTime::Now - item->datetime).TotalHours );
+					 if (item->description->Length > 0 || item->channel->Length	> 0 ) continue;
 
+					 if (item->size == 0 ) return true;
 
-			 if (this->settings["prevent_turbo_while_recording"]=="0") return false;
-			 
-			 //printf("Is recording in progress?\n");
-			 
+					 Monitor::Enter(this->locker);
+					 array <unsigned char>^ arr = this->read_topfield_file_snippet(item->full_filename, 0);
+					 Monitor::Exit(this->locker);
 
-			 bool needs_refreshing = (this->data_files_cached == nullptr);
-
-			 if (this->data_files_cached != nullptr)
-			 {
-				if ( (DateTime::Now-this->data_files_read_time).TotalSeconds > 5)
-					needs_refreshing=true;
-	
-			 }
-
-			 if (needs_refreshing)
-			 {
-				 Monitor::Enter(this->locker);
-				 this->loadTopfieldDirArrayOrNull("\\DataFiles");
-				 Monitor::Exit(this->locker);
-			 }
-
-			 this->recording_in_progress_last_checked = DateTime::Now;
-
-			 if (this->data_files_cached == nullptr) return false;  // If in doubt, return false.
+					 if (arr == nullptr) return true;
+					 if (arr->Length==0) return true;
+				 }
 
 
-			 for each (TopfieldItem^ item in this->data_files_cached)
-			 {
-				 if (item->isdir) continue;
-				 if (! item->filename->EndsWith(".rec",StringComparison::CurrentCultureIgnoreCase)) continue;
-			
-				 if (  Math::Abs (  (DateTime::Now - item->datetime).TotalHours ) > 24.0 )  continue;
-				 //printf(" ### %s : %g\n", item->filename,(DateTime::Now - item->datetime).TotalHours );
-				 if (item->description->Length > 0 || item->channel->Length	> 0 ) continue;
-
-				 if (item->size == 0 ) return true;
-
-				 Monitor::Enter(this->locker);
-				 array <unsigned char>^ arr = this->read_topfield_file_snippet(item->full_filename, 0);
-				 Monitor::Exit(this->locker);
-
-				 if (arr == nullptr) return true;
-				 if (arr->Length==0) return true;
+				 return false;
 			 }
 
 
-			 return false;
-		 }
 
+	private: System::Void listView_MouseLeave(System::Object^  sender, System::EventArgs^  e) {
 
+				 ListView^ list = safe_cast<ListView^>(sender);
+				 // Hide program description tooltip
+				 this->toolTip1->SetToolTip(list, "");
+				 lasthash=0;
 
-};    // class form1
+			 }
+
+	};    // class form1
 };    // namespace antares
 

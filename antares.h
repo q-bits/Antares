@@ -334,9 +334,9 @@ namespace Antares {
 			folder_index = GetApproximateFolderIconIndex("c:\\test\\");
 			file_index = GetApproximateFileIconIndex("test.tkd3")->icon_index;
 			play_index = GetFileIconIndex(Application::ExecutablePath)->icon_index;
-			folder_info = gcnew FileType(folder_index, "Folder");
+			folder_info = gcnew FileType(folder_index, lang::m_folder);
 			file_info = gcnew FileType(file_index, "");
-			play_info = gcnew FileType(play_index,"REC File");
+			play_info = gcnew FileType(play_index,lang::m_rec_file);
 			//Console::WriteLine(Directory::GetCurrentDirectory());
 			//Console::WriteLine(Application::ExecutablePath);
 			//Console::WriteLine(System::Diagnostics::Process::GetCurrentProcess()->ProcessName+".exe");
@@ -424,7 +424,7 @@ namespace Antares {
 				{
 					if(info->icon_index==file_index)  info=play_info;
 
-					info->file_type = "REC File";
+					info->file_type = lang::m_rec_file;
 				}
 
 
@@ -700,7 +700,7 @@ namespace Antares {
 			if ( (attr & FileAttributes::Directory) == FileAttributes::Directory)
 			{
 				this->isdir=true;
-				this->file_type = "Folder";
+				this->file_type =lang::m_folder;
 				this->size=0;
 			}
 			else
@@ -784,7 +784,7 @@ namespace Antares {
 			{
 			case 1:
 				this->type = 'd';
-				this->file_type = "Folder";
+				this->file_type = lang::m_folder;
 				this->isdir = true;
 				break;
 

@@ -630,7 +630,7 @@ namespace Antares {
 			else if (*this->turbo_mode != *this->turbo_mode2 && this->current_error->Length == 0)
 
 			{
-                this->checkBox1->Text = lang::tb_turbo_mode + "\n(Disabled due to current recording)";
+				this->checkBox1->Text = lang::tb_turbo_mode + "\n" + lang::c_turbo_disabled;//(Disabled due to current recording)";
  			}
 
 			else
