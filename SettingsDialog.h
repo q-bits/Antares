@@ -304,7 +304,7 @@ private: System::Windows::Forms::CheckBox^  noTurboCheck;
 			// nosleep_check
 			// 
 			this->nosleep_check->AutoSize = true;
-			this->nosleep_check->Location = System::Drawing::Point(267, 138);
+			this->nosleep_check->Location = System::Drawing::Point(267, 119);
 			this->nosleep_check->Name = L"nosleep_check";
 			this->nosleep_check->Size = System::Drawing::Size(280, 30);
 			this->nosleep_check->TabIndex = 5;
@@ -337,7 +337,7 @@ private: System::Windows::Forms::CheckBox^  noTurboCheck;
 			// noTurboCheck
 			// 
 			this->noTurboCheck->AutoSize = true;
-			this->noTurboCheck->Location = System::Drawing::Point(267, 199);
+			this->noTurboCheck->Location = System::Drawing::Point(267, 172);
 			this->noTurboCheck->Name = L"noTurboCheck";
 			this->noTurboCheck->Size = System::Drawing::Size(193, 17);
 			this->noTurboCheck->TabIndex = 7;

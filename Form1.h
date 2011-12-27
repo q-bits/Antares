@@ -2111,6 +2111,7 @@ repeat:
 			bool listView2_selection_was_changed, listView1_selection_was_changed;
 			static const long long resume_granularity = 8192;
 			static const double check_recording_interval = 120.0; 
+			static const long long min_resume_size = 1024*1024;
 			bool transfer_in_progress;
 			bool firmware_transfer_in_progress;
 
@@ -4529,7 +4530,7 @@ out:
 			TransferOptions ^transferoptions = copydialog->transferoptions;
 			int numitems = copydialog->numfiles;
 
-			int this_overwrite_action;
+			//int this_overwrite_action;
 			long long topfield_file_offset=0;
 			long long probable_minimum_received_offset=-1;
 			array<String^>^          dest_filename      = copydialog->dest_filename;
@@ -5351,6 +5352,7 @@ end_copy_to_pc:
 
 			array<bool>^             dest_exists = gcnew array<bool>(numitems);
 			array<DateTime>^         dest_date = gcnew array<DateTime>(numitems);
+			array<DateTime>^         src_date = gcnew array<DateTime>(numitems);
 			array<long long int>^    dest_size = gcnew array<long long int>(numitems);
 			array<long long int>^    src_sizes = gcnew array<long long int>(numitems);
 			array<String^>^          dest_filename= gcnew array<String^>(numitems);
@@ -5422,6 +5424,7 @@ end_copy_to_pc:
 
 
 				src_sizes[ind]=item->size;
+				src_date[ind]=item->datetime;
 
 
 				dest_exists[ind]=File::Exists(dest_filename[ind]);
@@ -5458,6 +5461,7 @@ end_copy_to_pc:
 			int num_skip=0;
 			if (num_exist>0)
 			{
+				/*
 				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1],files_cat[2]);
 				oc->copymode=copymode;
@@ -5506,23 +5510,27 @@ end_copy_to_pc:
 
 				if (transferoptions->overwrite_all) {action1=OVERWRITE; action2=OVERWRITE; action2=OVERWRITE;} 
 
+				*/
 
+				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation( dest_filename, dest_size, dest_exists,
+					src_sizes,  dest_date,  src_date, CopyDirection::PC_TO_PVR,  copymode, overwrite_category, overwrite_action);
+
+				if (!this->no_prompt)
+					if (::DialogResult::Cancel == oc->ShowDialog() ) goto aborted;
+
+				array<OverwriteAction>^ actions_per_category = oc->overwrite_actions_per_category();
 				action1_skipdelete = oc->checkBox1->Checked;
+
 
 				for (int i=0; i<numitems; i++)
 				{
 					item=src_items[i];
 					overwrite_action[i]=OVERWRITE;
-					if (dest_exists[i])
+					if (dest_exists[i] && !transferoptions->overwrite_all)
 					{
-						if(overwrite_category[i]==0)  overwrite_action[i]=action1; else
-							if(overwrite_category[i]==1)  overwrite_action[i]=action2; else
-								if(overwrite_category[i]==2)  overwrite_action[i]=action3;
-
+						overwrite_action[i] = actions_per_category[overwrite_category[i]];
 					}
-					if (overwrite_action[i]==RESUME && dest_size[i]< 1048576 ) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
-					//  if (overwrite_action[i]==OVERWRITE) totalsize_notskip+=item->size;else
-					//	 if (overwrite_action[i]==RESUME) totalsize_notskip+=item->size-dest_size[i];
+					if (overwrite_action[i]==RESUME && dest_size[i] < this->min_resume_size) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
 
 					if (overwrite_action[i]==OVERWRITE) current_offsets[i]=0; else
 						if (overwrite_action[i]==SKIP) {current_offsets[i]=item->size;num_skip++;} else
@@ -6202,10 +6210,9 @@ restart_copy_to_pvr:
 										copydialog->new_packet(r);
 									}
 
+
 									if ( (update%2)==0)
 									{
-										//this->Update();
-
 										copydialog->current_offsets[i] = topfield_file_offset;
 										copydialog->current_bytes_received = bytes_sent;
 										copydialog->update_dialog_threadsafe();
@@ -6386,7 +6393,7 @@ out:
 
 
 					if (!copydialog->cancelled) {
-						if (copydialog->current_offsets[i] == copydialog->filesizes[i])
+						if (topfield_file_offset == copydialog->filesizes[i])
 							copydialog->maximum_successful_index=i;
 						else
 							goto restart_copy_to_pvr;   // This path probably shouldn't ever happen
@@ -6710,6 +6717,7 @@ finish_transfer:
 
 			array<bool>^             dest_exists = gcnew array<bool>(numitems);
 			array<DateTime>^         dest_date = gcnew array<DateTime>(numitems);
+			array<DateTime>^         src_date = gcnew array<DateTime>(numitems);
 			array<long long int>^    dest_size = gcnew array<long long int>(numitems);
 			array<long long int>^    src_sizes = gcnew array<long long int>(numitems);
 			array<String^>^          dest_filename= gcnew array<String^>(numitems);
@@ -6781,6 +6789,7 @@ finish_transfer:
 					num_files++;
 
 				src_sizes[ind]=item->size;
+				src_date[ind]=item->datetime;
 
 				titem = this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]);
 				if (titem == nullptr)
@@ -6792,6 +6801,7 @@ finish_transfer:
 				{
 					dest_exists[ind]=true;
 					dest_size[ind] = titem->size;
+					dest_date[ind] = titem->datetime;
 				}
 
 				if (dest_exists[ind])
@@ -6815,8 +6825,10 @@ finish_transfer:
 
 			int num_skip=0;
 			bool action1_skipdelete=true;
+			
 			if (num_exist>0)
 			{
+				/*
 				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1], files_cat[2]);
 				oc->copymode=copymode;
@@ -6858,9 +6870,34 @@ finish_transfer:
 				if (num_cat[2]>1) oc->label3->Text = lang::o_oversized_plural;//"These exising files are larger!!"; 
 				else oc->label3->Text = lang::o_oversized;//"This existing file is larger!!";
 
+				*/
+
+
+				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation( dest_filename, dest_size, dest_exists,
+					src_sizes,  dest_date,  src_date, CopyDirection::PC_TO_PVR,  copymode, overwrite_category, overwrite_action);
+
 				if (!this->no_prompt)
 					if (::DialogResult::Cancel == oc->ShowDialog() ) goto abort;
 
+				array<OverwriteAction>^ actions_per_category = oc->overwrite_actions_per_category();
+				action1_skipdelete = oc->checkBox1->Checked;
+
+				for (int i=0; i<numitems; i++)
+				{
+					item=src_items[i];
+					overwrite_action[i]=OVERWRITE;
+					if (dest_exists[i] && !transferoptions->overwrite_all)
+					{
+						overwrite_action[i] = actions_per_category[overwrite_category[i]];
+					}
+					if (overwrite_action[i]==RESUME && dest_size[i] < this->min_resume_size) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
+
+					if (overwrite_action[i]==OVERWRITE) current_offsets[i]=0; else
+						if (overwrite_action[i]==SKIP) {current_offsets[i]=item->size;num_skip++;} else
+							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
+				}
+
+				/*
 				int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
 				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
 				int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
@@ -6880,13 +6917,15 @@ finish_transfer:
 								if(overwrite_category[i]==2)  overwrite_action[i]=action3;
 
 					}
-					if (overwrite_action[i]==RESUME && dest_size[i]< 1048576) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
+					if (overwrite_action[i]==RESUME && dest_size[i] < this->min_resume_size) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
 
 					if (overwrite_action[i]==OVERWRITE) current_offsets[i]=0; else
 						if (overwrite_action[i]==SKIP) {current_offsets[i]=item->size;num_skip++;} else
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
+				*/
 			}
+			
 			if ( (num_dir_exist+num_skip)==numitems && copymode == CopyMode::COPY) 
 			{
 				String ^s0 = ""; if (num_skip + num_dir_exist >0 ) s0 = (num_skip+num_dir_exist).ToString() + " item";
@@ -8055,8 +8094,8 @@ abort:  // If the transfer was cancelled before it began
 						}
 
 
-						Array::Resize(out_array,tot_num_bytes+dataLen);
-						Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , out_array, tot_num_bytes  ,(int) dataLen);
+						Array::Resize(out_array,(int) ( tot_num_bytes+dataLen)  );
+						Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , out_array, (int) tot_num_bytes  ,(int) dataLen);
 
 						tot_num_bytes += dataLen;
 						if (tot_num_bytes > max_bytes)
@@ -8582,7 +8621,7 @@ abort:  // If the transfer was cancelled before it began
 					 ind++;
 				 }
 
-				 printf("init_contextMenuStrip1\n");
+				 //printf("init_contextMenuStrip1\n");
 
 
 
@@ -8647,7 +8686,7 @@ abort:  // If the transfer was cancelled before it began
 				 }
 				 //			 ic->Add(this->mi_pc_choose_columns);
 
-				 printf("init_contextMenuStrip2\n");
+				 //printf("init_contextMenuStrip2\n");
 
 
 			 }
@@ -9131,11 +9170,41 @@ abort:  // If the transfer was cancelled before it began
 
 				 FileItem ^item = safe_cast<FileItem^> (list->GetItemAt(e->X, e->Y));
 
+				 bool over_copydialog = false;
+				 Antares::CopyDialog ^copydialog = this->current_copydialog;
+
+				 if (copydialog != nullptr)
+				 {
+
+					 Point abs = Point(e->X, e->Y);
+					 abs.Offset(panel1->Location);
+					 if (list==tlist)
+					 {
+						 abs.Offset(panel3->Location);
+						 abs.Offset(tlist->Location);
+					 }
+					 else
+					 {
+						 abs.Offset(panel4->Location);
+						 abs.Offset(clist->Location);
+					 }
+
+
+					 //printf("%d %d : %d %d : (%d,%d)-(%d,%d)\n",e->X, e->Y, abs.X, abs.Y, 
+					 //copydialog->Bounds.Left,  copydialog->Bounds.Top,  copydialog->Bounds.Right,  copydialog->Bounds.Bottom);
+
+
+					 if (copydialog->Bounds.Contains(abs.X, abs.Y) )
+						 over_copydialog = true;
+				 }
+
+
 				 if (!(lastx==e->X && lasty==e->Y))
 				 {
 					 bool clear=true;
-					 if(item != nullptr  )
+					 if(item != nullptr && !over_copydialog  )
 					 {
+
 
 
 
@@ -9196,6 +9265,7 @@ abort:  // If the transfer was cancelled before it began
 									 this->tooltip_listview = list;
 									 this->tooltip_timer->Interval=100;
 									 this->tooltip_timer->Start();
+									 this->toolTip1->SetToolTip(list, "");
 
 
 									 //this->toolTip1->Show(str, list, p,20000);
@@ -9338,9 +9408,11 @@ abort:  // If the transfer was cancelled before it began
 
 	private: System::Void listView_MouseLeave(System::Object^  sender, System::EventArgs^  e) {
 
+				 this->tooltip_string="";
 				 ListView^ list = safe_cast<ListView^>(sender);
 				 // Hide program description tooltip
 				 this->toolTip1->SetToolTip(list, "");
+
 				 lasthash=0;
 
 			 }
@@ -9349,7 +9421,13 @@ abort:  // If the transfer was cancelled before it began
 			 {
 				 static int cnt=0;
 				 if (this->tooltip_listview == nullptr || this->tooltip_string == nullptr) return;
-				 printf("Elapsed.  %d\n",cnt++);
+				 //printf("Elapsed.  %d\n",cnt++);
+				 if (this->tooltip_string->Length==0)
+				 {
+					 this->toolTip1->SetToolTip(this->tooltip_listview, "");
+					 return;
+
+				 }
 				 this->toolTip1->Show(this->tooltip_string, this->tooltip_listview, this->tooltip_location,20000);
 			 }
 
