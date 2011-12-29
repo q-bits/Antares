@@ -63,6 +63,7 @@ Adapted by Henry Haselgrove, for use in Antares
 /* 2+ - dump entire packet */
 int packet_trace = 0;
 int verbose = 0;
+int fverbose = 0;
 
 time_t last_successful_communication = 0;
 
@@ -688,8 +689,9 @@ char *decode_error(struct tf_packet *packet)
 }
 
 
-void set_verbose(int verbose_, int packet_trace_)
+void set_verbose(int verbose_, int packet_trace_, int fverbose_)
 {
 	verbose=verbose_;
+	fverbose = fverbose_;
 	packet_trace=packet_trace_;
 }

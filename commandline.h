@@ -79,6 +79,7 @@ namespace Antares {
 		array<String^>^ exclude_patterns;
 		bool overwrite_all;
 		bool verbose;
+		bool fverbose;
 
 		int pid;
 
@@ -190,6 +191,15 @@ namespace Antares {
 					ind++;
 					continue;
 				}
+
+				if (tok == "-fverbose" || tok =="/fverbose" )
+				{
+					this->fverbose=true;
+					this->dont_free_console=true;
+					ind++;
+					continue;
+				}
+
 
 				if (tok == "-x" || tok == "/x" || tok=="-X" || tok =="/X")
 				{

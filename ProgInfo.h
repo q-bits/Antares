@@ -248,7 +248,7 @@ namespace Antares {
 			// 
 			// description
 			// 
-			this->description->BackColor = System::Drawing::Color::White;
+			this->description->BackColor = System::Drawing::Color::GhostWhite;
 			this->description->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.5F));
 			this->description->ForeColor = System::Drawing::Color::Black;
 			this->description->Location = System::Drawing::Point(175, 143);
@@ -343,7 +343,7 @@ namespace Antares {
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->BackColor = System::Drawing::Color::White;
+			this->BackColor = System::Drawing::Color::GhostWhite;
 			this->ClientSize = System::Drawing::Size(689, 266);
 			this->Controls->Add(this->recorded_duration);
 			this->Controls->Add(this->label6);

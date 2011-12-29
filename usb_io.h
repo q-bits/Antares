@@ -66,8 +66,11 @@
 
 
 #define trace(level, msg) if(verbose >= level) {print_time(); msg; }
+#define ftrace(level, msg) if(fverbose >= level) {print_time(); msg; }
+
 
 extern int verbose;
+extern int fverbose;
 
 /* 0 - disable tracing
    1 - show packet headers
@@ -106,7 +109,7 @@ struct typefile
 };
 #pragma pack(pop)
 
-void set_verbose(int verbose, int packet_trace);
+void set_verbose(int verbose, int packet_trace, int fverbose);
 void print_time(void);
 int send_success(libusb_device_handle* fd);
 int send_cancel(libusb_device_handle* fd);

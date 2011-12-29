@@ -195,7 +195,12 @@ namespace Antares {
 			if (this->commandline->verbose) 
 			{
 				printf("Verbose mode.\n");
-				set_verbose(3,2);
+				set_verbose(3,2,2);
+			}
+			else if (this->commandline->fverbose)
+			{
+				printf("Verbose (firmware) mode.\n");
+				set_verbose(0,2,2);
 			}
 
 			this->watched_directory = "";
@@ -502,6 +507,7 @@ namespace Antares {
 		{
 			int r;
 			struct tf_packet reply;
+			if (verbose || fverbose) printf("absorb_late_packets(%d,%d)\n",count,timeout);
 
 			//return;
 			if (this->fd==NULL) return;
@@ -510,7 +516,7 @@ namespace Antares {
 
 			{
 				r = get_tf_packet2(this->fd, &reply,timeout, 1);
-				//printf("r=%d   reply.cmd = %d \n",r,get_u32(&reply.cmd));
+				if (verbose || fverbose) printf("r=%d   reply.cmd = %d \n",r,get_u32(&reply.cmd));
 
 			}
 		}
@@ -557,7 +563,7 @@ namespace Antares {
 					device_path = &dev_paths[j][0];
 					String^ driver_name = gcnew String( &driver_names[j][0]);
 					driver_name = driver_name->ToLowerInvariant();
-					if (verbose) printf("%d: Driver: %s\n",j, driver_name);
+					if (verbose || fverbose) printf("%d: Driver: %s\n",j, driver_name);
 					if (driver_name->Equals("winusb"))
 					{
 						hdev = CreateFileA(device_path, GENERIC_WRITE | GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
@@ -3998,7 +4004,8 @@ repeat:
 			System::IO::FileStream ^src_file = nullptr;
 
 			unsigned long long offset;
-			while(1) // Loop until we successfully initiate upload. Todo: exit on cancel.
+			ftrace(1,printf("transfer_firmware_to_PVR()\n"));
+			while(1) // Loop until we successfully initiate upload. 
 			{
 
 				if (firmware_dialog->cancelled) goto out;
@@ -4010,9 +4017,15 @@ repeat:
 					if (this->fd==NULL)
 					{
 						if (  (time(NULL)-reboot_time) < 6)
+						{
 							firmware_dialog->update_status_text("Rebooting...",false);
+							ftrace(1,printf("Rebooting...\n"));
+						}
 						else
+						{
 							firmware_dialog->update_status_text("The PVR is off or disconnected.\r\n\r\nEnsure the PVR is off (standby) and plugged into the PC. Then turn the PVR on.",false);  
+							ftrace(1,printf("The PVR is off or...\n"));
+						}
 					}
 					else
 					{
@@ -4020,14 +4033,17 @@ repeat:
 						if (this->ndev>1)
 						{
 							firmware_dialog->error_str="There is more than one PVR connected! \r\n The firmware installation cannot proceed.";
+							ftrace(1,printf("There is more than one PVR connected!\n"));
 							goto out;
 						}
 
 						firmware_dialog->update_status_text("The PVR is on and connected.\r\n\r\nTurn the PVR off (standby) and then on again.\r\n\r\nOr, click Reboot PVR.",true);
 
+						ftrace(1,printf("The PVR is on and connected.\n"));
 						if (firmware_dialog->reboot_requested)
 						{
 
+							ftrace(1,printf("Reboot requested...\n"));
 							firmware_dialog->reboot_requested=false;
 							this->absorb_late_packets(5,50);
 							int r = do_cmd_reset(this->fd);
@@ -4053,6 +4069,7 @@ repeat:
 				file_size = file_info->Length;
 			} catch(...) {
 				firmware_dialog->error_str="Unable to open file: "+firmware_dialog->path;
+				ftrace(1,printf("%s\n","Unable to open file: "+firmware_dialog->path));
 				goto out;
 			};
 
@@ -4113,12 +4130,13 @@ repeat:
 				if (next_perc/5 > perc/5)
 				{
 					firmware_dialog->update_status_text("Tansferring firmware:   " + next_perc.ToString() + "%");
+					ftrace(1,printf("%s\n","Tansferring firmware:   " + next_perc.ToString() + "%"));
 					perc=next_perc;
 				}
 
-				/*fprintf(stderr, "Before tf_fw_upload_next() offset=%ld\n", offset);*/
+				ftrace(1,printf( "Before tf_fw_upload_next() offset=%ld\n", offset));
 				r = tf_fw_upload_next(this->fd, buffer, w, &fw_data);
-				/*fprintf(stderr, "After tf_fw_upload_next() ret=%d, offset=%ld, len=%d, fw_data.offset=%lu, fw_data.len=%d\n", ret, offset, len, fw_data.offset, fw_data.len);*/
+				ftrace(1,printf( "After tf_fw_upload_next() r=%d, offset=%ld, len=%d, fw_data.offset=%lu, fw_data.len=%d\n", r, offset, len, fw_data.offset, fw_data.len));
 
 
 			}
@@ -4132,6 +4150,7 @@ repeat:
 					+ "\r\nThe PVR will install the firmware. " 
 					+ "\r\n\r\nAntares will attempt to automatically reboot the PVR."
 					);
+				ftrace(1,printf("The firmware was transferred successfully!...\n"));
 				success=true;
 			}
 			else if (r < 0) {
@@ -4139,10 +4158,16 @@ repeat:
 				//printf("Failed to upgrade firmware -- you must reboot\n");
 				firmware_dialog->cancel_text = "Close";
 				if (!String::IsNullOrEmpty(error_message))
+				{
 					firmware_dialog->update_status_text(error_message+"\r\nAntares will attempt to automatically reboot the PVR.");
+					trace(1,printf("%s\n",error_message));
+				}
 				else
+				{
 					firmware_dialog->update_status_text("The firmware upgrade failed. Are you sure the file is the correct version for your PVR?"
 					+"\r\nAntares will attempt to automatically reboot the PVR.");
+					trace(1,printf("The firmware upgrade failed...\n"));
+				}
 				Thread::Sleep(2000);
 
 
@@ -4156,7 +4181,7 @@ repeat:
 			for (int j=0; j<5; j++)
 			{
 				r=tf_fw_reboot(this->fd);
-				printf("tf_fw_reboot returned %d. fd=%ld\n",r,(long int) this->fd);
+				trace(1,printf("j=%d: tf_fw_reboot returned %d. fd=%ld\n",j,r,(long int) this->fd));
 				if (r==0) {reboot_success=true;reboot_successes++;}
 
 				Thread::Sleep(200);
@@ -4191,9 +4216,11 @@ repeat:
 
 
 out:
+			if (firmware_dialog->error_str->Length>0) printf("%s\n",firmware_dialog->error_str);
 			try{ src_file->Close();}catch(...){};
 			Monitor::Exit(this->locker);
 			this->firmware_transfer_ended();
+			trace(1,printf("End of transfer_firmware_to_PVR() \n"));
 		}
 
 
@@ -4206,6 +4233,7 @@ out:
 			Thread^ thread = gcnew Thread(gcnew ParameterizedThreadStart(this,&Form1::transfer_firmware_to_PVR));
 			thread->Name = "transfer_firmware_to_PVR";
 			firmware_dialog->thread = thread;
+			ftrace(1,printf("firmware_click_install.\n"));
 			thread->Start(firmware_dialog);
 		}
 
@@ -4215,9 +4243,11 @@ out:
 			if (this->transfer_in_progress || this->firmware_transfer_in_progress) return;
 
 
+			ftrace(1,"install_firmware(%s)\n",path);
 
 			if(::DialogResult::Yes != MessageBox::Show(this,"Do you want to install this firmware to your PVR?\n\n    "+path,"Really install firmware?",MessageBoxButtons::YesNo))
 				return;
+			ftrace(1,printf("DialogResult::Yes\n"));
 
 			//this->TransferBegan();
 			this->transfer_in_progress=true;
@@ -7841,6 +7871,7 @@ abort:  // If the transfer was cancelled before it began
 					return false;
 			}
 			if (!ret) return false;
+			
 
 			item->channel = gcnew String(ri->SISvcName);
 			item->title = gcnew String(ri->EventEventName);
@@ -7956,7 +7987,7 @@ abort:  // If the transfer was cancelled before it began
 
 				bool ret =  this->loadInfo(item, &ri);
 
-				if (ret)
+				if (ret && ri.HeaderMagic > 0)
 				{
 
 

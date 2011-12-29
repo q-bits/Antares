@@ -95,6 +95,60 @@ static void dump_hex_buf(FILE *fh, const __u8 *buf, size_t len)
 }
 #endif
 
+void print_packet_f( tf_packet_t *packet, char *prefix)
+{
+    int i;
+#if 1
+    __u8 *d = (__u8 *) packet;
+    __u16 pl = get_u16(&packet->length)+1+PACKET_HEAD_SIZE;
+
+
+    switch (2)
+    {
+        case 0:
+            /* Do nothing */
+            break;
+
+        case 1:
+            fprintf(stdout, "%s", prefix);
+            for(i = 0; i < 8; ++i)
+            {
+                fprintf(stdout, " %02x", d[i]);
+            }
+            fprintf(stdout, "\n");
+            break;
+
+        default:
+			print_time(); printf("%s %s,  len=%d+%d+%d\n",prefix,tf_command_name(packet->cmd), pl-1-PACKET_HEAD_SIZE,PACKET_HEAD_SIZE,1);
+            fprintf(stdout, "%s", prefix);
+            for(i = 0; i < pl; ++i)
+            {
+                fprintf(stdout, " %02x", d[i]);
+				if(23 == (i % 24))
+					fprintf(stdout, "\n%s", prefix);
+			}
+			fprintf(stdout, "\n");
+
+			if (packet_trace>2)
+			{
+				fprintf(stdout, "%s", prefix);
+				for(i = 0; i < pl; ++i)
+				{
+					if(isalnum(d[i]) || ispunct(d[i]))
+						fprintf(stdout, "%c", d[i]);
+					else
+						fprintf(stdout, ".");
+					if(74 == (i % 75))
+						fprintf(stdout, "\n%s", prefix);
+				}
+				fprintf(stdout, "\n");
+			}
+            break;
+    }
+#endif
+}
+
+
 static __u8 calc_checksum(const __u8 *buf, size_t len)
 {
 	__u8 sum = 0x00;
@@ -149,7 +203,10 @@ static int tf_send(libusb_device_handle *tf, const tf_packet_t *req)
 		//padded_len= 32768 > len ? len : 32768;
 		pad = padded_len - len;
 	
-		printf("len=%d  padded_len=%d  pad=%d\n",len,padded_len,pad);
+		if (fverbose) print_packet_f(req,"fOUT>");
+
+
+		if (fverbose) printf("len=%d  padded_len=%d  pad=%d\n",len,padded_len,pad);
 		/*
 		if (len % 2 != 0) {
 			pad = 1;
@@ -305,6 +362,8 @@ static int tf_get_response(libusb_device_handle *tf, tf_packet_t *reply)
 		else {
 			//print_packet(tf->tracefh, "<<", tf->trace_level, reply);
 
+			if (fverbose) print_packet_f(reply, "fIN >");
+
 			/* Make it easier to read */
 		    error = 0;
 		}
@@ -319,7 +378,7 @@ static int tf_wait_for_req_data(libusb_device_handle *tf, tf_fw_data_t *fw_data)
 	/* Wait for it to ask for the first block */
 	int ret = tf_get_response(tf, &reply);
 
-	/*printf("tf_wait_for_req_data() ret=%d reply.cmd=%s\n", ret, tf_command_name(reply.cmd));*/
+	if (fverbose) printf("tf_wait_for_req_data() ret=%d reply.cmd=%s\n", ret, tf_command_name(reply.cmd));
 
 	if (ret != 0) {
 		return -1;
@@ -331,11 +390,12 @@ static int tf_wait_for_req_data(libusb_device_handle *tf, tf_fw_data_t *fw_data)
 		fw_data->seq = reply.seq;
 		fw_data->len = get_u16(reply.data);
 		fw_data->offset = get_u24(reply.data + 2);
-		//DEBUG_LOG("REQ_DATA: seq=%02X len=%u, offset=%lu", fw_data->seq, fw_data->len, fw_data->offset);
+		ftrace(1,printf("REQ_DATA: seq=%02X len=%u, offset=%lu", fw_data->seq, fw_data->len, fw_data->offset));
 		return 0;
 	}
 	if (reply.cmd == TF_FW_END) {
 		/* Success - done */
+		ftrace(1,printf("reply.cmd = TF_FW_END\n"));
 		return 1;
 	}
 
@@ -348,6 +408,8 @@ int tf_fw_upload(libusb_device_handle *tf, tf_fw_data_t *fw_data)
 	int ret;
     tf_packet_t req;
 
+	ftrace(1,printf("tf_fw_upload\n"));
+
 	/* But in USB means we send cmd=1 (which should be 2) *before* we receive cmd=1 */
 	tf_req_init(&req, TF_FW_PC_TO_STB, 0);
 	tf_req_done(tf, &req);
@@ -357,7 +419,7 @@ int tf_fw_upload(libusb_device_handle *tf, tf_fw_data_t *fw_data)
 		tf_packet_t reply;
 
 		ret = tf_get_response(tf, &reply);
-		printf("Got ret=%d, reply.cmd=%d\n", ret, reply.cmd);
+		ftrace(1,printf("Got ret=%d, reply.cmd=%d\n", ret, reply.cmd));
 		if (ret != 0 || reply.cmd != TF_FW_ID) {
 			return -1;
 		}
@@ -374,8 +436,9 @@ int tf_fw_upload_next(libusb_device_handle *tf, const void *buf, size_t len, tf_
     tf_packet_t req;
 	int ret;
 
+	ftrace(1,printf("tf_fw_upload_next\n"));
 	if (len > MAX_DATA_SIZE) {
-		//syslog(LOG_ERR, "Attempt to send too much data (%ld)", (long)len);
+		ftrace(1,printf("Attempt to send too much data (%ld)", (long)len));
 		return -1;
 	}
 
@@ -400,6 +463,7 @@ int tf_fw_reboot(libusb_device_handle *tf)
 
 	tf_req_init(&req, TF_FW_REBOOT, 0);
 	tf_req_done(tf, &req);
+	ftrace(1,printf("tf_fw_reboot\n"));
 
     return tf_send(tf, &req);
 }

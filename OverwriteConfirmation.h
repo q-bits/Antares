@@ -73,8 +73,8 @@ namespace Antares {
 				int cat;
 				double dt = Math::Abs(  (src_date[i] - dest_date[i]).TotalHours  );
 				bool same_date = (dt < 1.0/60.0);
-				//printf("dt=%f %s %s\n",dt, src_date[i].ToString(), dest_date[i].ToString());
-				bool dest_is_older =  dest_date[i] > src_date[i];
+				//printf("dt=%f %s %s %d %d\n",dt, src_date[i].ToString(), dest_date[i].ToString(), (int) ( dest_date[i] > src_date[i] ), (int) (dest_date[i] < src_date[i]) );
+				bool dest_is_older =  dest_date[i] < src_date[i];
 				num_exist++;
 				if (isrec)
 				{
@@ -507,6 +507,9 @@ namespace Antares {
 			this->panel7->SuspendLayout();
 			this->panel8->SuspendLayout();
 			this->SuspendLayout();
+			// 
+			// title_label
+			// 
 			this->title_label->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->title_label->BorderStyle = System::Windows::Forms::BorderStyle::Fixed3D;
@@ -519,6 +522,9 @@ namespace Antares {
 			this->title_label->TabIndex = 0;
 			this->title_label->Text = L"Files with these names already exist                                             " 
 				L"    ";
+			// 
+			// panel1
+			// 
 			this->panel1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel1->Controls->Add(this->skip1);
@@ -529,12 +535,15 @@ namespace Antares {
 			this->panel1->Name = L"panel1";
 			this->panel1->Size = System::Drawing::Size(718, 27);
 			this->panel1->TabIndex = 3;
+			// 
+			// skip1
+			// 
 			this->skip1->AutoSize = true;
 			this->skip1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->skip1->Checked = true;
 			this->skip1->Dock = System::Windows::Forms::DockStyle::Right;
-			this->skip1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->skip1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->skip1->ForeColor = System::Drawing::Color::DarkGreen;
 			this->skip1->Location = System::Drawing::Point(462, 0);
@@ -545,6 +554,9 @@ namespace Antares {
 			this->skip1->Text = L"Skip (recommended)";
 			this->skip1->UseVisualStyleBackColor = false;
 			this->skip1->CheckedChanged += gcnew System::EventHandler(this, &OverwriteConfirmation::skip1_CheckedChanged);
+			// 
+			// overwrite1
+			// 
 			this->overwrite1->AutoSize = true;
 			this->overwrite1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -557,11 +569,14 @@ namespace Antares {
 			this->overwrite1->TabIndex = 4;
 			this->overwrite1->Text = L"Overwrite";
 			this->overwrite1->UseVisualStyleBackColor = false;
+			// 
+			// label1
+			// 
 			this->label1->AutoSize = true;
 			this->label1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->label1->Dock = System::Windows::Forms::DockStyle::Left;
-			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label1->ForeColor = System::Drawing::Color::Navy;
 			this->label1->Location = System::Drawing::Point(0, 0);
@@ -570,6 +585,9 @@ namespace Antares {
 			this->label1->Size = System::Drawing::Size(218, 21);
 			this->label1->TabIndex = 2;
 			this->label1->Text = L"Files have the correct size:";
+			// 
+			// files1
+			// 
 			this->files1->AutoSize = true;
 			this->files1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -581,6 +599,9 @@ namespace Antares {
 			this->files1->Size = System::Drawing::Size(190, 44);
 			this->files1->TabIndex = 4;
 			this->files1->Text = L"C:\\Some file\\\r\nC:\\Some other file\\";
+			// 
+			// overwrite2
+			// 
 			this->overwrite2->AutoSize = true;
 			this->overwrite2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -593,6 +614,9 @@ namespace Antares {
 			this->overwrite2->TabIndex = 4;
 			this->overwrite2->Text = L"Overwrite";
 			this->overwrite2->UseVisualStyleBackColor = false;
+			// 
+			// panel2
+			// 
 			this->panel2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel2->Controls->Add(this->resume2);
@@ -604,10 +628,13 @@ namespace Antares {
 			this->panel2->Name = L"panel2";
 			this->panel2->Size = System::Drawing::Size(718, 27);
 			this->panel2->TabIndex = 5;
+			// 
+			// resume2
+			// 
 			this->resume2->AutoSize = true;
 			this->resume2->Checked = true;
 			this->resume2->Dock = System::Windows::Forms::DockStyle::Right;
-			this->resume2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->resume2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->resume2->ForeColor = System::Drawing::Color::DarkGreen;
 			this->resume2->Location = System::Drawing::Point(383, 0);
@@ -617,6 +644,9 @@ namespace Antares {
 			this->resume2->TabStop = true;
 			this->resume2->Text = L"Resume (recommended)";
 			this->resume2->UseVisualStyleBackColor = true;
+			// 
+			// skip2
+			// 
 			this->skip2->AutoSize = true;
 			this->skip2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -629,11 +659,14 @@ namespace Antares {
 			this->skip2->TabIndex = 5;
 			this->skip2->Text = L"Skip";
 			this->skip2->UseVisualStyleBackColor = false;
+			// 
+			// label2
+			// 
 			this->label2->AutoSize = true;
 			this->label2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->label2->Dock = System::Windows::Forms::DockStyle::Left;
-			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label2->ForeColor = System::Drawing::Color::Navy;
 			this->label2->Location = System::Drawing::Point(0, 0);
@@ -642,6 +675,9 @@ namespace Antares {
 			this->label2->Size = System::Drawing::Size(179, 21);
 			this->label2->TabIndex = 2;
 			this->label2->Text = L"Undersized files:";
+			// 
+			// files2
+			// 
 			this->files2->AutoSize = true;
 			this->files2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -653,6 +689,9 @@ namespace Antares {
 			this->files2->Size = System::Drawing::Size(190, 44);
 			this->files2->TabIndex = 6;
 			this->files2->Text = L"C:\\Some file\\\r\nC:\\Some other file\\";
+			// 
+			// panel3
+			// 
 			this->panel3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel3->Controls->Add(this->skip3);
@@ -663,6 +702,9 @@ namespace Antares {
 			this->panel3->Name = L"panel3";
 			this->panel3->Size = System::Drawing::Size(718, 27);
 			this->panel3->TabIndex = 7;
+			// 
+			// skip3
+			// 
 			this->skip3->AutoSize = true;
 			this->skip3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -677,6 +719,9 @@ namespace Antares {
 			this->skip3->TabStop = true;
 			this->skip3->Text = L"Skip";
 			this->skip3->UseVisualStyleBackColor = false;
+			// 
+			// overwrite3
+			// 
 			this->overwrite3->AutoSize = true;
 			this->overwrite3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -689,11 +734,14 @@ namespace Antares {
 			this->overwrite3->TabIndex = 4;
 			this->overwrite3->Text = L"Overwrite";
 			this->overwrite3->UseVisualStyleBackColor = false;
+			// 
+			// label3
+			// 
 			this->label3->AutoSize = true;
 			this->label3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->label3->Dock = System::Windows::Forms::DockStyle::Left;
-			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label3->ForeColor = System::Drawing::Color::Navy;
 			this->label3->Location = System::Drawing::Point(0, 0);
@@ -702,6 +750,9 @@ namespace Antares {
 			this->label3->Size = System::Drawing::Size(273, 21);
 			this->label3->TabIndex = 2;
 			this->label3->Text = L"These existing files are larger!";
+			// 
+			// files3
+			// 
 			this->files3->AutoSize = true;
 			this->files3->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -713,6 +764,9 @@ namespace Antares {
 			this->files3->Size = System::Drawing::Size(190, 44);
 			this->files3->TabIndex = 8;
 			this->files3->Text = L"C:\\Some file\\\r\nC:\\Some other file\\";
+			// 
+			// panel4
+			// 
 			this->panel4->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel4->Controls->Add(this->button2);
@@ -722,6 +776,9 @@ namespace Antares {
 			this->panel4->Name = L"panel4";
 			this->panel4->Size = System::Drawing::Size(718, 51);
 			this->panel4->TabIndex = 9;
+			// 
+			// button2
+			// 
 			this->button2->DialogResult = System::Windows::Forms::DialogResult::Cancel;
 			this->button2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->button2->Location = System::Drawing::Point(407, 13);
@@ -730,6 +787,9 @@ namespace Antares {
 			this->button2->TabIndex = 1;
 			this->button2->Text = L"Cancel transfer";
 			this->button2->UseVisualStyleBackColor = true;
+			// 
+			// button1
+			// 
 			this->button1->DialogResult = System::Windows::Forms::DialogResult::OK;
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10));
 			this->button1->Location = System::Drawing::Point(116, 13);
@@ -738,6 +798,9 @@ namespace Antares {
 			this->button1->TabIndex = 0;
 			this->button1->Text = L"OK";
 			this->button1->UseVisualStyleBackColor = true;
+			// 
+			// checkBox1
+			// 
 			this->checkBox1->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->checkBox1->AutoSize = true;
 			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(255)), static_cast<System::Int32>(static_cast<System::Byte>(255)), 
@@ -755,6 +818,9 @@ namespace Antares {
 			this->checkBox1->UseVisualStyleBackColor = false;
 			this->checkBox1->Visible = false;
 			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &OverwriteConfirmation::checkBox1_CheckedChanged);
+			// 
+			// panel5
+			// 
 			this->panel5->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel5->Controls->Add(this->skip4);
@@ -765,6 +831,9 @@ namespace Antares {
 			this->panel5->Name = L"panel5";
 			this->panel5->Size = System::Drawing::Size(718, 27);
 			this->panel5->TabIndex = 11;
+			// 
+			// skip4
+			// 
 			this->skip4->AutoSize = true;
 			this->skip4->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -779,6 +848,9 @@ namespace Antares {
 			this->skip4->TabStop = true;
 			this->skip4->Text = L"Skip";
 			this->skip4->UseVisualStyleBackColor = false;
+			// 
+			// overwrite4
+			// 
 			this->overwrite4->AutoSize = true;
 			this->overwrite4->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -791,11 +863,14 @@ namespace Antares {
 			this->overwrite4->TabIndex = 4;
 			this->overwrite4->Text = L"Overwrite";
 			this->overwrite4->UseVisualStyleBackColor = false;
+			// 
+			// label4
+			// 
 			this->label4->AutoSize = true;
 			this->label4->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->label4->Dock = System::Windows::Forms::DockStyle::Left;
-			this->label4->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label4->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label4->ForeColor = System::Drawing::Color::Navy;
 			this->label4->Location = System::Drawing::Point(0, 0);
@@ -804,6 +879,9 @@ namespace Antares {
 			this->label4->Size = System::Drawing::Size(313, 21);
 			this->label4->TabIndex = 2;
 			this->label4->Text = L"Files have the correct size and date:";
+			// 
+			// files4
+			// 
 			this->files4->AutoSize = true;
 			this->files4->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -815,6 +893,9 @@ namespace Antares {
 			this->files4->Size = System::Drawing::Size(190, 44);
 			this->files4->TabIndex = 12;
 			this->files4->Text = L"C:\\Some file\\\r\nC:\\Some other file\\";
+			// 
+			// panel6
+			// 
 			this->panel6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel6->Controls->Add(this->skip5);
@@ -825,6 +906,9 @@ namespace Antares {
 			this->panel6->Name = L"panel6";
 			this->panel6->Size = System::Drawing::Size(718, 27);
 			this->panel6->TabIndex = 13;
+			// 
+			// skip5
+			// 
 			this->skip5->AutoSize = true;
 			this->skip5->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -837,6 +921,9 @@ namespace Antares {
 			this->skip5->TabIndex = 5;
 			this->skip5->Text = L"Skip";
 			this->skip5->UseVisualStyleBackColor = false;
+			// 
+			// overwrite5
+			// 
 			this->overwrite5->AutoSize = true;
 			this->overwrite5->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -851,11 +938,14 @@ namespace Antares {
 			this->overwrite5->TabStop = true;
 			this->overwrite5->Text = L"Overwrite";
 			this->overwrite5->UseVisualStyleBackColor = false;
+			// 
+			// label6
+			// 
 			this->label6->AutoSize = true;
 			this->label6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->label6->Dock = System::Windows::Forms::DockStyle::Left;
-			this->label6->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label6->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label6->ForeColor = System::Drawing::Color::Navy;
 			this->label6->Location = System::Drawing::Point(0, 0);
@@ -864,6 +954,9 @@ namespace Antares {
 			this->label6->Size = System::Drawing::Size(221, 21);
 			this->label6->TabIndex = 2;
 			this->label6->Text = L"Existing files are older:";
+			// 
+			// files5
+			// 
 			this->files5->AutoSize = true;
 			this->files5->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -875,6 +968,9 @@ namespace Antares {
 			this->files5->Size = System::Drawing::Size(190, 44);
 			this->files5->TabIndex = 14;
 			this->files5->Text = L"C:\\Some file\\\r\nC:\\Some other file\\";
+			// 
+			// files6
+			// 
 			this->files6->AutoSize = true;
 			this->files6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -886,6 +982,9 @@ namespace Antares {
 			this->files6->Size = System::Drawing::Size(190, 44);
 			this->files6->TabIndex = 16;
 			this->files6->Text = L"C:\\Some file\\\r\nC:\\Some other file\\";
+			// 
+			// panel7
+			// 
 			this->panel7->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel7->Controls->Add(this->skip6);
@@ -896,6 +995,9 @@ namespace Antares {
 			this->panel7->Name = L"panel7";
 			this->panel7->Size = System::Drawing::Size(718, 27);
 			this->panel7->TabIndex = 15;
+			// 
+			// skip6
+			// 
 			this->skip6->AutoSize = true;
 			this->skip6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -910,6 +1012,9 @@ namespace Antares {
 			this->skip6->TabStop = true;
 			this->skip6->Text = L"Skip";
 			this->skip6->UseVisualStyleBackColor = false;
+			// 
+			// overwrite6
+			// 
 			this->overwrite6->AutoSize = true;
 			this->overwrite6->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -922,11 +1027,14 @@ namespace Antares {
 			this->overwrite6->TabIndex = 4;
 			this->overwrite6->Text = L"Overwrite";
 			this->overwrite6->UseVisualStyleBackColor = false;
+			// 
+			// label9
+			// 
 			this->label9->AutoSize = true;
 			this->label9->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->label9->Dock = System::Windows::Forms::DockStyle::Left;
-			this->label9->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label9->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label9->ForeColor = System::Drawing::Color::Navy;
 			this->label9->Location = System::Drawing::Point(0, 0);
@@ -935,6 +1043,9 @@ namespace Antares {
 			this->label9->Size = System::Drawing::Size(226, 21);
 			this->label9->TabIndex = 2;
 			this->label9->Text = L"Existing files are newer:";
+			// 
+			// files7
+			// 
 			this->files7->AutoSize = true;
 			this->files7->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -946,6 +1057,9 @@ namespace Antares {
 			this->files7->Size = System::Drawing::Size(190, 44);
 			this->files7->TabIndex = 18;
 			this->files7->Text = L"C:\\Some file\\\r\nC:\\Some other file\\";
+			// 
+			// panel8
+			// 
 			this->panel8->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->panel8->Controls->Add(this->skip7);
@@ -956,6 +1070,9 @@ namespace Antares {
 			this->panel8->Name = L"panel8";
 			this->panel8->Size = System::Drawing::Size(718, 27);
 			this->panel8->TabIndex = 17;
+			// 
+			// skip7
+			// 
 			this->skip7->AutoSize = true;
 			this->skip7->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -968,6 +1085,9 @@ namespace Antares {
 			this->skip7->TabIndex = 5;
 			this->skip7->Text = L"Skip";
 			this->skip7->UseVisualStyleBackColor = false;
+			// 
+			// overwrite7
+			// 
 			this->overwrite7->AutoSize = true;
 			this->overwrite7->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
@@ -982,11 +1102,14 @@ namespace Antares {
 			this->overwrite7->TabStop = true;
 			this->overwrite7->Text = L"Overwrite";
 			this->overwrite7->UseVisualStyleBackColor = false;
+			// 
+			// label11
+			// 
 			this->label11->AutoSize = true;
 			this->label11->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(235)), static_cast<System::Int32>(static_cast<System::Byte>(235)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->label11->Dock = System::Windows::Forms::DockStyle::Left;
-			this->label11->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->label11->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label11->ForeColor = System::Drawing::Color::Navy;
 			this->label11->Location = System::Drawing::Point(0, 0);
@@ -995,11 +1118,14 @@ namespace Antares {
 			this->label11->Size = System::Drawing::Size(386, 21);
 			this->label11->TabIndex = 2;
 			this->label11->Text = L"Existing files have same date but different size:";
+			// 
+			// group_a_label
+			// 
 			this->group_a_label->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->group_a_label->BorderStyle = System::Windows::Forms::BorderStyle::Fixed3D;
 			this->group_a_label->Dock = System::Windows::Forms::DockStyle::Top;
-			this->group_a_label->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->group_a_label->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->group_a_label->Location = System::Drawing::Point(0, 47);
 			this->group_a_label->Name = L"group_a_label";
@@ -1007,11 +1133,14 @@ namespace Antares {
 			this->group_a_label->Size = System::Drawing::Size(718, 28);
 			this->group_a_label->TabIndex = 19;
 			this->group_a_label->Text = L"a)  REC files or large files";
+			// 
+			// group_b_label
+			// 
 			this->group_b_label->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->group_b_label->BorderStyle = System::Windows::Forms::BorderStyle::Fixed3D;
 			this->group_b_label->Dock = System::Windows::Forms::DockStyle::Top;
-			this->group_b_label->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
+			this->group_b_label->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->group_b_label->Location = System::Drawing::Point(0, 288);
 			this->group_b_label->Name = L"group_b_label";
@@ -1019,6 +1148,9 @@ namespace Antares {
 			this->group_b_label->Size = System::Drawing::Size(718, 28);
 			this->group_b_label->TabIndex = 20;
 			this->group_b_label->Text = L"b) Other file types";
+			// 
+			// checkBox2
+			// 
 			this->checkBox2->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 			this->checkBox2->AutoSize = true;
 			this->checkBox2->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(255)), static_cast<System::Int32>(static_cast<System::Byte>(255)), 
@@ -1036,6 +1168,9 @@ namespace Antares {
 			this->checkBox2->UseVisualStyleBackColor = false;
 			this->checkBox2->Visible = false;
 			this->checkBox2->CheckedChanged += gcnew System::EventHandler(this, &OverwriteConfirmation::checkBox2_CheckedChanged);
+			// 
+			// OverwriteConfirmation
+			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(250)), static_cast<System::Int32>(static_cast<System::Byte>(250)), 
@@ -1061,6 +1196,7 @@ namespace Antares {
 			this->Controls->Add(this->panel1);
 			this->Controls->Add(this->group_a_label);
 			this->Controls->Add(this->title_label);
+			this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedDialog;
 			this->Name = L"OverwriteConfirmation";
 			this->ShowInTaskbar = false;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterParent;

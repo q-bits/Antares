@@ -65,6 +65,7 @@ int do_cmd_reset(libusb_device_handle* fd)
 {
     int r;
 
+	ftrace(1,printf("do_cmd_reset\n"));
     r = send_cmd_reset(fd);
     if(r < 0)
     {
@@ -80,17 +81,17 @@ int do_cmd_reset(libusb_device_handle* fd)
     switch (get_u32(&reply.cmd))
     {
         case SUCCESS:
-            printf("TF5000PVRt should now reboot\n");
+            trace(1,printf("PVR should now reboot\n"));
             return 0;
             break;
 
         case FAIL:
-            fprintf(stderr, "ERROR: Device reports %s\n",
-                    decode_error(&reply));
+            trace(1,printf( "ERROR: Device reports %s\n",
+                    decode_error(&reply)));
             break;
 
         default:
-            fprintf(stderr, "ERROR: Unhandled packet\n");
+            trace(1, printf("ERROR: Unhandled packet\n"));
     }
     return -EPROTO;
 }
