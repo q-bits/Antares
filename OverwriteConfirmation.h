@@ -65,6 +65,8 @@ namespace Antares {
 
 
 			bool cat_0s_have_correct_date = true;
+			bool cat_6s_are_smaller = true;
+			bool cat_6s_are_larger = true;
 			for (int i=0; i<numitems; i++)
 			{
 				if (!dest_exists[i]) continue;
@@ -95,7 +97,11 @@ namespace Antares {
 						if (dest_size[i]==src_size[i])
 							cat=3;
 						else 
+						{
 							cat=6;
+							cat_6s_are_smaller = cat_6s_are_smaller & (dest_size[i] < src_size[i]);
+							cat_6s_are_larger = cat_6s_are_larger & (dest_size[i] > src_size[i]);
+						}
 					}
 					else
 					{
@@ -112,12 +118,59 @@ namespace Antares {
 			this->title_label->Text = num_exist > 1 ? lang::o_exist_plural : lang::o_exist;
 
 
-			// Combine cat 3 into cat 0 in certain circumstances
-			if (num_exist_b >0 && num_cat[3]==num_exist_b && cat_0s_have_correct_date)
+			// In certain circumstances, 
+			//   combine cat 3 into cat 0, and
+			//   combine cat 6 into cat 1 & 2
+			if (num_exist_b >0 && num_cat[4]==0 && num_cat[5]==0 && cat_0s_have_correct_date)
 			{
-				num_cat[0] += num_cat[3]; num_cat[3]=0;num_exist_a+=num_exist_b; num_exist_b=0;
-				for (int i=0; i<numitems; i++) if (overwrite_category[i]==3) overwrite_category[i]=0;
+				for (int i=0; i<numitems; i++) 
+				{
+					if (overwrite_category[i]==3)
+					{
+						num_cat[3]--;
+						num_cat[0]++;
+						num_exist_b--;
+						num_exist_a++;
+						overwrite_category[i]=0;
+					}
+					else if (overwrite_category[i]==6)
+					{
+						num_cat[6]--;
+						num_exist_b--;
+						num_exist_a++;
+						if (dest_size[i] < src_size[i])
+						{
+							overwrite_category[i]=1;
+							num_cat[1]++;
+						}
+						else
+						{
+							overwrite_category[i]=2;
+							num_cat[2]++;
+						}
+					}
+
+				}
 			}
+
+			// In certain circumstances, combine cat 0 into cat 3
+			if (num_exist_b > 0 && num_cat[1]==0 && num_cat[2]==0 && cat_0s_have_correct_date && num_cat[0]>0)
+			{
+				for (int i=0; i<numitems; i++)
+				{
+					if (overwrite_category[i]==0)
+					{
+						overwrite_category[i]=3;
+						num_cat[0]--;
+						num_cat[3]++;
+						num_exist_b++;
+						num_exist_a--;
+					}
+				}
+			}
+
+
+
 
 			if (num_exist_a == 0 || num_exist_b==0)
 			{
@@ -190,12 +243,27 @@ namespace Antares {
 				filearrays[i] = gcnew array<String^>(num_cat[i]);
 				num_cat[i]=0;
 			}
+
 			for (int i=0; i<numitems; i++)
 			{
 				if (!dest_exists[i]) continue;
 				int cat = overwrite_category[i];
 				filearrays[cat][ num_cat[cat]  ] = dest_filename[i];
+				if (cat==6)
+				{
+					if (dest_size[i] < src_size[i])
+						filearrays[cat][ num_cat[cat]  ]  += "  ("+lang::o_smaller+")";
+					else
+						filearrays[cat][ num_cat[cat]  ]  += "  ("+lang::o_larger+")";
+
+				}
+
 				num_cat[cat]++;
+			}
+			if (num_cat[6]>0)
+			{
+				if (cat_6s_are_larger) skips[6]->Checked=true;
+				
 			}
 
 
@@ -848,6 +916,7 @@ namespace Antares {
 			this->skip4->TabStop = true;
 			this->skip4->Text = L"Skip";
 			this->skip4->UseVisualStyleBackColor = false;
+			this->skip4->CheckedChanged += gcnew System::EventHandler(this, &OverwriteConfirmation::skip4_CheckedChanged);
 			// 
 			// overwrite4
 			// 
@@ -1257,5 +1326,11 @@ namespace Antares {
 				 this->checkBox1->Checked = this->checkBox2->Checked; 
 
 			 }
-	};
+	private: System::Void skip4_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+				 if (this->skip4->Checked) 
+					 this->checkBox2->Enabled=true;
+				 else
+					 this->checkBox2->Enabled=false;
+			 }
+};
 }

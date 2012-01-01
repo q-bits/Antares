@@ -5,7 +5,7 @@ function aio=readlanguages
 %
 % H. Haselgrove, Nov. 2011.
 
-fid=fopen('languages_24_dec_11.csv','r','n','UTF8');
+fid=fopen('languages_1_jan_12.csv','r','n','UTF8');
 
 x=fread(fid,inf,'char');fclose(fid);
 

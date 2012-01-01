@@ -478,8 +478,6 @@ namespace Antares {
 			//this->fileSystemWatcher1->BeginInit();
 
 
-			trace(1,printf("topfield_background_event->Set.\n"));
-			this->topfield_background_event->Set();
 
 			this->fileSystemWatcher1->Path=".";
 
@@ -494,8 +492,46 @@ namespace Antares {
 
 
 
+			this->topfield_background_event->Set();
+			trace(1,printf("topfield_background_event->Set.\n"));
+
 
 			trace(1,printf("Finished constructing form1.\n"));
+
+			//this->test_speed_versus_offset();
+
+		}
+		void test_speed_versus_offset(void)
+		{
+			array<TopfieldItem^>^ items = this->loadTopfieldDirArrayOrNull("\\DataFiles\\");
+			if (items==nullptr) return;
+			int nitems = items->Length;
+			TopfieldItem^ item;
+			Random ^ R = gcnew Random();
+			this->set_turbo_mode(0);
+			const long long int sz = 10000000;
+			for (int iter =0; iter<100000; iter++)
+			{
+				double r = R->NextDouble();
+				
+				int i = R->Next(nitems);
+				i=0;
+				item = items[i];
+				if (item->isdir || !item->full_filename->EndsWith(".rec")) continue;
+				if (item->size < sz) continue;
+				if (item->size < 10000000000LL) continue;
+				long long int start = (long long int) (  r* ( (double)  (item->size - sz   )));
+				start = start - (start % 8192);
+				//start=0;
+				
+				DateTime t1 = DateTime::Now;
+			    this->read_topfield_file_for_testing2(item->full_filename, 0, sz);
+				double dt = (DateTime::Now - t1).TotalSeconds;
+				//double rate = (double) arr->Length / dt / 1024/1024;
+				printf("%3d %3d %3d %11lld %f\n",iter,i,nitems,start, this->testing_rate);
+				fflush(stdout);
+				
+			}
 
 
 		}
@@ -1168,19 +1204,25 @@ repeat:
 		void  topfieldBackgroundWork(void)
 		{
 
+			System::Collections::IEnumerator ^last_en = nullptr;
+
 			try{
 
 				while(1)
 				{
 repeat:
 
-					this->topfield_background_event->WaitOne();
-					//printf("topfieldBackgroundWork iter.\n");
+					bool sig = this->topfield_background_event->WaitOne(1234);
+				
 					System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
+					trace(1,printf("topfieldBackgroundWork iter.  %d %d\n", (int) sig, (int) (en==last_en)));
 					if (en==nullptr) continue;
 					if (this->Visible==false) continue;
+					if (!sig && en==last_en) continue;
 
 					// First, update the icon of all items
+
+					last_en = en;
 
 					while(en->MoveNext())
 					{
@@ -1421,7 +1463,12 @@ repeat:
 				trace(1,printf("LoadComputerDirArrayOrNull.\n"));
 				items = this->loadComputerDirArrayOrNull(dir);
 
-				if (items==nullptr) return -1;
+				if (items==nullptr) 
+				{
+					this->label1->Text = " ? ? ";
+					this->clist->Items->Clear();
+					return -1;
+				}
 				/*
 				catch(System::IO::IOException ^)
 				{
@@ -2147,6 +2194,8 @@ repeat:
 			bool connection_needs_checking;
 			//bool close_request;
 
+			double testing_rate; // testing
+
 
 
 	private: System::Windows::Forms::StatusStrip^  statusStrip1;
@@ -2238,21 +2287,6 @@ repeat:
 	private: System::IO::FileSystemWatcher^  fileSystemWatcher1;
 	private: System::Windows::Forms::ContextMenuStrip^  contextMenuStrip2;
 	private: System::Windows::Forms::CheckBox^  checkBox1;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -2385,7 +2419,8 @@ repeat:
 			// checkBox1
 			// 
 			this->checkBox1->AutoSize = true;
-			this->checkBox1->BackColor = System::Drawing::Color::Transparent;
+			this->checkBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->checkBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F));
 			this->checkBox1->Location = System::Drawing::Point(472, 13);
 			this->checkBox1->Name = L"checkBox1";
@@ -2393,6 +2428,7 @@ repeat:
 			this->checkBox1->TabIndex = 14;
 			this->checkBox1->Text = L"Turbo mode";
 			this->checkBox1->UseVisualStyleBackColor = false;
+			this->checkBox1->CheckedChanged += gcnew System::EventHandler(this, &Form1::checkBox1_CheckedChanged);
 			// 
 			// panel3
 			// 
@@ -4205,8 +4241,6 @@ repeat:
 			}
 
 
-
-
 			while(1)
 			{
 				Thread::Sleep(100);
@@ -4243,7 +4277,7 @@ out:
 			if (this->transfer_in_progress || this->firmware_transfer_in_progress) return;
 
 
-			ftrace(1,"install_firmware(%s)\n",path);
+			ftrace(1,printf("install_firmware(%s)\n",path));
 
 			if(::DialogResult::Yes != MessageBox::Show(this,"Do you want to install this firmware to your PVR?\n\n    "+path,"Really install firmware?",MessageBoxButtons::YesNo))
 				return;
@@ -4476,6 +4510,8 @@ out:
 					else
 						Console::WriteLine(copydialog->file_error);
 				}
+				if (!copydialog->is_closed)
+					copydialog->close_request_threadsafe();
 
 				//if (copydialog->copydirection == CopyDirection::PVR_TO_PC || copydialog->copymode == CopyMode::MOVE)
 				this->loadComputerDir();
@@ -4484,8 +4520,7 @@ out:
 				this->loadTopfieldDir();
 
 
-				if (!copydialog->is_closed)
-					copydialog->close_request_threadsafe();
+
 
 				Antares::enable_sleep_mode();
 				if (copydialog->completed && copydialog->file_error->Length==0)
@@ -4555,7 +4590,7 @@ out:
 			if (this->commandline->verbose) printf("transfer_to_PC\n");
 
 
-			copydialog->copydirection = CopyDirection::PVR_TO_PC;
+
 			copydialog->update_dialog_threadsafe();
 			TransferOptions ^transferoptions = copydialog->transferoptions;
 			int numitems = copydialog->numfiles;
@@ -4735,11 +4770,12 @@ restart_copy_to_pc:
 					}
 
 				}
-				catch(System::UnauthorizedAccessException ^)
+				catch(System::UnauthorizedAccessException ^ e)
 				{
 					//MessageBox::Show(this,"Antares cannot save the file to the location you chose. Please select another location and try again.","Write permission denied",MessageBoxButtons::OK);
 					copydialog->file_error = lang::c_bad_location;//"Antares cannot save the file to the location you chose. Please select another location and try again.";
 
+					copydialog->file_error += "\n\n" + e->Message;
 					goto end_copy_to_pc;				
 				}
 
@@ -4920,8 +4956,9 @@ restart_copy_to_pc:
 
 							bytes_received += dataLen;
 							total_bytes_received +=dataLen;
-							if (topfield_file_offset > item->size) printf("Warning: topfield_file_offset>item->size     %lld >  %lld  \n",(long long) topfield_file_offset, (long long) item->size);else
-								//copydialog->total_offset = total_bytes_received;
+							if (topfield_file_offset > item->size) 
+								printf("Warning: topfield_file_offset>item->size     %lld >  %lld  \n",(long long) topfield_file_offset, (long long) item->size);
+							else
 								copydialog->current_offsets[i] = topfield_file_offset;//bytes_received;
 
 
@@ -5125,7 +5162,7 @@ check_delete:
 				if (copydialog->copymode==CopyMode::MOVE  && topfield_file_offset == src_sizes[i])
 				{
 					int dr;
-					if (overwrite_action[i]!=SKIP || copydialog->action1_skipdelete)
+					if (overwrite_action[i]!=SKIP || ( copydialog->action1_skipdelete && ( copydialog->overwrite_category[i]== 0 || copydialog->overwrite_category[i]==3  )  )  )
 					{
 						dr = this->deleteTopfieldPath(item->full_filename);
 						if (dr>=0) source_deleted[i]=true;
@@ -5264,24 +5301,15 @@ end_copy_to_pc:
 			copydialog->commandline=this->commandline;
 			copydialog->transferoptions = transferoptions;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
-			//copydialog->showCopyDialog();
-
-
-			if (copymode==CopyMode::COPY)
-				copydialog->window_title1=lang::c_title1_copy;//"Copying File";
-			else
-				copydialog->window_title1=lang::c_title1_move;//"Moving File";
-
-			copydialog->window_title2=lang::c_title2_to_pc;//"[PVR --> PC]";
-			copydialog->Text = copydialog->window_title1 + " ... "+copydialog->window_title2; 
-			//copydialog->Text = copydialog->window_title;
+			copydialog->copymode=copymode;
+			copydialog->copydirection = CopyDirection::PVR_TO_PC;
 
 			copydialog->tiny_size();
-			copydialog->label3->Text=lang::c_finding;//"Finding files...";
+			
 			Console::WriteLine(lang::c_finding);
 			this->ShowCopyDialog(copydialog);
 
-			copydialog->Update();
+			//copydialog->update_dialog_threadsafe();
 
 
 
@@ -5463,7 +5491,7 @@ end_copy_to_pc:
 				{          // TODO: error handling
 					FileInfo^ fi = gcnew FileInfo(dest_filename[ind]);
 
-					dest_date[ind]=fi->CreationTime;
+					dest_date[ind]=fi->LastWriteTime;
 					dest_size[ind]=fi->Length;
 					int cat=2;
 					if (dest_size[ind] == item->size)
@@ -5656,10 +5684,11 @@ end_copy_to_pc:
 			copydialog->src_items = src_items;
 			//copydialog->topfield_items_by_folder = topfield_items_by_folder;
 			copydialog->overwrite_action = overwrite_action;
+			copydialog->overwrite_category = overwrite_category;
 			copydialog->numfiles=numitems;
 			copydialog->current_index=0;
 			copydialog->parent_checkbox = this->checkBox1;
-			copydialog->copymode=copymode;
+
 			copydialog->action1_skipdelete = action1_skipdelete;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 			copydialog->file_indices=file_indices;
@@ -5667,26 +5696,12 @@ end_copy_to_pc:
 
 			for (int i=0, ind=0; i<numitems; i++) {if ( !(src_items[i]->isdir || overwrite_action[i]==SKIP) ) ind++; file_indices[i]=ind;};
 
-
-
-
-			//String ^window_title_bit2 = "";
 			if (file_indices[numitems-1]>1)
 			{
 				copydialog->normal_size();
-				//window_title_bit2="s";
 			}
 			else
 				copydialog->small_size();
-
-			//copydialog->window_title=window_title_bit + " File"+window_title_bit2+" ... [PVR --> PC]"; 
-			//copydialog->Text = copydialog->window_title;
-
-
-			//this->CentreCopyDialog(copydialog);
-
-			//this->ResumeDrawing(this);
-			//this->ResumeDrawing(copydialog);
 
 			copydialog->ResumeLayout();
 
@@ -5748,7 +5763,7 @@ aborted:   // If the transfer was cancelled before it began
 					Thread::Sleep(100);
 				}
 
-				copydialog->copydirection=CopyDirection::PC_TO_PVR;
+
 				copydialog->update_dialog_threadsafe();
 				TransferOptions ^transferoptions = copydialog->transferoptions;
 				int numitems = copydialog->numfiles;
@@ -5910,7 +5925,7 @@ restart_copy_to_pvr:
 
 						if (copydialog->copymode == CopyMode::MOVE && copydialog->action1_skipdelete)
 						{
-							if (dest_size[i]==src_sizes[i])
+							if (dest_size[i]==src_sizes[i] && ( copydialog->overwrite_category[i]== 0 || copydialog->overwrite_category[i]==3  ) )
 							{
 								try 
 								{
@@ -6241,9 +6256,10 @@ restart_copy_to_pvr:
 									}
 
 
+									copydialog->current_offsets[i] = topfield_file_offset;
 									if ( (update%2)==0)
 									{
-										copydialog->current_offsets[i] = topfield_file_offset;
+
 										copydialog->current_bytes_received = bytes_sent;
 										copydialog->update_dialog_threadsafe();
 
@@ -6440,7 +6456,7 @@ check_delete:
 					if (copydialog->copymode==CopyMode::MOVE  && topfield_file_offset == src_sizes[i])
 					{
 						try{
-							if (overwrite_action[i]!=SKIP || copydialog->action1_skipdelete)
+							if (overwrite_action[i]!=SKIP || ( copydialog->action1_skipdelete && ( copydialog->overwrite_category[i]== 0 || copydialog->overwrite_category[i]==3  ) ) )
 							{
 								//Console::WriteLine(item->full_filename);
 								File::Delete(item->full_filename);
@@ -6587,24 +6603,15 @@ finish_transfer:
 			copydialog->commandline = this->commandline;
 			copydialog->transferoptions = transferoptions;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
-			//copydialog->showCopyDialog();
-
-			//String ^window_title_bit;
-			if (copymode==CopyMode::COPY)
-				copydialog->window_title1=lang::c_title1_copy;//"Copying File";
-			else
-				copydialog->window_title1=lang::c_title1_move;//"Moving File";
-
-			copydialog->window_title2=lang::c_title2_to_pvr;//"[PC --> PVR]";
-			copydialog->Text=copydialog->window_title1 + " ... "+copydialog->window_title2; 
-			//copydialog->Text = copydialog->window_title;
+			copydialog->copymode=copymode;
+			copydialog->copydirection=CopyDirection::PC_TO_PVR;
 
 			copydialog->tiny_size();
-			copydialog->label3->Text=lang::c_finding;//"Finding files...";
+			//copydialog->label3->Text=lang::c_finding;//"Finding files...";
 			Console::WriteLine(lang::c_finding);
 			this->ShowCopyDialog(copydialog);
 
-			copydialog->Update();
+			//copydialog->update_dialog_threadsafe();
 
 
 
@@ -7046,6 +7053,7 @@ finish_transfer:
 			copydialog->dest_filename = dest_filename;
 			copydialog->src_items = src_items;
 			copydialog->topfield_items_by_folder = topfield_items_by_folder;
+			copydialog->overwrite_category = overwrite_category;
 			copydialog->overwrite_action = overwrite_action;
 			copydialog->numfiles=numitems;
 			copydialog->current_index=0;
@@ -7059,23 +7067,15 @@ finish_transfer:
 			copydialog->turbo_mode = this->turbo_mode;
 			copydialog->turbo_mode2 = this->turbo_mode2;
 			copydialog->parent_checkbox = this->checkBox1;
-			copydialog->copymode=copymode;
+
 			copydialog->action1_skipdelete = action1_skipdelete;
 			copydialog->turbo_request = (this->settings["TurboMode"]=="on");
 
-
-
-			//String ^window_title_bit2 = "";
 			if (file_indices[numitems-1]>1)
-			{
 				copydialog->normal_size();
-				//window_title_bit2="s";
-			}
 			else
 				copydialog->small_size();
 
-			//copydialog->window_title=window_title_bit + " File"+window_title_bit2+" ... [PC --> PVR]"; 
-			//copydialog->Text = copydialog->window_title;
 
 
 
@@ -7193,8 +7193,7 @@ abort:  // If the transfer was cancelled before it began
 					listview->Sorting = SortOrder::Ascending;
 					settings->changeSetting(type+"_SortOrder","Ascending");
 				}
-				printf("%d\n",listview->Sorting);
-
+				
 			}
 			else
 			{
@@ -7202,7 +7201,7 @@ abort:  // If the transfer was cancelled before it began
 				settings->changeSetting(type+"_SortOrder","Ascending");
 			}
 
-			printf("--- col = %d   sortcolumn=%d \n",col,*sortcolumn);
+			trace(1,printf("--- col = %d   sortcolumn=%d \n",col,*sortcolumn));
 			*sortcolumn = col;
 			settings->changeSetting(type+"_SortColumn", col.ToString());
 
@@ -8048,7 +8047,7 @@ abort:  // If the transfer was cancelled before it began
 			// Return as an array of Bytes.
 
 
-			array<Byte>^ out_array = gcnew array<Byte>(0); 
+			array<Byte>^ out_array = gcnew array<Byte>(max_bytes); 
 			struct tf_packet reply;
 			int r;
 			enum
@@ -8079,6 +8078,9 @@ abort:  // If the transfer was cancelled before it began
 
 
 			long long tot_num_bytes=0;
+
+			long long rate_bytes = 0;  // for testing
+			DateTime t1, t2;   // for testing
 
 			while(0 < (r = get_tf_packet(fd, &reply)))
 			{
@@ -8125,8 +8127,12 @@ abort:  // If the transfer was cancelled before it began
 						}
 
 
-						Array::Resize(out_array,(int) ( tot_num_bytes+dataLen)  );
+						if (out_array->Length < tot_num_bytes+dataLen)
+							Array::Resize(out_array,(int) ( tot_num_bytes+dataLen)  );
 						Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , out_array, (int) tot_num_bytes  ,(int) dataLen);
+
+
+						if (tot_num_bytes==0) t1=DateTime::Now; else rate_bytes+=dataLen;   //testing
 
 						tot_num_bytes += dataLen;
 						if (tot_num_bytes > max_bytes)
@@ -8134,6 +8140,9 @@ abort:  // If the transfer was cancelled before it began
 						{
 							send_cancel(fd);
 							state = ABORT;
+
+							this->testing_rate =  ( (double) rate_bytes ) / ( (DateTime::Now-t1).TotalSeconds  ) / 1024.0/1024.0;
+
 						}
 						else
 							send_success(fd);
@@ -8188,7 +8197,344 @@ abort:  // If the transfer was cancelled before it began
 			}
 
 			this->absorb_late_packets(2,200);
+			Array::Resize(out_array,(int) ( tot_num_bytes)  );
+
 			return out_array;
+		}
+
+
+		long long int  read_topfield_file_for_testing(String^ filename, long long offset, long long max_bytes) {
+
+			// For testing purposes. Please delete
+
+
+			//array<Byte>^ out_array = gcnew array<Byte>(max_bytes); 
+			struct tf_packet reply;
+			int r;
+			enum
+			{
+				START,
+				DATA,
+				ABORT
+			} state;
+
+			char* srcPath = (char*)(void*)Marshal::StringToHGlobalAnsi(filename);
+
+			if (offset==0) 
+				r = send_cmd_hdd_file_send(this->fd, GET, srcPath);   
+			else
+				r = send_cmd_hdd_file_send_with_offset(this->fd, GET, srcPath,offset);
+
+			Marshal::FreeHGlobal((System::IntPtr)(void*)srcPath);
+
+			if(r < 0)
+			{
+				this->connection_error_occurred();
+				return 0;
+
+			}
+
+			state = START;
+
+
+
+			long long tot_num_bytes=0;
+
+			long long rate_bytes = 0;  // for testing
+			DateTime t1, t2;   // for testing
+
+			while(0 < (r = get_tf_packet(fd, &reply)))
+			{
+
+				switch (get_u32(&reply.cmd))
+				{
+				case DATA_HDD_FILE_START:
+					if(state == START)
+					{
+
+						send_success(fd);
+						state = DATA;
+					}
+					else
+					{
+						fprintf(stdout,
+							"ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
+							state);
+						this->connection_error_occurred();
+						send_cancel(fd);
+						state = ABORT;
+					}
+					break;
+
+				case DATA_HDD_FILE_DATA:
+					if(state == DATA)
+					{
+						__u64 offset = get_u64(reply.data);
+						__u16 dataLen =
+							get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
+
+						// if( !quiet)
+						// {
+						//progressStats(bytecount, offset + dataLen, startTime);
+						// }
+
+						if(r < get_u16(&reply.length))
+						{
+							fprintf(stdout,
+								"ERROR: Short packet %d instead of %d\n", r,
+								get_u16(&reply.length));
+							this->connection_error_occurred();
+
+						}
+
+
+						//if (out_array->Length < tot_num_bytes+dataLen)
+						//	Array::Resize(out_array,(int) ( tot_num_bytes+dataLen)  );
+						//Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , out_array, (int) tot_num_bytes  ,(int) dataLen);
+
+
+						if (tot_num_bytes==0) t1=DateTime::Now; else rate_bytes+=dataLen;   //testing
+
+						tot_num_bytes += dataLen;
+						if (tot_num_bytes > max_bytes)
+
+						{
+							send_cancel(fd);
+							state = ABORT;
+
+							this->testing_rate =  ( (double) rate_bytes ) / ( (DateTime::Now-t1).TotalSeconds  ) / 1024.0/1024.0;
+
+						}
+						else
+							send_success(fd);
+
+
+					}
+					else
+					{
+						fprintf(stdout,
+							"ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
+							state);
+						this->connection_error_occurred();
+						send_cancel(fd);
+						state = ABORT;
+
+					}
+					break;
+
+				case DATA_HDD_FILE_END:
+					send_success(fd);
+
+					//printf("DATA_HDD_FILE_END\n");
+
+					state=ABORT;
+
+					break;
+
+				case FAIL:
+					if (verbose) printf( "ERROR: Device reports %s in read_topfield_file_snippet\n",
+						decode_error(&reply));
+					send_cancel(fd);
+					this->connection_error_occurred();
+					state = ABORT;
+
+					break;
+
+				case SUCCESS:
+					//printf("SUCCESS\n");
+
+					break;
+
+				default:
+					fprintf(stdout, "ERROR: Unhandled packet (cmd 0x%x)\n",
+						get_u32(&reply.cmd));
+					this->connection_error_occurred();
+				}
+
+
+
+
+				if (state==ABORT) break;
+			}
+
+			this->absorb_late_packets(2,200);
+			//Array::Resize(out_array,(int) ( tot_num_bytes)  );
+
+			return 0;
+		}
+
+		
+		long long int  read_topfield_file_for_testing2(String^ filename, long long offset, long long max_bytes) {
+
+			// For testing purposes. Please delete
+
+
+			//array<Byte>^ out_array = gcnew array<Byte>(max_bytes); 
+			struct tf_packet reply;
+			int r;
+			enum
+			{
+				START,
+				DATA,
+				ABORT
+			} state;
+
+			char* srcPath = (char*)(void*)Marshal::StringToHGlobalAnsi(filename);
+
+			if (offset==0) 
+				r = send_cmd_hdd_file_send(this->fd, GET, srcPath);   
+			else
+				r = send_cmd_hdd_file_send_with_offset(this->fd, GET, srcPath,offset);
+
+			Marshal::FreeHGlobal((System::IntPtr)(void*)srcPath);
+
+			if(r < 0)
+			{
+				this->connection_error_occurred();
+				return 0;
+
+			}
+
+			state = START;
+
+
+
+			long long tot_num_bytes=0;
+
+			long long rate_bytes = -1;  // for testing
+			DateTime t1, t2;   // for testing
+
+			while(0 < (r = get_tf_packet(fd, &reply)))
+			{
+
+				switch (get_u32(&reply.cmd))
+				{
+				case DATA_HDD_FILE_START:
+					if(state == START)
+					{
+
+						send_success(fd);
+						state = DATA;
+					}
+					else
+					{
+						fprintf(stdout,
+							"ERROR: Unexpected DATA_HDD_FILE_START packet in state %d\n",
+							state);
+						this->connection_error_occurred();
+						send_cancel(fd);
+						state = ABORT;
+					}
+					break;
+
+				case DATA_HDD_FILE_DATA:
+					if(state == DATA)
+					{
+						__u64 offset = get_u64(reply.data);
+						__u16 dataLen =
+							get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
+
+						// if( !quiet)
+						// {
+						//progressStats(bytecount, offset + dataLen, startTime);
+						// }
+
+						if(r < get_u16(&reply.length))
+						{
+							fprintf(stdout,
+								"ERROR: Short packet %d instead of %d\n", r,
+								get_u16(&reply.length));
+							this->connection_error_occurred();
+
+						}
+
+
+						//if (out_array->Length < tot_num_bytes+dataLen)
+						//	Array::Resize(out_array,(int) ( tot_num_bytes+dataLen)  );
+						//Marshal::Copy( IntPtr( (void*)  &reply.data[8] ) , out_array, (int) tot_num_bytes  ,(int) dataLen);
+						if (rate_bytes==-1) {t1=DateTime::Now;rate_bytes=0;};
+						if (rate_bytes>max_bytes)
+						{
+							this->testing_rate =  ( (double) rate_bytes ) / ( (DateTime::Now-t1).TotalSeconds  ) / 1024.0/1024.0;
+							printf("%11lld %f\n",tot_num_bytes,this->testing_rate);
+							fflush(stdout);
+
+							t1=DateTime::Now;
+							rate_bytes=0;
+						}
+						else
+						{
+							rate_bytes+=dataLen;   //testing
+						}
+
+						tot_num_bytes += dataLen;
+						/*
+						if (tot_num_bytes > max_bytes)
+
+						{
+						send_cancel(fd);
+						state = ABORT;
+
+						this->testing_rate =  ( (double) rate_bytes ) / ( (DateTime::Now-t1).TotalSeconds  ) / 1024.0/1024.0;
+
+						}
+						else
+						*/
+						send_success(fd);
+
+
+					}
+					else
+					{
+						fprintf(stdout,
+							"ERROR: Unexpected DATA_HDD_FILE_DATA packet in state %d\n",
+							state);
+						this->connection_error_occurred();
+						send_cancel(fd);
+						state = ABORT;
+
+					}
+					break;
+
+				case DATA_HDD_FILE_END:
+					send_success(fd);
+
+					//printf("DATA_HDD_FILE_END\n");
+
+					state=ABORT;
+
+					break;
+
+				case FAIL:
+					if (verbose) printf( "ERROR: Device reports %s in read_topfield_file_snippet\n",
+						decode_error(&reply));
+					send_cancel(fd);
+					this->connection_error_occurred();
+					state = ABORT;
+
+					break;
+
+				case SUCCESS:
+					//printf("SUCCESS\n");
+
+					break;
+
+				default:
+					fprintf(stdout, "ERROR: Unhandled packet (cmd 0x%x)\n",
+						get_u32(&reply.cmd));
+					this->connection_error_occurred();
+				}
+
+
+
+
+				if (state==ABORT) break;
+			}
+
+			this->absorb_late_packets(2,200);
+			//Array::Resize(out_array,(int) ( tot_num_bytes)  );
+
+			return 0;
 		}
 
 
@@ -9462,7 +9808,6 @@ abort:  // If the transfer was cancelled before it began
 				 this->toolTip1->Show(this->tooltip_string, this->tooltip_listview, this->tooltip_location,20000);
 			 }
 
-
-	};    // class form1
+};    // class form1
 };    // namespace antares
 

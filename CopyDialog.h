@@ -62,14 +62,9 @@ namespace Antares {
 			this->label7->Text = "--:--:--";
 			this->label8->Text = "";
 			this->label10->Text = "";
-			this->window_title1="";
-			this->window_title2="";
-			//this->full_src_filename="";
-			//this->full_dest_filename="";
+
 			this->current_file="";
 			this->last_current_delta=0;
-			//this->current_offset=0; 
-			//this->total_offset=0;
 			this->has_initialised=false;
 
 			this->rate_stopwatch = gcnew System::Diagnostics::Stopwatch();
@@ -181,21 +176,6 @@ namespace Antares {
 		void new_packet(long long bytes)
 		{
 
-			/*
-			if ( false == this->rate_stopwatch->IsRunning)
-			{
-			this->rate_stopwatch->Reset();
-			this->rate_bytes=0;
-			this->rate_milliseconds=0;
-			this->rate_stopwatch->Start();
-			}
-			else
-			{
-			this->rate_bytes += bytes;
-			this->rate_milliseconds = this->rate_stopwatch->ElapsedMilliseconds;
-			}
-			*/
-
 			long long ts = this->rate_stopwatch->GetTimestamp();
 			if (this->no_packets_since_file_began)
 			{ 
@@ -293,14 +273,6 @@ namespace Antares {
 		void showCopyDialog(void)
 		{
 
-			//System::Threading::Thread^ thread = gcnew System::Threading::Thread( gcnew System::Threading::ThreadStart( &this->copydialog->ShowDialog) );
-
-			//thread->Start();
-			//System::Threading::Thread^ thread = (gcnew System::Threading::Thread(()=> { 
-			//	this->copydialog->Show(); 
-			//}));
-			//	Start(); 
-
 			// Hmm... I think this code can be thrown out
 			ThreadStart^ threadDelegate = gcnew ThreadStart( this, &CopyDialog::showDialog_thread);
 			Thread^ newThread = gcnew Thread( threadDelegate );
@@ -394,6 +366,18 @@ namespace Antares {
 		void tiny_size(void)    //visual arrangement for "finding files" stage
 		{
 			this->SuspendLayout();
+
+
+			String ^wt = this->copymode == CopyMode::MOVE ? lang::c_title1_move : lang::c_title1_copy;
+			wt = wt + "     ";
+			wt = wt + (this->copydirection == CopyDirection::PC_TO_PVR ? lang::c_title2_to_pvr : lang::c_title2_to_pc    );
+			this->Text = wt;
+
+
+			this->label3->Text=lang::c_finding;//"Finding files...";
+
+
+
 			this->progressBar1->Visible=false;
 			this->progressBar2->Visible=false;
 
@@ -538,14 +522,19 @@ namespace Antares {
 			}
 			else
 			{
-				this->label3->Text = current_file;
+
+
+				if (this->size_type==0)
+					this->label3->Text=lang::c_finding;//"Finding files...";
+				else
+					this->label3->Text = current_file;
+
 				this->label3->ForeColor = System::Drawing::Color::DarkBlue;
 
 				if (error_last_time)
 				{
 					Antares::TaskbarState::setNormal(this->parent_form);
 				}
-
 
 				error_last_time=false;
 
@@ -575,34 +564,46 @@ namespace Antares {
 			catch(...){}  //Todo: nicer way of dealing with an absent console.
 
 
-			//double current_delta = (double) (time(NULL) - this->current_start_time);
-			//double total_delta = (double) (time(NULL) - this->total_start_time);
+
+			int i = this->current_index;
+			int ind = 0;
+			int indmax  =0;
+		
+			try{ind=this->file_indices[i]; indmax=this->file_indices[this->numfiles-1];} catch(...){};
+
+			String ^wt;
+			if (this->size_type == 0 || ind==0)
+			{
+
+				wt = this->copymode == CopyMode::MOVE ? lang::c_title1_move : lang::c_title1_copy;
+
+			}
+			else
+			{
+				wt = this->copymode == CopyMode::MOVE ? lang::c_title1b_move : lang::c_title1b_copy;
+				wt = String::Format(wt, ind, indmax);
+
+			}
+			wt = wt + "     ";
+			wt = wt + (this->copydirection == CopyDirection::PC_TO_PVR ? lang::c_title2_to_pvr : lang::c_title2_to_pc    );
+
+			this->Text = wt;
+	
+
+
+
 			double current_delta = (double) this->rate_stopwatch->GetTimestamp() / (double) this->rate_stopwatch->Frequency;
 			double current_rate;//, total_rate;
-			int i = this->current_index;
+			
 
 			long long size = this->filesizes[i];
 			long long offset = this->current_offsets[i]; 
 
-			//if (current_delta>0)
-			//	current_rate = (double) (this->current_bytes_received) / current_delta;
-			//else current_rate=0;
-
 			current_rate = this->get_rate();
 
 
-			//if (total_delta>0)
-			//	total_rate = (double) (this->total_bytes_received) / total_delta;
-			//else
-			//	total_rate=0;
-
 			if (this->has_initialised==false) {
-				/*
-				if (this->parent_checkbox !=nullptr)
-				this->checkBox1->Checked = this->parent_checkbox->Checked;
-				else
-				this->checkBox1->Checked = *this->turbo_mode;
-				*/
+
 				if (this->settings != nullptr)
 				{
 					this->checkBox1->Checked = this->turbo_request = (this->settings["TurboMode"] == "on");
@@ -613,13 +614,6 @@ namespace Antares {
 
 
 				this->has_initialised=true;
-
-				/*
-				if (this->numfiles<=1)				
-				this->small_size();
-				else
-				this->normal_size();
-				*/
 
 			};
 			//printf(" turbo_mode = %d  turbo_mode2=%d  turbo_request = %d  len=%d\n",(int) *this->turbo_mode, (int) *this->turbo_mode2, (int) this->turbo_request,this->current_error->Length);
@@ -640,13 +634,6 @@ namespace Antares {
 
 			this->label4->Text =  (offset / 1024.0/1024.0).ToString("#,#,0.0")+" "+lang::u_mb+" / "+(size/1024.0/1024.0).ToString("#,#,0")+" "+lang::u_mb;
 			
-			/*
-			long long int offset_MB = offset / 1024LL/1024LL;
-			int offset_dec_MB = (int)  (  (offset - offset_MB * 1024LL*1024LL)*10/1024/1024 );
-			String^ offset_int_MB =  (offset_MB).ToString("#,#,#"); if (offset_int_MB->Length==0) offset_int_MB="0";
-			this->label4->Text = offset_int_MB+"."+offset_dec_MB.ToString()+" MB / "+(size/1024/1024).ToString("#,#,#")+" MB";
-*/
-
 			long long total_offset=0;  long long total_size=0;
 			long long files_remaining=0;
 			for (int j=0; j < this->numfiles; j++)
@@ -664,29 +651,9 @@ namespace Antares {
 
 			this->label5->Text =  (total_offset / 1024.0 / 1024.0).ToString("#,#,0.0")+" "+lang::u_mb+" / "
 				+  (total_size/1024.0 / 1024.0).ToString("#,#,0")+" "+lang::u_mb+"  "+lang::st_total;
-			/*
-			long long int total_offset_MB = total_offset / 1024LL/1024LL;
-			int total_offset_dec_MB = (int)  ( (total_offset - total_offset_MB * 1024LL*1024LL)*10/1024/1024 );
-			String^ total_offset_int_MB = (total_offset_MB).ToString("#,#,#"); if (total_offset_int_MB->Length==0) total_offset_int_MB="0";
+	
+			
 
-			this->label5->Text = 
-			total_offset_int_MB+"."+total_offset_dec_MB.ToString()+" MB / "
-			+ (total_size/1024/1024).ToString("#,#,#")+" MB"
-			+ "  Total";
-			*/
-			int ind = this->file_indices[i];
-			int indmax = this->file_indices[this->numfiles-1];
-			if (indmax>1)
-			{
-				//this->label10->Text= ind.ToString()+" / "+indmax.ToString();
-				//this->label10->Text="File "+ind.ToString()+" of "+indmax.ToString();
-
-				this->label10->Text="";
-				//this->Text = this->window_title + "                  "+" ("+ind.ToString()+" / "+indmax.ToString()+")";
-				this->Text = this->window_title1 + "  " + ind.ToString()+" of "+indmax.ToString()+ "   " + this->window_title2;
-			}
-			else
-				this->Text = this->window_title1 + "  " + this->window_title2;
 
 			if (size>0)
 			{
@@ -717,24 +684,6 @@ namespace Antares {
 					if (current_rate2>0.0 && current_rate2<20000000.0)
 						ratestring = (current_rate2/1024.0/1024.0).ToString("F2");
 
-					/*
-					if (current_rate<0 )
-					{
-
-					if (this->time_between_files>0)
-					{
-					double current_rate2 = this->bytes_between_files / this->time_between_files;
-					if (current_rate2>0.0 && current_rate<20.0)
-					ratestring = (current_rate/1024.0/1024.0).ToString("F2");
-					}
-
-
-					}
-					else
-					{
-					ratestring = (current_rate/1024.0/1024.0).ToString("F2");
-					}
-					*/
 
 					this->label8->Text = ratestring + " MB/s";
 
@@ -808,31 +757,23 @@ namespace Antares {
 		long long last_packet_ticks;
 		long long bytes_between_files;
 
-
-		//long long int current_filesize;
-		//long long int total_filesize;
-		//long long int current_offset;
-		//long long int total_offset;
 		long long current_bytes_received;
 		long long total_bytes_received;
 		array<long long int>^ filesizes;
-		//array<long long int>^ current_offsets;
+
 		int current_index;
 		int numfiles;
 
 		time_t current_start_time, total_start_time;
-		String^ window_title1;
-		String^ window_title2;
 		String^ current_file;
 		double last_current_delta;
 		bool has_initialised;
 		IWin32Window ^parent_win;
 
-
-		//String^ full_dest_filename, ^full_src_filename;
 		array<bool>^          dest_exists;
 		array<long long int>^ dest_size;
 		array<int>^           overwrite_action;
+		array<int>^           overwrite_category;
 		array<long long int>^ current_offsets;
 		array<String^>^       dest_filename;
 		array<FileItem^>^     src_items;
@@ -1247,32 +1188,7 @@ private: System::Windows::Forms::Label^  label10;
 
 				 //this->panel1->Dock=DockStyle::Fill;
 			 }
-			 /*
 
-	private: System::Void button4_Click(System::Object^  sender, System::EventArgs^  e) {
-				 this->Dock = DockStyle::Bottom;
-				 this->parent_panel1->BringToFront();
-				 this->FormBorderStyle = Windows::Forms::FormBorderStyle::FixedToolWindow;
-
-				 this->button4->Visible = false;
-				 this->button3->Visible = true;
-				 this->button2->Visible = true;
-
-
-			 }
-	private: System::Void button3_Click(System::Object^  sender, System::EventArgs^  e) {
-				 this->Dock = DockStyle::Top;
-				 this->parent_panel1->BringToFront();
-				 this->FormBorderStyle = Windows::Forms::FormBorderStyle::None;
-
-
-				 this->button4->Visible = true;
-				 this->button3->Visible = false;
-				 this->button2->Visible = true;
-
-
-			 }
-			 */
 
 			 void arrange_centred_labels(void)
 			 {
