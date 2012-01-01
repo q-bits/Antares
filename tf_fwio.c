@@ -390,7 +390,7 @@ static int tf_wait_for_req_data(libusb_device_handle *tf, tf_fw_data_t *fw_data)
 		fw_data->seq = reply.seq;
 		fw_data->len = get_u16(reply.data);
 		fw_data->offset = get_u24(reply.data + 2);
-		ftrace(1,printf("REQ_DATA: seq=%02X len=%u, offset=%lu", fw_data->seq, fw_data->len, fw_data->offset));
+		ftrace(1,printf("REQ_DATA: seq=%02X len=%u, offset=%lu\n", fw_data->seq, fw_data->len, fw_data->offset));
 		return 0;
 	}
 	if (reply.cmd == TF_FW_END) {

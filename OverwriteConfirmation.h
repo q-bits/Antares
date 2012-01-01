@@ -189,6 +189,17 @@ namespace Antares {
 			array<String^>^ blue_strings = {lang::o_correct, lang::o_undersized, lang::o_oversized, lang::o_correct2, lang::o_older,lang::o_newer, lang::o_wrong_size};
 			array<String^>^ blue_strings_plural = {lang::o_correct_plural, lang::o_undersized_plural, lang::o_oversized_plural, lang::o_correct2_plural, lang::o_older_plural,lang::o_newer_plural, lang::o_wrong_size_plural};
 
+			array<String^>^ skip_strings = {lang::o_skip_r, lang::o_skip, lang::o_skip, lang::o_skip, lang::o_skip, lang::o_skip, lang::o_skip};
+			array<String^>^ overwrite_strings = {lang::o_overwrite, lang::o_overwrite, lang::o_overwrite, lang::o_overwrite, lang::o_overwrite, lang::o_overwrite, lang::o_overwrite};
+
+
+			for (int i=0; i<7; i++)
+			{
+				skips[i]->Text = skip_strings[i];
+				overwrites[i]->Text = overwrite_strings[i];
+			}
+
+
 			// Set visibility of the 7 categories, and set the blue labels to have the correct language and plurality
 			for (int i=0; i<7; i++)
 			{
@@ -267,7 +278,7 @@ namespace Antares {
 			}
 
 
-			int maxheight = Screen::PrimaryScreen->WorkingArea.Height;
+			int maxheight = Screen::PrimaryScreen->WorkingArea.Height-16;
 			if (maxheight<580) maxheight=580;
 
 
