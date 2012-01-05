@@ -572,6 +572,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\tf_models.h"
+				>
+			</File>
+			<File
 				RelativePath=".\types.h"
 				>
 			</File>

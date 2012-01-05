@@ -3413,7 +3413,7 @@ repeat:
 
 		System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
 
-
+			trace(1,printf("Form1_Load\n"));
 
 
 
@@ -4271,6 +4271,27 @@ out:
 			thread->Start(firmware_dialog);
 		}
 
+
+		static int get_tfd_sysid(String^ path)
+		{
+			try{
+				System::IO::FileStream ^src_file = File::Open(path, System::IO::FileMode::Open, System::IO::FileAccess::Read,System::IO::FileShare::Read);
+
+				array<Byte>^ inp_buffer = gcnew array<unsigned char>(6);
+				int w = src_file->Read(inp_buffer, 0, 6);
+				src_file->Close();
+				if (w < 6) return 0;
+
+
+				return (int) inp_buffer[4]*256 + inp_buffer[5];
+
+			}
+			catch(...)
+			{
+				return 0;
+			}
+		}
+
 		System::Void install_firmware(String^ path)
 
 		{
@@ -4298,14 +4319,26 @@ out:
 			this->EnableComponents(false);
 			firmware_dialog->Location = System::Drawing::Point( (this->Width - firmware_dialog->Width)/2, -50+(this->Height - firmware_dialog->Height)/2);
 			firmware_dialog->BringToFront();
+			String ^pad="  ";
 			firmware_dialog->path = path;
-			firmware_dialog->textBox1->Text = path;
+			firmware_dialog->textBox1->Text = pad + path;
 			firmware_dialog->parent_form = this;
 			//firmware_dialog->textBox2->Text = "The file you selected contains Topfield firmware. To install it to your device, click 'Install'.";
 			firmware_dialog->button1->Click += gcnew System::EventHandler(this, &Form1::firmware_installer_cancelled);
 			//firmware_dialog->button3->Click += gcnew System::EventHandler(this, &Form1::firmware_click_install);
 
 			firmware_dialog->cancel_text="Cancel";
+
+			firmware_dialog->file_sysid = get_tfd_sysid(path);
+			if (firmware_dialog->file_sysid > 0)
+			{
+				firmware_dialog->systemID_textbox->Text = pad + firmware_dialog->file_sysid.ToString();
+				firmware_dialog->model_textbox->Text = pad + tf_models::find_model_name(firmware_dialog->file_sysid);
+			}
+
+
+
+
 			this->firmware_click_install(nullptr, nullptr);
 
 
@@ -9686,6 +9719,7 @@ abort:  // If the transfer was cancelled before it began
 
 			 }
 
+			 
 			 static void set_filesystemwatcher_callback(Object^ obj)
 			 {
 
@@ -9708,8 +9742,11 @@ abort:  // If the transfer was cancelled before it began
 				 }catch(...){
 					 trace(0,printf("Exception caught setting filesystemwatcher.\n"));
 				 };
+				 trace(1,printf("Finished setting filesystemwatcher.\n"));
 
 				 Monitor::Exit(frm->fileSystemWatcher1);
+				 trace(1,printf("End set_filesystemwatcher_callback.\n"));
+
 
 			 }
 
@@ -9720,7 +9757,6 @@ abort:  // If the transfer was cancelled before it began
 				 this->watched_directory = dir;
 				 ThreadPool::QueueUserWorkItem( gcnew WaitCallback( Form1::set_filesystemwatcher_callback ), this );
 
-				 //Form1::set_filesystemwatcher_callback(this);
 
 
 			 }

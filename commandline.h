@@ -224,7 +224,7 @@ namespace Antares {
 				{
 					Console::WriteLine("\nYou selected the "+tok+" option. ");
 					Console::WriteLine("For help with the command line, please see the Antares home page.");
-					Console::WriteLine("http://users.on.net/~henry/antares/commandline.html\n");
+					Console::WriteLine("http://haselgrove.id.au/antares/commandline.html\n");
 					ind++;
 					continue;
 				}
