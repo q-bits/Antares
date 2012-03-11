@@ -3001,7 +3001,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  1.0";
+			this->Text = L"Antares  1.0 test5";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -4045,6 +4045,7 @@ repeat:
 			{
 
 				if (firmware_dialog->cancelled) goto out;
+				fw_data.sysid=0;
 				r = tf_fw_upload(this->fd, &fw_data);
 				if (r<0) 
 				{
@@ -4193,17 +4194,22 @@ repeat:
 				success=false;
 				//printf("Failed to upgrade firmware -- you must reboot\n");
 				firmware_dialog->cancel_text = "Close";
-				if (!String::IsNullOrEmpty(error_message))
+
+				trace(1,printf("%s\n",error_message));
+				error_message = "The firmware upgrade failed.\r\n"+error_message+"\r\n";
+				trace(1,printf("The firmware upgrade failed...\n"));
+				if (fw_data.sysid != 0 && fw_data.sysid != firmware_dialog->file_sysid && firmware_dialog->file_sysid != 39321)
 				{
-					firmware_dialog->update_status_text(error_message+"\r\nAntares will attempt to automatically reboot the PVR.");
-					trace(1,printf("%s\n",error_message));
+					error_message += "The firmware file is not compatible with your PVR.\r\n";
+					error_message += "Your PVR has System ID " +(fw_data.sysid).ToString()+".";
+					String ^str = tf_models::find_model_name(fw_data.sysid);
+					if (str->Length > 0) error_message += " It is a "+str+".";
+					error_message += "\r\n";
 				}
-				else
-				{
-					firmware_dialog->update_status_text("The firmware upgrade failed. Are you sure the file is the correct version for your PVR?"
-					+"\r\nAntares will attempt to automatically reboot the PVR.");
-					trace(1,printf("The firmware upgrade failed...\n"));
-				}
+				error_message +="\r\nAntares will attempt to automatically reboot the PVR.";
+
+				firmware_dialog->update_status_text(error_message);
+
 				Thread::Sleep(2000);
 
 
@@ -4214,7 +4220,7 @@ repeat:
 			Thread::Sleep(500);
 			bool reboot_success=false;
 			int reboot_successes=0;
-			for (int j=0; j<5; j++)
+			for (int j=0; j<0; j++)
 			{
 				r=tf_fw_reboot(this->fd);
 				trace(1,printf("j=%d: tf_fw_reboot returned %d. fd=%ld\n",j,r,(long int) this->fd));
@@ -4990,10 +4996,13 @@ restart_copy_to_pc:
 							bytes_received += dataLen;
 							total_bytes_received +=dataLen;
 							if (topfield_file_offset > item->size) 
+							{
 								printf("Warning: topfield_file_offset>item->size     %lld >  %lld  \n",(long long) topfield_file_offset, (long long) item->size);
-							else
-								copydialog->current_offsets[i] = topfield_file_offset;//bytes_received;
+								copydialog->filesizes[i]=topfield_file_offset;
+								item->size = topfield_file_offset;
+							}
 
+							copydialog->current_offsets[i] = topfield_file_offset;
 
 							copydialog->current_bytes_received = bytes_received;
 							copydialog->total_bytes_received = total_bytes_received;
@@ -7960,13 +7969,27 @@ abort:  // If the transfer was cancelled before it began
 				return false;
 			}
 
+		
+			ri->readsize=size;
 			if (size==readsize)
 			{
+				if (buffer[0]==0 && buffer[1]==8 && item->full_filename->EndsWith(".tfd",StringComparison::InvariantCultureIgnoreCase))
+				{
+					int sysid = (int) buffer[4] * 256 + buffer[5];
+					sprintf_s(ri->SISvcName, sizeof(ri->SISvcName), "%s","");
+					sprintf_s(ri->ExtEventText, sizeof(ri->ExtEventText), "%s","");
+					sprintf_s(ri->EventEventDescription, sizeof(ri->EventEventDescription) , "(%d) %s",sysid, tf_models::find_model_name(sysid));
+					return true;
 
-				Marshal::Copy(buffer,0,System::IntPtr( &charbuf[0]),size);
-				HDD_DecodeRECHeader (charbuf, ri);
-				ri->readsize=size;
-				return true;
+				}
+				else
+				{
+
+					Marshal::Copy(buffer,0,System::IntPtr( &charbuf[0]),size);
+					HDD_DecodeRECHeader (charbuf, ri);
+					
+					return true;
+				}
 			}
 			else
 				return false;

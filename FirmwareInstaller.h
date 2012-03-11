@@ -118,6 +118,8 @@ namespace Antares {
 	private: 
 	private: System::Windows::Forms::Label^  label4;
 	public: System::Windows::Forms::TextBox^  model_textbox;
+private: System::Windows::Forms::Label^  label5;
+public: 
 	private: 
 	public: 
 
@@ -149,6 +151,7 @@ namespace Antares {
 			this->systemID_textbox = (gcnew System::Windows::Forms::TextBox());
 			this->label4 = (gcnew System::Windows::Forms::Label());
 			this->model_textbox = (gcnew System::Windows::Forms::TextBox());
+			this->label5 = (gcnew System::Windows::Forms::Label());
 			this->SuspendLayout();
 			// 
 			// button1
@@ -166,7 +169,7 @@ namespace Antares {
 			// 
 			this->label1->AutoSize = true;
 			this->label1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F));
-			this->label1->Location = System::Drawing::Point(12, 18);
+			this->label1->Location = System::Drawing::Point(12, 21);
 			this->label1->Name = L"label1";
 			this->label1->Size = System::Drawing::Size(67, 16);
 			this->label1->TabIndex = 1;
@@ -176,12 +179,14 @@ namespace Antares {
 			// 
 			this->textBox1->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->textBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 8.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+			this->textBox1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
+			this->textBox1->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(96)));
 			this->textBox1->Location = System::Drawing::Point(133, 18);
 			this->textBox1->Name = L"textBox1";
 			this->textBox1->ReadOnly = true;
-			this->textBox1->Size = System::Drawing::Size(546, 20);
+			this->textBox1->Size = System::Drawing::Size(546, 22);
 			this->textBox1->TabIndex = 2;
 			// 
 			// textBox2
@@ -200,7 +205,7 @@ namespace Antares {
 			// 
 			this->label2->AutoSize = true;
 			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F));
-			this->label2->Location = System::Drawing::Point(12, 93);
+			this->label2->Location = System::Drawing::Point(12, 92);
 			this->label2->Name = L"label2";
 			this->label2->Size = System::Drawing::Size(48, 16);
 			this->label2->TabIndex = 6;
@@ -223,26 +228,30 @@ namespace Antares {
 			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F));
 			this->label3->Location = System::Drawing::Point(12, 51);
 			this->label3->Name = L"label3";
-			this->label3->Size = System::Drawing::Size(187, 16);
+			this->label3->Size = System::Drawing::Size(105, 16);
 			this->label3->TabIndex = 8;
-			this->label3->Text = L"Compatible with:       System ID";
+			this->label3->Text = L"Compatible with:";
 			// 
 			// systemID_textbox
 			// 
 			this->systemID_textbox->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->systemID_textbox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
-				static_cast<System::Byte>(0)));
-			this->systemID_textbox->Location = System::Drawing::Point(201, 47);
+			this->systemID_textbox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, 
+				System::Drawing::GraphicsUnit::Point, static_cast<System::Byte>(0)));
+			this->systemID_textbox->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(96)));
+			this->systemID_textbox->Location = System::Drawing::Point(205, 48);
 			this->systemID_textbox->Name = L"systemID_textbox";
 			this->systemID_textbox->ReadOnly = true;
-			this->systemID_textbox->Size = System::Drawing::Size(75, 21);
+			this->systemID_textbox->Size = System::Drawing::Size(75, 22);
 			this->systemID_textbox->TabIndex = 9;
 			// 
 			// label4
 			// 
 			this->label4->AutoSize = true;
 			this->label4->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F));
+			this->label4->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(96)));
 			this->label4->Location = System::Drawing::Point(307, 51);
 			this->label4->Name = L"label4";
 			this->label4->Size = System::Drawing::Size(46, 16);
@@ -253,20 +262,37 @@ namespace Antares {
 			// 
 			this->model_textbox->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
-			this->model_textbox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+			this->model_textbox->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
-			this->model_textbox->Location = System::Drawing::Point(359, 47);
+			this->model_textbox->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(96)));
+			this->model_textbox->Location = System::Drawing::Point(359, 48);
 			this->model_textbox->Name = L"model_textbox";
 			this->model_textbox->ReadOnly = true;
-			this->model_textbox->Size = System::Drawing::Size(320, 21);
+			this->model_textbox->Size = System::Drawing::Size(320, 22);
 			this->model_textbox->TabIndex = 11;
+			// 
+			// label5
+			// 
+			this->label5->AutoSize = true;
+			this->label5->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F));
+			this->label5->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(96)));
+			this->label5->Location = System::Drawing::Point(130, 51);
+			this->label5->Name = L"label5";
+			this->label5->Size = System::Drawing::Size(72, 16);
+			this->label5->TabIndex = 12;
+			this->label5->Text = L" System ID";
 			// 
 			// FirmwareInstaller
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
+			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
+				static_cast<System::Int32>(static_cast<System::Byte>(250)));
 			this->ClientSize = System::Drawing::Size(746, 305);
 			this->ControlBox = false;
+			this->Controls->Add(this->label5);
 			this->Controls->Add(this->model_textbox);
 			this->Controls->Add(this->label4);
 			this->Controls->Add(this->systemID_textbox);

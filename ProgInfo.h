@@ -176,7 +176,7 @@ namespace Antares {
 			this->label2->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label2->ForeColor = System::Drawing::Color::DarkGreen;
-			this->label2->Location = System::Drawing::Point(87, 52);
+			this->label2->Location = System::Drawing::Point(87, 46);
 			this->label2->Name = L"label2";
 			this->label2->Size = System::Drawing::Size(74, 18);
 			this->label2->TabIndex = 1;
@@ -189,7 +189,7 @@ namespace Antares {
 			this->label3->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label3->ForeColor = System::Drawing::Color::DarkGreen;
-			this->label3->Location = System::Drawing::Point(114, 81);
+			this->label3->Location = System::Drawing::Point(114, 72);
 			this->label3->Name = L"label3";
 			this->label3->Size = System::Drawing::Size(45, 18);
 			this->label3->TabIndex = 2;
@@ -202,7 +202,7 @@ namespace Antares {
 			this->label4->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label4->ForeColor = System::Drawing::Color::DarkGreen;
-			this->label4->Location = System::Drawing::Point(68, 142);
+			this->label4->Location = System::Drawing::Point(68, 124);
 			this->label4->Name = L"label4";
 			this->label4->Size = System::Drawing::Size(99, 18);
 			this->label4->TabIndex = 3;
@@ -216,7 +216,7 @@ namespace Antares {
 			this->filename->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold));
 			this->filename->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(80)), static_cast<System::Int32>(static_cast<System::Byte>(80)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(80)));
-			this->filename->Location = System::Drawing::Point(177, 8);
+			this->filename->Location = System::Drawing::Point(177, 4);
 			this->filename->Name = L"filename";
 			this->filename->Size = System::Drawing::Size(341, 18);
 			this->filename->TabIndex = 4;
@@ -228,7 +228,7 @@ namespace Antares {
 			this->channel->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->channel->ForeColor = System::Drawing::Color::Navy;
-			this->channel->Location = System::Drawing::Point(172, 52);
+			this->channel->Location = System::Drawing::Point(172, 46);
 			this->channel->Name = L"channel";
 			this->channel->Size = System::Drawing::Size(106, 18);
 			this->channel->TabIndex = 5;
@@ -240,7 +240,7 @@ namespace Antares {
 			this->title->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->title->ForeColor = System::Drawing::Color::Navy;
-			this->title->Location = System::Drawing::Point(172, 81);
+			this->title->Location = System::Drawing::Point(172, 72);
 			this->title->Name = L"title";
 			this->title->Size = System::Drawing::Size(178, 18);
 			this->title->TabIndex = 6;
@@ -251,13 +251,13 @@ namespace Antares {
 			this->description->BackColor = System::Drawing::Color::GhostWhite;
 			this->description->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.5F));
 			this->description->ForeColor = System::Drawing::Color::Black;
-			this->description->Location = System::Drawing::Point(175, 143);
+			this->description->Location = System::Drawing::Point(175, 124);
 			this->description->Margin = System::Windows::Forms::Padding(5);
 			this->description->Multiline = true;
 			this->description->Name = L"description";
 			this->description->ReadOnly = true;
 			this->description->ScrollBars = System::Windows::Forms::ScrollBars::Vertical;
-			this->description->Size = System::Drawing::Size(502, 111);
+			this->description->Size = System::Drawing::Size(502, 106);
 			this->description->TabIndex = 7;
 			this->description->TabStop = false;
 			this->description->Text = L"In this episode, some really interesting stuff happens. Starring Joe Blogs, Mary " 
@@ -270,7 +270,7 @@ namespace Antares {
 			this->label5->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label5->ForeColor = System::Drawing::Color::DarkGreen;
-			this->label5->Location = System::Drawing::Point(33, 111);
+			this->label5->Location = System::Drawing::Point(33, 98);
 			this->label5->Name = L"label5";
 			this->label5->Size = System::Drawing::Size(128, 18);
 			this->label5->TabIndex = 8;
@@ -285,7 +285,7 @@ namespace Antares {
 			this->panel1->Dock = System::Windows::Forms::DockStyle::Top;
 			this->panel1->Location = System::Drawing::Point(0, 0);
 			this->panel1->Name = L"panel1";
-			this->panel1->Size = System::Drawing::Size(689, 37);
+			this->panel1->Size = System::Drawing::Size(689, 31);
 			this->panel1->TabIndex = 9;
 			this->panel1->Layout += gcnew System::Windows::Forms::LayoutEventHandler(this, &ProgInfo::panel1_Layout);
 			// 
@@ -295,7 +295,7 @@ namespace Antares {
 			this->duration->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->duration->ForeColor = System::Drawing::Color::Navy;
-			this->duration->Location = System::Drawing::Point(172, 111);
+			this->duration->Location = System::Drawing::Point(172, 98);
 			this->duration->Name = L"duration";
 			this->duration->Size = System::Drawing::Size(73, 18);
 			this->duration->TabIndex = 10;
@@ -307,7 +307,7 @@ namespace Antares {
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->button1->ForeColor = System::Drawing::SystemColors::ControlText;
-			this->button1->Location = System::Drawing::Point(36, 228);
+			this->button1->Location = System::Drawing::Point(36, 162);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(123, 26);
 			this->button1->TabIndex = 11;
@@ -320,7 +320,7 @@ namespace Antares {
 			this->recorded_duration->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Regular, 
 				System::Drawing::GraphicsUnit::Point, static_cast<System::Byte>(0)));
 			this->recorded_duration->ForeColor = System::Drawing::Color::Navy;
-			this->recorded_duration->Location = System::Drawing::Point(593, 111);
+			this->recorded_duration->Location = System::Drawing::Point(593, 98);
 			this->recorded_duration->Name = L"recorded_duration";
 			this->recorded_duration->Size = System::Drawing::Size(73, 18);
 			this->recorded_duration->TabIndex = 13;
@@ -333,7 +333,7 @@ namespace Antares {
 			this->label6->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 11.25F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->label6->ForeColor = System::Drawing::Color::DarkGreen;
-			this->label6->Location = System::Drawing::Point(460, 111);
+			this->label6->Location = System::Drawing::Point(451, 98);
 			this->label6->Name = L"label6";
 			this->label6->Size = System::Drawing::Size(136, 18);
 			this->label6->TabIndex = 12;

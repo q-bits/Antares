@@ -130,6 +130,8 @@ void HDD_DecodeRECHeader (char *Buffer, tRECHeaderInfo *RECHeaderInfo)
 	RECHeaderInfo->SIVideoPID  = get_word(&Buffer [p + 10]);
 	RECHeaderInfo->SIAudioPID  = get_word(&Buffer [p + 12]);
 
+	//printf("Service ID = %d,     Service Number = %d\n",(int)RECHeaderInfo->HeaderSvcNumber ,(int) RECHeaderInfo->SIServiceID);
+
 	PF(SISatIndex);
 	PF(SIReserved1);
 	PF(SITPIdx); 

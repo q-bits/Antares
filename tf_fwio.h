@@ -41,6 +41,7 @@ typedef struct {
 	unsigned seq;
 	unsigned len;		/* will be no more than MAX_DATA_SIZE */
 	unsigned long offset;
+	int sysid;
 } tf_fw_data_t;
 
 /**
