@@ -72,6 +72,7 @@ namespace Antares {
 		bool showgui_specified;
 		bool exit_on_completion;
 		bool no_prompt;
+		bool force_delete;
 		bool turbo_specified;
 		int turbo_mode;
 		bool recurse;
@@ -80,6 +81,8 @@ namespace Antares {
 		bool overwrite_all;
 		bool verbose;
 		bool fverbose;
+		int nargs;
+		
 
 		int pid;
 
@@ -110,6 +113,9 @@ namespace Antares {
 			this->dont_free_console=false;
 			this->overwrite_all=false;
 			this->verbose=false;
+			this->force_delete=false;
+			this->nargs=0;
+			
 
 
 
@@ -123,14 +129,17 @@ namespace Antares {
 			{
 				String^ tok = this->tokens[ind];
 
-				if (tok=="cp" || tok=="mv" || tok=="info") tok="-"+tok;
+				if (tok=="cp" || tok=="mv" || tok=="info" || tok=="rm") tok="-"+tok;
 
-				if (tok=="-cp" || tok=="-mv" || tok=="/cp" || tok=="/mv" || tok=="-info")
+				if (tok=="-cp" || tok=="-mv" || tok=="/cp" || tok=="/mv" || tok=="-info" || tok=="/info" || tok=="-rm" 
+					|| tok=="-del" )
 
 				{
 					String^ cmd = tok->Substring(1,tok->Length-1);
-					int nargs = 2;
-					if (cmd=="info") nargs=1;
+					if (tok=="del") tok="rm";
+					nargs = 2;
+				
+					if (cmd=="info" || cmd=="rm") nargs=1;
 					if (the_command->Length>0)
 					{
 						this->error("ERROR: The commands "+the_command+" and "+cmd+" can't be used at the same time.");
@@ -139,9 +148,13 @@ namespace Antares {
 					this->the_command = cmd;
 
 
+
 					if (ind + nargs >= nt)
 					{
-						this->error("ERROR: The command "+the_command+" requires both a source and destination.");
+						if (nargs==2)
+							this->error("ERROR: The command "+the_command+" requires both a source and destination.");
+						else if (nargs==1)
+							this->error("ERROR: The command "+the_command+" is missing a filename or folder name.");
 						goto out;
 					}
 					ind++;
@@ -152,6 +165,8 @@ namespace Antares {
 						this->cmd_param2 = this->tokens[ind];
 						ind++;
 					}
+					else
+					  this->cmd_param2 = "";
 					continue;
 				}
 
@@ -191,6 +206,14 @@ namespace Antares {
 					ind++;
 					continue;
 				}
+				if (tok == "-f" || tok =="/f" )
+				{
+					this->force_delete = true;
+					ind++;
+					continue;
+				}
+
+
 
 				if (tok == "-fverbose" || tok =="/fverbose" )
 				{

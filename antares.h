@@ -33,7 +33,7 @@ namespace Antares {
 
 
 	public enum class CopyDirection {PVR_TO_PC, PC_TO_PVR, UNDEFINED};
-	public enum class CopyMode {COPY, MOVE, UNDEFINED};
+	public enum class CopyMode {COPY, MOVE, INFO, DEL, UNDEFINED};
 
 
 	using namespace System;

@@ -188,7 +188,7 @@ namespace Antares {
 			this->tooltip_timer->Elapsed += gcnew System::Timers::ElapsedEventHandler(this,&Form1::tooltip_timer_elapsed);
 			this->tooltip_string = "";
 			this->tooltip_location = System::Drawing::Point(0,0);
-			
+
 
 			this->commandline = gcnew CommandLine(Environment::CommandLine);
 
@@ -513,7 +513,7 @@ namespace Antares {
 			for (int iter =0; iter<100000; iter++)
 			{
 				double r = R->NextDouble();
-				
+
 				int i = R->Next(nitems);
 				i=0;
 				item = items[i];
@@ -523,14 +523,14 @@ namespace Antares {
 				long long int start = (long long int) (  r* ( (double)  (item->size - sz   )));
 				start = start - (start % 8192);
 				//start=0;
-				
+
 				DateTime t1 = DateTime::Now;
-			    this->read_topfield_file_for_testing2(item->full_filename, 0, sz);
+				this->read_topfield_file_for_testing2(item->full_filename, 0, sz);
 				double dt = (DateTime::Now - t1).TotalSeconds;
 				//double rate = (double) arr->Length / dt / 1024/1024;
 				printf("%3d %3d %3d %11lld %f\n",iter,i,nitems,start, this->testing_rate);
 				fflush(stdout);
-				
+
 			}
 
 
@@ -973,7 +973,7 @@ check_freespace:
 
 
 			int r;
-			printf("Setting turbo mode: %d\n",turbo_on);  
+			//printf("Setting turbo mode: %d\n",turbo_on);  
 			struct tf_packet reply;
 
 			if (this->fd == NULL) return -1;
@@ -1213,7 +1213,7 @@ repeat:
 repeat:
 
 					bool sig = this->topfield_background_event->WaitOne(1234);
-				
+
 					System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
 					trace(1,printf("topfieldBackgroundWork iter.  %d %d\n", (int) sig, (int) (en==last_en)));
 					if (en==nullptr) continue;
@@ -3033,6 +3033,9 @@ repeat:
 
 		double is_topfield_path(String^ path)
 		{
+
+			if ( path->Length == 0) return 0.0;
+
 			if (path->StartsWith("TF:",StringComparison::InvariantCultureIgnoreCase))
 				return 1.0;
 
@@ -3159,15 +3162,11 @@ repeat:
 				this->settings->changeSetting("TurboMode",  cmdline->turbo_mode==1 ? "on" : "off" );
 			}
 
-			if (cmd=="cp" || cmd=="mv")
+			if (cmd=="cp" || cmd=="mv" || cmd=="info" || cmd=="rm")
 			{
 
 
-				if (this->fd == NULL)
-				{
-					this->cmdline_error("ERROR: Could not connect to PVR.");
-					return;
-				}
+
 
 
 				String^ path1 = cmdline->cmd_param1;
@@ -3184,11 +3183,15 @@ repeat:
 
 				if (d1==d2)
 				{
-					this->cmdline_error("ERROR: the parameters to the "+cmd+" command could not be understood.\n(Which one is the PVR, and which one is the PC?)");
+					if (cmdline->nargs==2)
+						this->cmdline_error("ERROR: the parameters to the "+cmd+" command could not be understood.\n(Which one is the PVR, and which one is the PC?)");
+					else
+						this->cmdline_error("ERROR: the parameter to the "+cmd+" command could not be understood. Is \""+path1+"\" on the PVR or PC?");
 					return;
 				}
 
-				if (d1< d2)   // From PC to PVR
+
+				if (d1< d2)   // From PC to PVR              (or: targets location on PC, for rm or info)
 				{
 					String^ pvr_path = this->normalize_pvr_commandline_path(path2);
 					String ^src_folder, ^src_pattern;
@@ -3223,14 +3226,17 @@ repeat:
 					this->setComputerDir(src_folder);
 					this->loadComputerDir();
 
-					this->setTopfieldDir(pvr_path);
-					array<TopfieldItem^> ^arr = this->loadTopfieldDirArrayOrNull(pvr_path);
-					if (arr==nullptr)
+					if (cmdline->nargs==2)
 					{
-						this->cmdline_error("ERROR: The destination path could not be found: "+path2);
-						return;
+						this->setTopfieldDir(pvr_path);
+						array<TopfieldItem^> ^arr = this->loadTopfieldDirArrayOrNull(pvr_path);
+						if (arr==nullptr)
+						{
+							this->cmdline_error("ERROR: The destination path could not be found: "+path2);
+							return;
+						}
+						this->loadTopfieldDir();
 					}
-					this->loadTopfieldDir();
 
 					int num = this->select_pattern(this->listView2, src_pattern, cmdline->recurse && is_wild && !src_ends_with_slash, src_ends_with_slash, cmdline->exclude_patterns );
 
@@ -3248,7 +3254,11 @@ repeat:
 					if (is_wild && !src_ends_with_slash)
 						transferoptions->pattern = src_pattern; 
 
-					transferoptions->copymode = cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE;
+					transferoptions->copymode = cmd=="cp" ? CopyMode::COPY :
+						cmd=="mv" ? CopyMode::MOVE :
+						cmd=="info" ? CopyMode::INFO :
+						cmd=="rm" ? CopyMode::DEL : CopyMode::UNDEFINED;
+
 
 					transferoptions->never_delete_directories = is_wild && (src_pattern!="*") && !src_ends_with_slash || cmdline->exclude_patterns->Length>0;
 
@@ -3256,35 +3266,48 @@ repeat:
 
 
 
-					// remember, set turbo mode
+					if (this->fd == NULL && cmdline->nargs==2)
+					{
+						this->cmdline_error("ERROR: Could not connect to PVR.");
+						return;
+					}
 
 					this->transfer_selection_to_PVR(transferoptions);
 
 
 
 				}
-				else         // From PVR to PC
+				else         // From PVR to PC         (or: targets PVR ; for mv or info)
 				{
+
+					if (this->fd == NULL && cmdline->nargs==2)
+					{
+						this->cmdline_error("ERROR: Could not connect to PVR.");
+						return;
+					}
 
 
 					bool src_ends_with_slash = path1->EndsWith("\\");
 
 					String^ pvr_path = this->normalize_pvr_commandline_path(path1);
 
-					String^ pc_path;
+					String^ pc_path="";
 
-					try{
-						pc_path = Path::Combine(Environment::CurrentDirectory,path2);
-						pc_path = Path::GetFullPath(pc_path);
-						while(pc_path->EndsWith("\\"))
-							pc_path = pc_path->Substring(0,pc_path->Length-1);
-
-
-					}
-					catch(...)
+					if (cmdline->nargs==2)
 					{
-						this->cmdline_error("ERROR: The following path could not accessed on the PC: "+path2);
-						return;
+						try{
+							pc_path = Path::Combine(Environment::CurrentDirectory,path2);
+							pc_path = Path::GetFullPath(pc_path);
+							while(pc_path->EndsWith("\\"))
+								pc_path = pc_path->Substring(0,pc_path->Length-1);
+
+
+						}
+						catch(...)
+						{
+							this->cmdline_error("ERROR: The following path could not accessed on the PC: "+path2);
+							return;
+						}
 					}
 					if (pc_path->Length == 2 && pc_path->Substring(1,1)==":")
 						pc_path = pc_path + "\\";
@@ -3305,17 +3328,22 @@ repeat:
 
 					if (src_pattern->Length==0)
 					{
-						this->cmdline_error("ERROR: The source path is invalid ("+path1+")");
+						if (cmdline->nargs==2)
+							this->cmdline_error("ERROR: The source path is invalid ("+path1+")");
+						else
+							this->cmdline_error("ERROR: The path is invalid ("+path1+")");
 						return;
 					}
 
-					this->setComputerDir(pc_path);
-					int r = this->loadComputerDir();
-					if (r!=0)
+					if (cmdline->nargs==2)
 					{
-						this->cmdline_error("ERROR: The destination path "+pc_path+" is invalid or cannot be accessed.");
-						return;
-
+						this->setComputerDir(pc_path);
+						int r = this->loadComputerDir();
+						if (r!=0)
+						{
+							this->cmdline_error("ERROR: The destination path "+pc_path+" is invalid or cannot be accessed.");
+							return;
+						}
 					}
 
 
@@ -3328,7 +3356,7 @@ repeat:
 						String^ x = "";
 						if (path1->Contains("/")) x="\nNote: you must use a backslash (not slash) to separate directories.\n";
 
-						this->cmdline_error("ERROR: The source location could not be found: "
+						this->cmdline_error("ERROR: The location could not be found on the PVR: "
 							+
 							path1
 							+"\n(Note: directory names are case sensitive.)"+x);
@@ -3351,7 +3379,10 @@ repeat:
 					if (is_wild && !src_ends_with_slash)
 						transferoptions->pattern = src_pattern; 
 
-					transferoptions->copymode = cmd=="cp" ? CopyMode::COPY : CopyMode::MOVE;
+					transferoptions->copymode = cmd=="cp" ? CopyMode::COPY :
+						cmd=="mv" ? CopyMode::MOVE :
+						cmd=="info" ? CopyMode::INFO :
+						cmd=="rm" ? CopyMode::DEL : CopyMode::UNDEFINED;
 
 					transferoptions->never_delete_directories = is_wild && (src_pattern!="*") && !src_ends_with_slash || cmdline->exclude_patterns->Length>0;
 
@@ -4632,6 +4663,7 @@ out:
 
 			copydialog->update_dialog_threadsafe();
 			TransferOptions ^transferoptions = copydialog->transferoptions;
+			bool transfer = (transferoptions->copymode==CopyMode::COPY || transferoptions->copymode==CopyMode::MOVE);
 			int numitems = copydialog->numfiles;
 
 			//int this_overwrite_action;
@@ -4660,32 +4692,36 @@ out:
 				if (item->isdir)
 				{
 					if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[i]) continue;
-					if (File::Exists(dest_filename[i]) && !Directory::Exists(dest_filename[i]))
+					if (transferoptions->copymode==CopyMode::INFO) continue;
+					if (transfer)
 					{
-
-						//copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
-						copydialog->file_error = String::Format(lang::c_folder_file_clash, dest_filename[i]);
-						goto end_copy_to_pc;                         
-
-					}
-					if (!Directory::Exists(dest_filename[i]))
-					{
-						try {
-							Directory::CreateDirectory(dest_filename[i]);
-						}
-						catch (...)
+						if (File::Exists(dest_filename[i]) && !Directory::Exists(dest_filename[i]))
 						{
 
+							//copydialog->file_error = "The folder "+dest_filename[i]+" could not be created because a file of that name already exists. Aborting transfer.";
+							copydialog->file_error = String::Format(lang::c_folder_file_clash, dest_filename[i]);
+							goto end_copy_to_pc;                         
 
-							//copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
-							copydialog->file_error = String::Format(lang::c_folder_error, dest_filename[i]);
+						}
+						if (!Directory::Exists(dest_filename[i]))
+						{
+							try {
+								Directory::CreateDirectory(dest_filename[i]);
+							}
+							catch (...)
+							{
 
-							goto end_copy_to_pc;
 
+								//copydialog->file_error = "The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
+								copydialog->file_error = String::Format(lang::c_folder_error, dest_filename[i]);
+
+								goto end_copy_to_pc;
+
+							}
 						}
 					}
 
-					if (copydialog->copymode == CopyMode::MOVE && i==numitems-1 && !transferoptions->never_delete_directories)
+					if ( (copydialog->copymode == CopyMode::MOVE || copydialog->copymode == CopyMode::DEL) && i==numitems-1 && !transferoptions->never_delete_directories)
 					{
 
 
@@ -4695,7 +4731,23 @@ out:
 
 							int dr = this->deleteTopfieldPath(item->full_filename);
 
-							if (dr>=0) source_deleted[i]=true;
+							if (dr>=0) 
+							{
+								source_deleted[i]=true;
+								
+
+							}
+							if (copydialog->copymode == CopyMode::DEL)
+							{
+								if (dr>=0)
+									Console::WriteLine("Deleted "+item->full_filename);
+								else
+									Console::WriteLine("Could not delete "+item->full_filename);
+
+							}
+
+
+
 						}
 					}
 					copydialog->success(i);
@@ -4779,7 +4831,14 @@ restart_copy_to_pc:
 				}
 				bool io_error=false;
 
-				if (this_overwrite_action==SKIP)
+				if (transferoptions->copymode == CopyMode::INFO)
+				{
+					Console::WriteLine("Standin for info, "+item->full_filename);
+					continue;
+				}
+
+
+				if (this_overwrite_action==SKIP || transferoptions->copymode==CopyMode::DEL )
 				{
 					topfield_file_offset = src_sizes[i];
 					copydialog->success(i);
@@ -5201,13 +5260,28 @@ out:
 
 check_delete:
 
-				if (copydialog->copymode==CopyMode::MOVE  && topfield_file_offset == src_sizes[i])
+
+				if (copydialog->copymode == CopyMode::DEL || (copydialog->copymode==CopyMode::MOVE  && topfield_file_offset == src_sizes[i]) )
 				{
 					int dr;
-					if (overwrite_action[i]!=SKIP || ( copydialog->action1_skipdelete && ( copydialog->overwrite_category[i]== 0 || copydialog->overwrite_category[i]==3  )  )  )
+					if (copydialog->copymode == CopyMode::DEL || overwrite_action[i]!=SKIP || ( copydialog->action1_skipdelete && ( copydialog->overwrite_category[i]== 0 || copydialog->overwrite_category[i]==3  )  )  )
 					{
 						dr = this->deleteTopfieldPath(item->full_filename);
-						if (dr>=0) source_deleted[i]=true;
+						if (dr>=0)
+						{
+							source_deleted[i]=true;
+							
+						}
+
+						if (copydialog->copymode == CopyMode::DEL)
+						{
+							if (dr>=0)
+								Console::WriteLine("Deleted "+item->full_filename);
+							else
+								Console::WriteLine("Could not delete "+item->full_filename);
+
+						}
+						
 					}
 
 
@@ -5246,6 +5320,16 @@ check_delete:
 										dr = this->deleteTopfieldPath(titem->full_filename);
 
 										if (dr>=0) source_deleted[j]=true;
+
+										if (copydialog->copymode == CopyMode::DEL)
+										{
+											if (dr>=0)
+												Console::WriteLine("Deleted "+titem->full_filename);
+											else
+												Console::WriteLine("Could not delete "+titem->full_filename);
+
+										}
+
 									}
 								}
 
@@ -5315,10 +5399,13 @@ end_copy_to_pc:
 			if (this->transfer_in_progress) return;
 			const int max_folders = 1000;
 
-			CopyMode copymode = transferoptions->copymode;
+			
 
-			if (copymode == CopyMode::UNDEFINED)
-				copymode = this->getCopyMode();
+			if (transferoptions->copymode == CopyMode::UNDEFINED)
+				transferoptions->copymode = this->getCopyMode();
+
+			CopyMode copymode = transferoptions->copymode;
+			bool transfer = (copymode==CopyMode::COPY || copymode==CopyMode::MOVE);
 
 
 			// Enumerate selected source items (PVR)
@@ -5347,7 +5434,7 @@ end_copy_to_pc:
 			copydialog->copydirection = CopyDirection::PVR_TO_PC;
 
 			copydialog->tiny_size();
-			
+
 			Console::WriteLine(lang::c_finding);
 			this->ShowCopyDialog(copydialog);
 
@@ -5497,6 +5584,21 @@ end_copy_to_pc:
 			for (ind=0; ind<numitems; ind++)
 			{
 				item=src_items[ind];
+
+				if (!transfer)
+				{
+					if (!item->isdir)
+					{
+						src_sizes[ind]=item->size;
+						src_date[ind]=item->datetime;
+						num_files++;
+					}
+					else num_dir_missing++;
+
+					continue;
+
+				}
+
 				if (item->recursion_offset == "")
 					dest_filename[ind] = Path::Combine(this->computerCurrentDirectory, item->safe_filename);
 				else
@@ -5561,56 +5663,7 @@ end_copy_to_pc:
 			int num_skip=0;
 			if (num_exist>0)
 			{
-				/*
-				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
-				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1],files_cat[2]);
-				oc->copymode=copymode;
-				//"A file with this name already exists";
-				if (num_exist==1) oc->title_label->Text=lang::o_exist+"                                                                               ";
-				else oc->title_label->Text=lang::o_exist_plural+"                                                                               ";;
-				//oc->files1->Text = files_cat[0];
-				if (num_cat[0]==0)
-				{
-					oc->panel1->Visible = false;oc->files1->Visible=false;
-				}
-				if (num_cat[0]==0 || copymode!=CopyMode::MOVE)
-				{
-					oc->checkBox1->Visible=false;
-				}
-				else
-				{
-					oc->checkBox1->Visible=true;
-					if (num_cat[0]==1)
-						oc->checkBox1->Text = lang::o_delete_pvr;//"Delete the PVR copy";
-					else
-						oc->checkBox1->Text = lang::o_delete_pvr_plural;//"Delete the PVR copies";
-				}
-				if (num_cat[0]>1) oc->label1->Text = lang::o_correct_plural; else oc->label1->Text = lang::o_correct;//"File has correct size"; 
-
-				//oc->files2->Text = files_cat[1];
-				if (num_cat[1]==0)
-				{
-					oc->panel2->Visible = false;oc->files2->Visible=false;
-				}
-				if (num_cat[1]>1) oc->label2->Text =  lang::o_undersized_plural; else oc->label2->Text = lang::o_undersized ;///"Undersized file";
-
-				//oc->files3->Text = files_cat[2];
-				if (num_cat[2]==0)
-				{
-					oc->panel3->Visible = false;oc->files3->Visible=false;
-				}
-				if (num_cat[2]>1) oc->label3->Text = lang::o_oversized_plural; else oc->label3->Text =lang::o_oversized;//"This existing file is larger!";
-
-				if (!this->no_prompt)
-					if (::DialogResult::Cancel == oc->ShowDialog() ) goto aborted;
-
-				int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
-				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
-				int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
-
-				if (transferoptions->overwrite_all) {action1=OVERWRITE; action2=OVERWRITE; action2=OVERWRITE;} 
-
-				*/
+		
 
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation( dest_filename, dest_size, dest_exists,
 					src_sizes,  dest_date,  src_date, CopyDirection::PC_TO_PVR,  copymode, overwrite_category, overwrite_action);
@@ -5656,20 +5709,46 @@ end_copy_to_pc:
 				if (overwrite_action[i]==OVERWRITE && !src_items[i]->isdir) num_overwrite++;			
 				if (overwrite_action[i]==RESUME) num_resume++;
 			}
-			String ^ p;
-			String ^c0=", ";
-			String ^ c="";
-			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PVR.  TO DO: ",num_files,p);
-			p = num_skip==1 ? "" : "s"; if (num_skip>0) {printf(" Skip %d file%s",num_skip,p);c=c0;};
-			String ^q="";
-			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("%s Resume %d file%s", c,num_resume,p);q=" whole";c=c0;};
-			p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) {printf("%s Transfer %d%s file%s",c,num_overwrite,q,p);c=c0;}
-			p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("%s Create %d folder%s",c,num_dir_missing, p);
-			printf(".\n*\n");
+
+			if (transfer)
+			{
+				String ^ p;
+				String ^c0=", ";
+				String ^ c="";
+				p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PVR.  TO DO: ",num_files,p);
+				p = num_skip==1 ? "" : "s"; if (num_skip>0) {printf(" Skip %d file%s",num_skip,p);c=c0;};
+				String ^q="";
+				p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("%s Resume %d file%s", c,num_resume,p);q=" whole";c=c0;};
+				p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) {printf("%s Transfer %d%s file%s",c,num_overwrite,q,p);c=c0;}
+				p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("%s Create %d folder%s",c,num_dir_missing, p);
+				printf(".\n*\n");
+			}
+
+			if (transferoptions->copymode==CopyMode::DEL)
+			{
+				String ^ p;
+				p = num_files==1 ? "" : "s"; if (num_files>=0) printf("Found %d matching file%s on the PVR.\n",num_files,p);
+
+				if (num_files>1 && !this->commandline->force_delete)
+				{
+					while(1)
+					{
+						Console::Write("Do you really want to delete these files [y/n]?");
+						String^ response = Console::ReadLine();
+						if (response=="Y" || response=="y" || response=="yes" ) break;
+						if (response=="N" || response=="n" || response=="no") goto aborted;
+						printf("\n");
+					}
+				}
+			}
+
+
+
+
 
 			for (int i=0; i<numitems; i++)
 			{
-				if (src_sizes[i]<0 || src_sizes[i]>1000000000000LL)  // A riculous source size indicates a corrupt file. Skip.
+				if (src_sizes[i]<0 || src_sizes[i]>1000000000000LL)  // A ridiculous source size indicates a corrupt file. Skip.
 					overwrite_action[i]=SKIP;
 			}
 
@@ -5684,18 +5763,22 @@ end_copy_to_pc:
 
 
 			array<long long int>^ freespaceArray = this->computerFreeSpace(this->computerCurrentDirectory);
-			if (space_required > freespaceArray[0])
+			
+			if(transfer)
 			{
+				if (space_required > freespaceArray[0])
+				{
 
-				LowSpaceAlert^ alert = gcnew LowSpaceAlert();
+					LowSpaceAlert^ alert = gcnew LowSpaceAlert();
 
-				alert->required_label->Text = lang::f_required+" " + HumanReadableSize(space_required);
-				alert->available_label->Text = lang::f_available+" " + HumanReadableSize(freespaceArray[0]);
-				if (!this->no_prompt)
-					if (::DialogResult::Cancel ==  alert->ShowDialog())
-					{
-						goto aborted;
-					}
+					alert->required_label->Text = lang::f_required+" " + HumanReadableSize(space_required);
+					alert->available_label->Text = lang::f_available+" " + HumanReadableSize(freespaceArray[0]);
+					if (!this->no_prompt)
+						if (::DialogResult::Cancel ==  alert->ShowDialog())
+						{
+							goto aborted;
+						}
+				}
 			}
 
 			if (this->settings["TurboMode"] == "on")//(this->checkBox1->Checked)
@@ -5808,6 +5891,7 @@ aborted:   // If the transfer was cancelled before it began
 
 				copydialog->update_dialog_threadsafe();
 				TransferOptions ^transferoptions = copydialog->transferoptions;
+				bool transfer =  (transferoptions->copymode == CopyMode::MOVE || transferoptions->copymode == CopyMode::COPY);
 				int numitems = copydialog->numfiles;
 
 				int this_overwrite_action;
@@ -5835,46 +5919,56 @@ aborted:   // If the transfer was cancelled before it began
 					String^ full_src_filename = item->full_filename;
 
 
-					if (  (time(NULL) - this->last_topfield_freek_time) > 60) this->updateTopfieldSummary();
+					if (transfer)
+					{
+						if (  (time(NULL) - this->last_topfield_freek_time) > 60) this->updateTopfieldSummary();
+					}
 
 					if (item->isdir)
 					{
 						if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[i]) continue;
-						titem = this->topfieldFileExists(topfield_items_by_folder,dest_filename[i]);
-						int r=0;
-						if (titem==nullptr)
-						{
-							r = this->newTopfieldFolder(dest_filename[i]);
-						}
-						// Abort if required destination folder is already a file name
-						if (titem!=nullptr && !titem->isdir)
-						{
-							//copydialog->file_error="The folder "+dest_filename[i]+" could not be created because there exists a file of the same name.";
-							copydialog->file_error = String::Format(lang::c_folder_file_clash, dest_filename[i]);
-							goto finish_transfer;
-						}
+						if (transferoptions->copymode==CopyMode::INFO) continue;
 
-						// If there was some other error creating the folder...
-						// ... perhaps it was really successful. Try loading the folder contents to find out.
 
-						if (r<0)
+						if (transfer)
+
 						{
-							this->absorb_late_packets(2,100);
-							array<TopfieldItem^> ^check = this->loadTopfieldDirArrayOrNull(dest_filename[i]);
-							if (verbose) printf("newTopfieldFolder returned %d. Double checking %s\n",r,dest_filename[i]);
-
-							if (check==nullptr)
+							titem = this->topfieldFileExists(topfield_items_by_folder,dest_filename[i]);
+							int r=0;
+							if (titem==nullptr)
 							{
-								if (verbose) printf("Double-check failed.\n");
-
-								//copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
-								copydialog->file_error=String::Format(lang::c_folder_error , dest_filename[i]);
+								r = this->newTopfieldFolder(dest_filename[i]);
+							}
+							// Abort if required destination folder is already a file name
+							if (titem!=nullptr && !titem->isdir)
+							{
+								//copydialog->file_error="The folder "+dest_filename[i]+" could not be created because there exists a file of the same name.";
+								copydialog->file_error = String::Format(lang::c_folder_file_clash, dest_filename[i]);
 								goto finish_transfer;
+							}
+
+							// If there was some other error creating the folder...
+							// ... perhaps it was really successful. Try loading the folder contents to find out.
+
+							if (r<0)
+							{
+								this->absorb_late_packets(2,100);
+								array<TopfieldItem^> ^check = this->loadTopfieldDirArrayOrNull(dest_filename[i]);
+								if (verbose) printf("newTopfieldFolder returned %d. Double checking %s\n",r,dest_filename[i]);
+
+								if (check==nullptr)
+								{
+									if (verbose) printf("Double-check failed.\n");
+
+									//copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
+									copydialog->file_error=String::Format(lang::c_folder_error , dest_filename[i]);
+									goto finish_transfer;
+								}
 							}
 						}
 
 
-						if (copydialog->copymode==CopyMode::MOVE && !transferoptions->never_delete_directories)
+						if (  (copydialog->copymode==CopyMode::MOVE  || transferoptions->copymode==CopyMode::DEL)  && !transferoptions->never_delete_directories)
 						{
 							// Try deleting this directory at the source, and any directories which might now be empty
 
@@ -5889,6 +5983,10 @@ aborted:   // If the transfer was cancelled before it began
 										{
 											Directory::Delete(item2->full_filename);
 											source_deleted[j]=true;
+
+											if (transferoptions->copymode==CopyMode::DEL)
+												Console::WriteLine("Deleted "+item2->full_filename);
+
 										}
 										catch(...)
 										{
@@ -5961,6 +6059,29 @@ restart_copy_to_pvr:
 						this_overwrite_action = OVERWRITE;
 						if (dest_exists[i]) this_overwrite_action=overwrite_action[i];
 					}
+
+					if (transferoptions->copymode==CopyMode::DEL)
+					{
+						try 
+						{
+							File::Delete(item->full_filename);
+							source_deleted[i]=true;
+							Console::WriteLine("Deleted "+item->full_filename);
+						}
+						catch(...)
+						{
+							Console::WriteLine("Could not delete "+item->full_filename);
+						}
+						copydialog->success(i);
+						continue;
+					}
+
+					if (transferoptions->copymode==CopyMode::INFO)
+					{
+						Console::WriteLine("Standin for info "+item->full_filename);
+						continue;
+					}
+
 
 					if (this_overwrite_action==SKIP) {
 						//printf("%s   [Skipping]\n",item->full_filename);
@@ -6590,7 +6711,7 @@ finish_transfer:
 
 
 			if (this->transfer_in_progress) return;
-			if (this->fd==NULL) 
+			if (this->fd==NULL && (transferoptions->copymode==CopyMode::MOVE || transferoptions->copymode==CopyMode::COPY)) 
 			{
 				/*
 				#ifdef _DEBUG
@@ -6613,10 +6734,14 @@ finish_transfer:
 			}
 
 			const int max_folders = 1000;
+			
+
+			if (transferoptions->copymode==CopyMode::UNDEFINED)
+				transferoptions->copymode = this->getCopyMode();
+
 			CopyMode copymode = transferoptions->copymode;
 
-			if (copymode==CopyMode::UNDEFINED)
-				copymode = this->getCopyMode();
+			bool transfer = (copymode==CopyMode::MOVE || copymode==CopyMode::COPY);
 
 			//time_t startTime = time(NULL);
 
@@ -6659,7 +6784,10 @@ finish_transfer:
 
 			array<ComputerItem^>^ items = gcnew array<ComputerItem^>(selected->Count);
 			selected->CopyTo(items,0);
-			for (int i=0; i<items->Length; i++) if (items[i]->isdrive) {goto abort;};  // Can't copy whole drives at a time
+			if (transferoptions->copymode != CopyMode::INFO)
+			{
+				for (int i=0; i<items->Length; i++) if (items[i]->isdrive) {goto abort;};  // Can't copy whole drives at a time
+			}
 
 			array<array<ComputerItem^>^>^ items_by_folder = gcnew array<array<ComputerItem^>^>(max_folders);
 
@@ -6751,41 +6879,45 @@ finish_transfer:
 			}
 
 			// Load the each topfield directory corresponding to a source directory, if it exists
-			array<array<TopfieldItem^>^>^ topfield_items_by_folder = gcnew array<array<TopfieldItem^>^>(numdirs);
-			ind=0;
-			topfield_items_by_folder[ind] = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);
-			for each (ComputerItem^ item in src_items)
+			// (if doing a move or copy)
+			array<array<TopfieldItem^>^>^ topfield_items_by_folder = nullptr;
+			if (transfer)
 			{
-				if (item->isdir)
+				topfield_items_by_folder = gcnew array<array<TopfieldItem^>^>(numdirs);
+				ind=0;
+				topfield_items_by_folder[ind] = this->loadTopfieldDirArray(this->topfieldCurrentDirectory);
+				for each (ComputerItem^ item in src_items)
 				{
-					ind++;
-					String ^tmp;
-					if (item->recursion_offset=="")
-						tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->filename);
-					else
+					if (item->isdir)
 					{
-						tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->recursion_offset);
-						tmp = Antares::combineTopfieldPath(tmp,item->filename);
-					}
-
-					bool seen_before=false;
-					for (int j=0; j<ind; j++)
-					{
-						for each (TopfieldItem^ titem in topfield_items_by_folder[j])
+						ind++;
+						String ^tmp;
+						if (item->recursion_offset=="")
+							tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->filename);
+						else
 						{
-							if (titem->full_filename->StartsWith(tmp)) {seen_before=true;break;};
+							tmp = Antares::combineTopfieldPath(this->topfieldCurrentDirectory,item->recursion_offset);
+							tmp = Antares::combineTopfieldPath(tmp,item->filename);
 						}
-						if (seen_before) break;
+
+						bool seen_before=false;
+						for (int j=0; j<ind; j++)
+						{
+							for each (TopfieldItem^ titem in topfield_items_by_folder[j])
+							{
+								if (titem->full_filename->StartsWith(tmp)) {seen_before=true;break;};
+							}
+							if (seen_before) break;
+						}
+						if (seen_before)
+							topfield_items_by_folder[ind]=this->loadTopfieldDirArray(tmp);
+						else
+							topfield_items_by_folder[ind]=gcnew array<TopfieldItem^>(0);
 					}
-					if (seen_before)
-						topfield_items_by_folder[ind]=this->loadTopfieldDirArray(tmp);
-					else
-						topfield_items_by_folder[ind]=gcnew array<TopfieldItem^>(0);
 				}
+
+				topfield_items_by_folder->Resize(topfield_items_by_folder, ind+1);
 			}
-
-			topfield_items_by_folder->Resize(topfield_items_by_folder, ind+1);
-
 
 
 			ComputerItem^ item;
@@ -6836,121 +6968,96 @@ finish_transfer:
 			int num_dir_exist=0;
 			int num_dir_missing=0;
 			array<String^>^ files_cat = {"","",""};
+
 			for (ind=0; ind<numitems; ind++)
 			{
 				item = src_items[ind];
-				if (item->recursion_offset == "")
-					dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, item->safe_filename);
-				else
+
+				if (!transfer)
 				{
-
-					//dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
-					//dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
-					dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
-					dest_filename[ind] = Antares::combineTopfieldPath(dest_filename[ind], item->safe_filename);
-				}
-				if (item->isdir) {
-
-					if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[ind]) 
+					if (! item->isdir && !item->isdrive) 
 					{
-						num_dir_exist++;   // A bit hacky adding it to "existing" count
+						src_sizes[ind]=item->size;
+						src_date[ind]=item->datetime;
+						num_files++;
+					}
+					if (item->isdir) num_dir_missing++;
+					continue;
+				}
+
+					if (item->recursion_offset == "")
+						dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, item->safe_filename);
+					else
+					{
+
+						//dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
+						//dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
+						dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
+						dest_filename[ind] = Antares::combineTopfieldPath(dest_filename[ind], item->safe_filename);
+					}
+					if (item->isdir) {
+
+						if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[ind]) 
+						{
+							num_dir_exist++;   // A bit hacky adding it to "existing" count
+							continue;
+						}
+
+
+						if (nullptr != this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]))
+							num_dir_exist++;
+						else
+							num_dir_missing++;
 						continue;
+					}   
+					else
+						num_files++;
+
+					src_sizes[ind]=item->size;
+					src_date[ind]=item->datetime;
+
+					titem = this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]);
+					if (titem == nullptr)
+					{
+						dest_exists[ind]=false;
+						dest_size[ind]=0;
+					}
+					else
+					{
+						dest_exists[ind]=true;
+						dest_size[ind] = titem->size;
+						dest_date[ind] = titem->datetime;
 					}
 
+					if (dest_exists[ind])
+					{ 
+						int cat=2;
+						if (dest_size[ind] == item->size) 
+							cat=0;
+						else if (dest_size[ind] < item->size) cat=1;
 
-					if (nullptr != this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]))
-						num_dir_exist++;
-					else
-						num_dir_missing++;
-					continue;
-				}   
-				else
-					num_files++;
+						overwrite_category[ind]=cat;
+						num_cat[cat]++;if (num_cat[cat]>1) files_cat[cat] = files_cat[cat]+"\n";
+						files_cat[cat] = files_cat[cat]+dest_filename[ind]; 
+						num_exist++;
+					}
 
-				src_sizes[ind]=item->size;
-				src_date[ind]=item->datetime;
-
-				titem = this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]);
-				if (titem == nullptr)
-				{
-					dest_exists[ind]=false;
-					dest_size[ind]=0;
-				}
-				else
-				{
-					dest_exists[ind]=true;
-					dest_size[ind] = titem->size;
-					dest_date[ind] = titem->datetime;
-				}
-
-				if (dest_exists[ind])
-				{ 
-					int cat=2;
-					if (dest_size[ind] == item->size) 
-						cat=0;
-					else if (dest_size[ind] < item->size) cat=1;
-
-					overwrite_category[ind]=cat;
-					num_cat[cat]++;if (num_cat[cat]>1) files_cat[cat] = files_cat[cat]+"\n";
-					files_cat[cat] = files_cat[cat]+dest_filename[ind]; 
-					num_exist++;
-				}
-
-				current_offsets[ind]=0;
-				totalsize += item->size;
+					current_offsets[ind]=0;
+					totalsize += item->size;
+				
+			
+			
 			}
+
+
 			if (numitems==0) goto abort;
 
 
 			int num_skip=0;
 			bool action1_skipdelete=true;
-			
+
 			if (num_exist>0)
 			{
-				/*
-				//printf("num_exist=%d  num_cat={%d,%d,%d}\n",num_exist,num_cat[0],num_cat[1],num_cat[2]);
-				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation(files_cat[0],files_cat[1], files_cat[2]);
-				oc->copymode=copymode;
-				if (num_exist==1) oc->title_label->Text=lang::o_exist+"                                                             ";
-				else oc->title_label->Text = lang::o_exist_plural+"                                                                        ";
-
-				if (num_cat[0]==0)
-				{
-					oc->panel1->Visible = false;oc->files1->Visible=false;
-
-				}
-				if (num_cat[0]==0 || copymode!=CopyMode::MOVE)
-				{
-					oc->checkBox1->Visible=false;
-				}
-				else
-				{
-					oc->checkBox1->Visible=true;
-					if (num_cat[0]==1)
-						oc->Text = lang::o_delete_pc;//"Delete the PC copy";
-					else
-						oc->Text =  lang::o_delete_pc_plural;//"Delete the PC copies";
-				}
-				if (num_cat[0]>1) 
-					oc->label1->Text = lang::o_correct_plural;//"Files have correct size"; 
-				else oc->label1->Text = lang::o_correct;//"File has correct size"; 
-
-				if (num_cat[1]==0)
-				{
-					oc->panel2->Visible = false;oc->files2->Visible=false;
-				}
-				if (num_cat[1]>1) oc->label2->Text = lang::o_undersized_plural;//"Undersized files";
-				else oc->label2->Text = lang::o_undersized;//"Undersized file";
-
-				if (num_cat[2]==0)
-				{
-					oc->panel3->Visible = false;oc->files3->Visible=false;
-				}
-				if (num_cat[2]>1) oc->label3->Text = lang::o_oversized_plural;//"These exising files are larger!!"; 
-				else oc->label3->Text = lang::o_oversized;//"This existing file is larger!!";
-
-				*/
-
 
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation( dest_filename, dest_size, dest_exists,
 					src_sizes,  dest_date,  src_date, CopyDirection::PC_TO_PVR,  copymode, overwrite_category, overwrite_action);
@@ -6976,35 +7083,9 @@ finish_transfer:
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
 
-				/*
-				int action1 = ( oc->overwrite1->Checked * OVERWRITE ) + oc->skip1->Checked * SKIP;
-				int action2 = ( oc->overwrite2->Checked * OVERWRITE ) + oc->skip2->Checked * SKIP + oc->resume2->Checked*RESUME;
-				int action3 = ( oc->overwrite3->Checked * OVERWRITE ) + oc->skip3->Checked * SKIP;
-
-				if (transferoptions->overwrite_all) {action1=OVERWRITE; action2=OVERWRITE; action2=OVERWRITE;} 
-
-				action1_skipdelete = oc->checkBox1->Checked;
-
-				for (int i=0; i<numitems; i++)
-				{
-					item=src_items[i];
-					overwrite_action[i]=OVERWRITE;
-					if (dest_exists[i])
-					{
-						if(overwrite_category[i]==0)  overwrite_action[i]=action1; else
-							if(overwrite_category[i]==1)  overwrite_action[i]=action2; else
-								if(overwrite_category[i]==2)  overwrite_action[i]=action3;
-
-					}
-					if (overwrite_action[i]==RESUME && dest_size[i] < this->min_resume_size) overwrite_action[i]=OVERWRITE; // (don't bother resuming tiny files).
-
-					if (overwrite_action[i]==OVERWRITE) current_offsets[i]=0; else
-						if (overwrite_action[i]==SKIP) {current_offsets[i]=item->size;num_skip++;} else
-							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
-				}
-				*/
+				
 			}
-			
+
 			if ( (num_dir_exist+num_skip)==numitems && copymode == CopyMode::COPY) 
 			{
 				String ^s0 = ""; if (num_skip + num_dir_exist >0 ) s0 = (num_skip+num_dir_exist).ToString() + " item";
@@ -7023,16 +7104,40 @@ finish_transfer:
 				if (overwrite_action[i]==OVERWRITE && !src_items[i]->isdir) num_overwrite++;			
 				if (overwrite_action[i]==RESUME) num_resume++;
 			}
-			String ^ p;
-			String ^c0=", ";
-			String ^c="";
-			p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PC.  TO DO: ",num_files,p);
-			p = num_skip==1 ? "" : "s"; if (num_skip>0) {printf(" Skip %d file%s",num_skip,p);c=c0;};
-			String ^q="";
-			p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("%s Resume %d file%s", c,num_resume,p);q=" whole";};
-			p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) {printf("%s Transfer %d%s file%s",c,num_overwrite,q,p);c=c0;};
-			p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("%s Create %d folder%s",c,num_dir_missing, p);
-			printf(".\n*\n");
+
+			if (transfer)
+			{
+				String ^ p;
+				String ^c0=", ";
+				String ^c="";
+				p = num_files==1 ? "" : "s"; if (num_files>=0) printf("*\n* Found %d matching file%s on the PC.  TO DO: ",num_files,p);
+				p = num_skip==1 ? "" : "s"; if (num_skip>0) {printf(" Skip %d file%s",num_skip,p);c=c0;};
+				String ^q="";
+				p = num_resume==1 ? "" : "s"; if (num_resume>0) {printf("%s Resume %d file%s", c,num_resume,p);q=" whole";};
+				p = num_overwrite==1 ? "" : "s"; if (num_overwrite>0) {printf("%s Transfer %d%s file%s",c,num_overwrite,q,p);c=c0;};
+				p = num_dir_missing==1 ? "" : "s"; if (num_dir_missing>0) printf("%s Create %d folder%s",c,num_dir_missing, p);
+				printf(".\n*\n");
+			}
+
+			if (transferoptions->copymode==CopyMode::DEL)
+			{
+				String ^ p;
+				p = num_files==1 ? "" : "s"; if (num_files>=0) printf("Found %d matching file%s on the PC.\n",num_files,p);
+
+				if (num_files>1 && !this->commandline->force_delete)
+				{
+					while(1)
+					{
+						Console::Write("Do you really want to delete these files [y/n]?");
+						String^ response = Console::ReadLine();
+						if (response=="Y" || response=="y" || response=="yes" ) break;
+						if (response=="N" || response=="n" || response=="no") goto abort;
+						printf("\n");
+					}
+				}
+			}
+
+
 
 
 			long long space_required=0;
@@ -7045,7 +7150,7 @@ finish_transfer:
 
 			long long int freespace;
 			long long int margin;
-
+			if (transfer)
 			{
 				TopfieldFreeSpace tfs = this->getTopfieldFreeSpace();
 
@@ -7117,8 +7222,6 @@ finish_transfer:
 				copydialog->normal_size();
 			else
 				copydialog->small_size();
-
-
 
 
 			this->transfer_in_progress=true;
@@ -7235,7 +7338,7 @@ abort:  // If the transfer was cancelled before it began
 					listview->Sorting = SortOrder::Ascending;
 					settings->changeSetting(type+"_SortOrder","Ascending");
 				}
-				
+
 			}
 			else
 			{
@@ -7912,7 +8015,7 @@ abort:  // If the transfer was cancelled before it began
 					return false;
 			}
 			if (!ret) return false;
-			
+
 
 			item->channel = gcnew String(ri->SISvcName);
 			item->title = gcnew String(ri->EventEventName);
@@ -7969,7 +8072,7 @@ abort:  // If the transfer was cancelled before it began
 				return false;
 			}
 
-		
+
 			ri->readsize=size;
 			if (size==readsize)
 			{
@@ -7987,7 +8090,7 @@ abort:  // If the transfer was cancelled before it began
 
 					Marshal::Copy(buffer,0,System::IntPtr( &charbuf[0]),size);
 					HDD_DecodeRECHeader (charbuf, ri);
-					
+
 					return true;
 				}
 			}
@@ -8419,7 +8522,7 @@ abort:  // If the transfer was cancelled before it began
 			return 0;
 		}
 
-		
+
 		long long int  read_topfield_file_for_testing2(String^ filename, long long offset, long long max_bytes) {
 
 			// For testing purposes. Please delete
@@ -9702,7 +9805,7 @@ abort:  // If the transfer was cancelled before it began
 
 
 									 //this->toolTip1->Show(str, list, p,20000);
-									
+
 									 //Console::WriteLine("Set: "+wordwrap(item->description,60));
 									 clear=false;
 									 lasthash=hash;
@@ -9727,7 +9830,7 @@ abort:  // If the transfer was cancelled before it began
 					 {
 						 this->tooltip_string="";
 						 this->toolTip1->SetToolTip(list, "");
-						 
+
 						 lasthash=0;
 						 //Console::WriteLine("Clear"+cnt.ToString() );cnt++;
 					 }
@@ -9742,7 +9845,7 @@ abort:  // If the transfer was cancelled before it began
 
 			 }
 
-			 
+
 			 static void set_filesystemwatcher_callback(Object^ obj)
 			 {
 
@@ -9867,6 +9970,6 @@ abort:  // If the transfer was cancelled before it began
 				 this->toolTip1->Show(this->tooltip_string, this->tooltip_listview, this->tooltip_location,20000);
 			 }
 
-};    // class form1
+	};    // class form1
 };    // namespace antares
 
