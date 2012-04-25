@@ -204,7 +204,10 @@ namespace Antares {
 			}
 
 			this->watched_directory = "";
-			this->recording_in_progress_last_checked=DateTime::Now;
+			this->recording_in_progress_last_checked = DateTime(2000,1,1);
+			this->last_disconnected_time = DateTime(2000,1,1);
+			this->last_connected_time = DateTime(2000,1,1);
+			this->last_MyStuff_read_time = DateTime(2000,1,1);
 
 
 			this->data_files_cached = nullptr;
@@ -589,7 +592,7 @@ namespace Antares {
 					//printf("husb_free, %ld \n",(long int) this->fd);
 					husb_free((husb_device_handle*) (void*) this->fd);
 					this->fd=NULL;
-				};
+				}
 
 				int ndev = find_usb_paths(&dev_paths[0][0],  pids, max_paths,  paths_max_length, &driver_names[0][0], this->commandline->pid);
 
@@ -672,133 +675,15 @@ namespace Antares {
 
 
 				this->textBox2->Enabled = (this->fd != NULL);
+				
+				if (this->fd==NULL)
+					this->last_disconnected_time = DateTime::Now;
+				else
+					this->last_connected_time = DateTime::Now;
+
 
 			}
 		}
-		/*
-
-		void CheckConnection_old(void)
-		{
-		if (this->InvokeRequired)
-		{
-		CheckConnectionCallback^ d = gcnew CheckConnectionCallback(this, &Form1::CheckConnection);
-		this->Invoke(d);
-		}
-		else
-		{
-		libusb_device_handle* dh;
-		int success;
-		//struct libusb_bus * bus;
-		struct libusb_device *dev, *device;
-		int i;
-		int r;
-		int cnt;
-		libusb_device **devs;
-		struct libusb_device_descriptor desc;
-
-		cnt = libusb_get_device_list(NULL, &devs);
-		dh = NULL;
-		device = NULL;
-		success = 0;
-		bool threadsafe = true;//! this->InvokeRequired;
-		int pid = 0;
-
-		//winusb_experiment();
-		//int find_usb_paths(char **dev_paths,  int max_paths,  int max_length_paths);
-		for (i=0; i<cnt; i++)
-		{
-		dev=devs[i];
-		r = libusb_get_device_descriptor(dev, &desc);
-
-		printf("%04x:%04x\n",desc.idVendor,desc.idProduct);
-		if (desc.idVendor==0x11db && ( desc.idProduct == 0x1000 || desc.idProduct == 0x1100) )
-		//if (desc.idVendor==0x11db &&  desc.idProduct ,0x1100 )
-
-		{
-		device=dev;
-		pid=desc.idProduct;
-		}
-		else {continue;};
-
-		if (this->fd != NULL) break;
-
-		r=libusb_open(device,&dh);
-		if (r) {
-		printf("New open call failed.\n");
-		device=NULL;
-		continue;
-		}
-
-		// Select configuration 0x01
-		if (libusb_set_configuration(dh, 0x01))
-		{
-		fprintf(stdout, "connect: Select configuration failed\n");
-
-		continue;
-		}
-
-		// Claim interface 0x00
-		if (libusb_claim_interface(dh, 0x00))
-		{
-		fprintf(stdout, "connect: Claim interface failed\n");
-
-		continue;
-		}
-		success=1; break;
-
-		}
-
-		if (this->fd != NULL && device==NULL)    // Topfield has apparently been disconnected. 
-		{
-		libusb_close(this->fd);
-		this->fd=NULL;
-		libusb_free_device_list(devs, 1);
-		//printf("Topfield is now disconnected.\n");
-		if (threadsafe)
-		{
-		this->label2->Text = "PVR: Device not connected";
-		this->listView1->Items->Clear();
-		}
-		return;
-		}
-
-
-		if (this->fd !=NULL && device!=NULL)  // Topfield is apparently still connected
-		{
-		libusb_free_device_list(devs, 1);
-		//printf("Topfield is still connected.\n");
-		return;
-		}
-
-
-		if (this->fd == NULL && device==NULL)  // Topfield is apparently still disconnected
-		{
-		libusb_free_device_list(devs, 1);
-		//printf("Topfield is still disconnected.\n");
-		if (threadsafe) this->label2->Text = "PVR: Device not connected";
-		return;
-		}
-
-
-		if (!success && dh)
-		{
-		libusb_close(dh);
-		this->fd=NULL;
-		libusb_free_device_list(devs, 1);
-		printf("Topfield is connected, but could not be opened.\n");
-		return;
-		}
-
-		this->fd=dh;
-		printf("Topfield is now connected.\n");
-		libusb_free_device_list(devs, 1);
-		this->pid=pid;
-		if (threadsafe) this->loadTopfieldDir();
-
-		return;
-		}
-		}
-		*/
 
 		int tf_init(void)
 		{
@@ -1200,6 +1085,40 @@ repeat:
 
 		}
 
+		// Read MyStuff_RecordedInfo.dat from the PVR
+		void read_MyStuff(void)
+		{
+		    
+			if (this->transfer_in_progress || this->firmware_transfer_in_progress) return;
+
+			this->last_MyStuff_read_time = DateTime::Now;
+			Monitor::Enter(this->locker);
+
+			try
+			{
+				array<Byte>^ x = this->read_topfield_file("\\ProgramFiles\\Settings\\MyStuff\\MyStuff_RecordedInfo.dat", 0,  1000000);
+
+
+				Console::WriteLine(x->Length);
+				if (x!=nullptr)
+				{
+					String ^y = Encoding::ASCII->GetString(x);   // Do we need to worry about the codepage of the text?
+					array<wchar_t>^ sep = {'\r','\n'};
+					array<String^>^ lines = y->Split(sep,StringSplitOptions::RemoveEmptyEntries);
+					for each (String^ line in lines)
+					{
+						Console::WriteLine(line);
+					}
+				}
+
+			}
+			catch(...){}
+
+			Monitor::Exit(this->locker);
+
+			
+
+		}
 
 		void  topfieldBackgroundWork(void)
 		{
@@ -1211,6 +1130,28 @@ repeat:
 				while(1)
 				{
 repeat:
+
+					// Load MyStuff_RecordedInfo.dat, if appropriate
+
+					if (this->settings["read_MyStuff"]=="1")
+					{
+						if
+							( (DateTime::Now - this->last_MyStuff_read_time).TotalMinutes > 1.0
+							||  (this->last_MyStuff_read_time < this->last_disconnected_time)
+							)
+						{
+							Console::WriteLine("read_MyStuff");
+
+
+							this->read_MyStuff();
+
+
+						}
+					}
+
+
+
+					// Process items in current topfield directory
 
 					bool sig = this->topfield_background_event->WaitOne(1234);
 
@@ -1295,9 +1236,8 @@ repeat:
 							}
 
 						}
-						//Console::WriteLine(en->GetHashCode()); Console::WriteLine(this->topfield_background_enumerator->GetHashCode());
-
-						if (en!= this->topfield_background_enumerator)
+			
+						if (en!= this->topfield_background_enumerator)   // If the directory has changed, start again
 						{
 							goto repeat;
 
@@ -2103,6 +2043,10 @@ repeat:
 			array<TopfieldItem^>^ data_files_cached;   // Stores last known copy of \DataFiles\ directory.
 			DateTime data_files_read_time;  // Time that the \DataFiles\ directory was last loaded
 			DateTime recording_in_progress_last_checked; // Time that recording_in_progress() was last called
+
+			DateTime last_disconnected_time;
+			DateTime last_connected_time;
+			DateTime last_MyStuff_read_time;
 
 
 			String^ watched_directory;
@@ -9631,12 +9575,6 @@ abort:  // If the transfer was cancelled before it began
 			 }
 
 
-			 /*
-			 private: System::Void listView2_ItemMouseHover(System::Object^  sender, System::Windows::Forms::ListViewItemMouseHoverEventArgs^  e) {
-			 Console::WriteLine("ItemMouseHover, " + e->Item->Text);
-			 }
-			 */
-
 			 static String^ wordwrap(String^ str, int w)
 			 {
 				 String^ s = "";
@@ -9765,27 +9703,29 @@ abort:  // If the transfer was cancelled before it began
 
 								 int ww=60;
 								 String ^str = item->description->Trim();
-								 DateTime prog_end_time = item->prog_start_time.AddMinutes(item->proglen);
+								
+									 DateTime prog_end_time = item->prog_start_time.AddMinutes(item->proglen);
 
-								 // String^ str2 = item->channel +"\r\n"+item->prog_start_time.ToString("f") ;
+									 // String^ str2 = item->channel +"\r\n"+item->prog_start_time.ToString("f") ;
 
 
-								 String^ str2b = (item->proglen % 60).ToString() +lang::u_minutes;
-								 int prog_hr = item->proglen/60;
-								 if (prog_hr>0) str2b = prog_hr.ToString() + lang::u_hours+" " + str2b;
+									 String^ str2b = (item->proglen % 60).ToString() +lang::u_minutes;
+									 int prog_hr = item->proglen/60;
+									 if (prog_hr>0) str2b = prog_hr.ToString() + lang::u_hours+" " + str2b;
 
-								 str2b = lang::p_proglen +"   "+str2b;
+									 str2b = lang::p_proglen +"   "+str2b;
 
-								 String^ str3 = (item->reclen % 60).ToString() +lang::u_minutes;
-								 int recorded_hr = item->reclen/60;
-								 if (recorded_hr>0) str3 = recorded_hr.ToString() + lang::u_hours+" " + str3;
-								 str3 =lang::p_reclen+"   "+str3;
+									 String^ str3 = (item->reclen % 60).ToString() +lang::u_minutes;
+									 int recorded_hr = item->reclen/60;
+									 if (recorded_hr>0) str3 = recorded_hr.ToString() + lang::u_hours+" " + str3;
+									 str3 =lang::p_reclen+"   "+str3;
 
-								 String^ tit_chan = item->title;
-								 //try {
-								 //	 tit_chan = tit_chan->PadRight(ww + 3 - item->channel->Length);
-								 // } catch(...){}
-								 tit_chan = tit_chan + "  ("+item->channel+")";
+									 String^ tit_chan = item->title;
+									 //try {
+									 //	 tit_chan = tit_chan->PadRight(ww + 3 - item->channel->Length);
+									 // } catch(...){}
+									 tit_chan = tit_chan + "  ("+item->channel+")";
+								 
 
 								 if (str->Length>0)
 								 {
@@ -9793,7 +9733,11 @@ abort:  // If the transfer was cancelled before it began
 
 									 //str = item->title + "\r\n\r\n" +str + "\r\n\r\n"+item->channel+"\r\n"+str2b+"\r\n"+str3;
 
-									 str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
+									 if (!item->filename->EndsWith(".tfd",StringComparison::CurrentCultureIgnoreCase))
+									 {
+
+										 str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
+									 }
 
 
 									 this->tooltip_string = str;

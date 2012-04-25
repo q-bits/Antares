@@ -38,7 +38,7 @@ namespace Antares {
 			InitializeComponent();
 			this->apply_language();
 
-            this->settings = settings_in;
+			this->settings = settings_in;
 
 
 			int lang_index=0;
@@ -54,32 +54,33 @@ namespace Antares {
 			this->comboBox1->SelectedIndex = lang_index;
 
 
-			 for (int j=0; j<num_columns; j++)
-			 {
-				 String^ str = this->settings["PVR_Column"+j.ToString()+"Visible"];			 
-				 this->checkedListBox1->SetItemChecked(j,str=="1");
+			for (int j=0; j<num_columns; j++)
+			{
+				String^ str = this->settings["PVR_Column"+j.ToString()+"Visible"];			 
+				this->checkedListBox1->SetItemChecked(j,str=="1");
 
-				 str = this->settings["PC_Column"+j.ToString()+"Visible"];			 
-				 this->checkedListBox2->SetItemChecked(j,str=="1");
+				str = this->settings["PC_Column"+j.ToString()+"Visible"];			 
+				this->checkedListBox2->SetItemChecked(j,str=="1");
 
-			 }
+			}
 
-			 if (this->settings["TurboMode"] == "on")
-				 this->checkBox1->Checked=true;
-			 else
-				 this->checkBox1->Checked=false;
+			if (this->settings["TurboMode"] == "on")
+				this->checkBox1->Checked=true;
+			else
+				this->checkBox1->Checked=false;
 
-			 this->rescaleCheck->Checked = this->settings["RescaleColumns"]=="1";
-			 this->nosleep_check->Checked = this->settings["prevent_sleep_during_transfer"]=="1";
-			
-			  this->noTurboCheck->Checked = this->settings["prevent_turbo_while_recording"]=="1";
-			
-			 
+			this->rescaleCheck->Checked = this->settings["RescaleColumns"]=="1";
+			this->nosleep_check->Checked = this->settings["prevent_sleep_during_transfer"]=="1";
+
+			this->noTurboCheck->Checked = this->settings["prevent_turbo_while_recording"]=="1";
+			this->mystuff_read_check->Checked = this->settings["read_MyStuff"]=="1";
+
+
 
 
 		}
 
-		
+
 		void apply_language(void)
 		{
 
@@ -97,7 +98,7 @@ namespace Antares {
 			this->Text = lang::s_title;
 			this->Name = lang::s_title;
 			this->groupBox1->Text = lang::s_choose;
-			
+
 			this->button1->Text = lang::b_ok;
 			this->button2->Text = lang::b_cancel;
 			this->groupBox2->Text = lang::s_language;
@@ -109,8 +110,8 @@ namespace Antares {
 			this->checkedListBox2->Items->Clear();
 			this->checkedListBox2->Items->AddRange(arr);
 
-//			this->checkedListBox1->Items->AddRange(gcnew cli::array< System::Object^  >(6) {L"Name", L"Size", L"Type", L"Date", L"Channel", 
-//				L"Description"});
+			//			this->checkedListBox1->Items->AddRange(gcnew cli::array< System::Object^  >(6) {L"Name", L"Size", L"Type", L"Date", L"Channel", 
+			//				L"Description"});
 
 
 		}
@@ -148,7 +149,8 @@ namespace Antares {
 	private: System::Windows::Forms::CheckBox^  nosleep_check;
 	private: System::Windows::Forms::GroupBox^  groupBox2;
 	private: System::Windows::Forms::ComboBox^  comboBox1;
-private: System::Windows::Forms::CheckBox^  noTurboCheck;
+	private: System::Windows::Forms::CheckBox^  noTurboCheck;
+	private: System::Windows::Forms::CheckBox^  mystuff_read_check;
 
 
 
@@ -184,6 +186,7 @@ private: System::Windows::Forms::CheckBox^  noTurboCheck;
 			this->groupBox2 = (gcnew System::Windows::Forms::GroupBox());
 			this->comboBox1 = (gcnew System::Windows::Forms::ComboBox());
 			this->noTurboCheck = (gcnew System::Windows::Forms::CheckBox());
+			this->mystuff_read_check = (gcnew System::Windows::Forms::CheckBox());
 			this->groupBox1->SuspendLayout();
 			this->groupBox2->SuspendLayout();
 			this->SuspendLayout();
@@ -304,7 +307,7 @@ private: System::Windows::Forms::CheckBox^  noTurboCheck;
 			// nosleep_check
 			// 
 			this->nosleep_check->AutoSize = true;
-			this->nosleep_check->Location = System::Drawing::Point(267, 119);
+			this->nosleep_check->Location = System::Drawing::Point(267, 108);
 			this->nosleep_check->Name = L"nosleep_check";
 			this->nosleep_check->Size = System::Drawing::Size(280, 30);
 			this->nosleep_check->TabIndex = 5;
@@ -337,12 +340,22 @@ private: System::Windows::Forms::CheckBox^  noTurboCheck;
 			// noTurboCheck
 			// 
 			this->noTurboCheck->AutoSize = true;
-			this->noTurboCheck->Location = System::Drawing::Point(267, 172);
+			this->noTurboCheck->Location = System::Drawing::Point(267, 155);
 			this->noTurboCheck->Name = L"noTurboCheck";
 			this->noTurboCheck->Size = System::Drawing::Size(193, 17);
 			this->noTurboCheck->TabIndex = 7;
 			this->noTurboCheck->Text = L"Prevent turbo mode while recording";
 			this->noTurboCheck->UseVisualStyleBackColor = true;
+			// 
+			// mystuff_read_check
+			// 
+			this->mystuff_read_check->AutoSize = true;
+			this->mystuff_read_check->Location = System::Drawing::Point(267, 192);
+			this->mystuff_read_check->Name = L"mystuff_read_check";
+			this->mystuff_read_check->Size = System::Drawing::Size(184, 17);
+			this->mystuff_read_check->TabIndex = 8;
+			this->mystuff_read_check->Text = L"Use MyStuff program descriptions";
+			this->mystuff_read_check->UseVisualStyleBackColor = true;
 			// 
 			// SettingsDialog
 			// 
@@ -351,6 +364,7 @@ private: System::Windows::Forms::CheckBox^  noTurboCheck;
 			this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(240)), static_cast<System::Int32>(static_cast<System::Byte>(240)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(255)));
 			this->ClientSize = System::Drawing::Size(565, 301);
+			this->Controls->Add(this->mystuff_read_check);
 			this->Controls->Add(this->noTurboCheck);
 			this->Controls->Add(this->groupBox2);
 			this->Controls->Add(this->nosleep_check);
@@ -374,7 +388,7 @@ private: System::Windows::Forms::CheckBox^  noTurboCheck;
 	private: System::Void checkedListBox1_SelectedIndexChanged(System::Object^  sender, System::EventArgs^  e) {
 			 }
 	private: System::Void button1_Click(System::Object^  sender, System::EventArgs^  e) {
-				 
+
 
 				 /////////////////////////////////////
 				 // Collect the settings from the GUI before closing
@@ -392,23 +406,23 @@ private: System::Windows::Forms::CheckBox^  noTurboCheck;
 				 if (this->checkBox1->Checked)
 					 this->settings->changeSetting("TurboMode","on");
 				 else
-					  this->settings->changeSetting("TurboMode","off");
+					 this->settings->changeSetting("TurboMode","off");
 
 
 
 				 this->settings->changeSetting("RescaleColumns", (  (int)  this->rescaleCheck->Checked ).ToString() );
 				 this->settings->changeSetting("prevent_sleep_during_transfer", (  (int)  this->nosleep_check->Checked ).ToString() );
 				 this->settings->changeSetting("prevent_turbo_while_recording", (  (int)  this->noTurboCheck->Checked ).ToString() );
-
+				 this->settings->changeSetting("read_MyStuff", (  (int)  this->mystuff_read_check->Checked ).ToString() );
 
 				 int lang_index = this->comboBox1->SelectedIndex;
 				 try{
 					 this->settings->changeSetting("language",this->settings->language_codes[lang_index]);
 				 }
 				 catch(...){}
-			
-				
+
+
 
 			 }
-};
+	};
 }

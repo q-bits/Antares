@@ -837,14 +837,15 @@ namespace Antares {
 		String^ channel;
 		String^ description;
 		String^ title;
-		int proglen, reclen;
-		CachedProgramInformation(String^ ch, String ^ desc, String^ tit, int plen, int rlen)
+		int proglen, reclen, svcid;
+		CachedProgramInformation(String^ ch, String ^ desc, String^ tit, int plen, int rlen, int sid)
 		{
 			this->channel = ch;
 			this->description=desc;
 			this->title=tit;
 			this->proglen=plen;
 			this->reclen=rlen;
+			this->svcid=sid;
 		}
 
 		void apply_to_item(FileItem^ item)
@@ -854,6 +855,7 @@ namespace Antares {
 			item->title = this->title;
 			item->proglen=this->proglen;
 			item->reclen = this->reclen;
+			item->svcid = this->svcid;
 			//item->SubItems[4]->Text = item->channel;
 			//item->SubItems[5]->Text = item->description;
 		}
@@ -885,10 +887,107 @@ namespace Antares {
 		void add(FileItem^ item)
 		{
 			String^ key = dic_key(item);
-			CachedProgramInformation^ pi = gcnew CachedProgramInformation(item->channel, item->description, item->title, item->proglen, item->reclen);
+			CachedProgramInformation^ pi = gcnew CachedProgramInformation(item->channel, item->description, item->title, item->proglen, item->reclen, item->svcid);
 			dic[key]=pi;
 
 		}
+
+	};
+
+
+	public ref class MyStuffInfoCollection
+	{
+	public:
+
+	};
+
+	public ref class MyStuffInfo
+	{
+	public:
+		DateTime file_datetime;
+		DateTime prog_start_datetime;
+		DateTime prog_end_datetime;
+
+		int svcid;
+		int proglen;
+		bool valid;
+		String ^title;
+		String ^description;
+
+		static const DateTime dummy = DateTime(1996,1,1);
+
+		static int toint(String ^s)            // Convert a String to an int, or -1 if error.
+		{
+			try{
+				return Convert::ToInt32(s);
+			} catch(...)
+			{
+				return -1;
+			}
+		}
+
+		static DateTime todatetime(String^ s)   // Convert string such as "201204212231" to equivalent DateTime.
+		{
+			if (s->Length != 12) return dummy;
+
+			int year = toint(s->Substring(0,4));
+			int month = toint(s->Substring(4,2));
+			int day = toint(s->Substring(6,2));
+			int hour = toint(s->Substring(8,2));
+			int minute=toint(s->Substring(10,2));
+			if (year==-1 || month==-1 || day==-1 || hour==-1 || minute==-1) return dummy;
+
+			try{
+				return DateTime(year,month,day,hour,minute,0);
+			}
+			catch(...) { return dummy;};
+
+
+		}
+
+		MyStuffInfo(String^ x)
+		{
+			valid=0;
+
+			array<String^>^ y = x->Split('|');
+
+			if (y->Length <20) return;
+
+			if (y[1] != "MEI8") return;
+
+			this->svcid = toint(y[19]);
+			if (this->svcid==-1) return;
+
+			this->proglen = toint(y[7]);
+			if (this->proglen==-1) return;
+
+			this->prog_start_datetime = todatetime(y[3]);
+			this->prog_end_datetime = todatetime(y[4]);
+			if (this->prog_start_datetime == dummy || this->prog_end_datetime == dummy) return;
+
+			array<wchar_t>^ sep = {'_','.'};
+			array<String^>^ v = y[0]->Split(sep,StringSplitOptions::RemoveEmptyEntries);
+
+			this->file_datetime=dummy;
+			for (int i=v->Length; i>=0; i--)
+			{
+				if (v[i]->Length == 12)
+				{
+					this->file_datetime = todatetime(v[i]);
+					if (this->file_datetime != dummy) break;
+				}
+			}
+			if (this->file_datetime == dummy) return;
+
+			this->title = y[5];
+			this->description = y[6];
+			if (this->title == "No Information") return;
+
+			valid=1;
+
+		}
+
+
 
 	};
 

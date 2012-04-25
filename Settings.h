@@ -101,6 +101,8 @@ namespace Antares {
 
 			dic->Add("prevent_turbo_while_recording","1");
 
+			dic->Add("read_MyStuff","1");
+
 
 			String ^folder = Path::Combine(Environment::GetFolderPath(Environment::SpecialFolder::ApplicationData) , "Antares\\");
 			
