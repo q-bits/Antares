@@ -895,16 +895,12 @@ namespace Antares {
 	};
 
 
-	public ref class MyStuffInfoCollection
-	{
-	public:
-
-	};
 
 	public ref class MyStuffInfo
 	{
 	public:
 		DateTime file_datetime;
+		String ^file_datetime_string; // E.g. 20120421223
 		DateTime prog_start_datetime;
 		DateTime prog_end_datetime;
 
@@ -913,6 +909,7 @@ namespace Antares {
 		bool valid;
 		String ^title;
 		String ^description;
+		String ^rawstring;
 
 		static const DateTime dummy = DateTime(1996,1,1);
 
@@ -949,6 +946,8 @@ namespace Antares {
 		{
 			valid=0;
 
+			this->rawstring = x;
+
 			array<String^>^ y = x->Split('|');
 
 			if (y->Length <20) return;
@@ -969,18 +968,22 @@ namespace Antares {
 			array<String^>^ v = y[0]->Split(sep,StringSplitOptions::RemoveEmptyEntries);
 
 			this->file_datetime=dummy;
-			for (int i=v->Length; i>=0; i--)
+			for (int i=v->Length-1; i>=0; i--)
 			{
 				if (v[i]->Length == 12)
 				{
 					this->file_datetime = todatetime(v[i]);
-					if (this->file_datetime != dummy) break;
+					if (this->file_datetime != dummy) 
+					{
+						this->file_datetime_string = v[i];
+						break;
+					}
 				}
 			}
 			if (this->file_datetime == dummy) return;
 
-			this->title = y[5];
-			this->description = y[6];
+			this->title = Antares::cleanString(y[5]);
+			this->description = Antares::cleanString(y[6]);
 			if (this->title == "No Information") return;
 
 			valid=1;
@@ -991,6 +994,81 @@ namespace Antares {
 
 	};
 
+
+	public ref class MyStuffInfoCollection
+	{
+	public:
+		Dictionary<String^,  List<MyStuffInfo^>^  > ^dic;
+
+		MyStuffInfoCollection (void)
+		{
+			this->dic = gcnew Dictionary<String^,   List<MyStuffInfo^>^    >();
+		}
+
+		static String^ datekey(DateTime d)
+		{
+			return d.Year.ToString() + d.Month.ToString("D2") + d.Day.ToString("D2") + d.Hour.ToString("D2") + d.Minute.ToString("D2");
+		}
+
+		void add(MyStuffInfo^ m)
+		{
+			String ^key = m->svcid.ToString() + "_" + m->file_datetime_string;
+			List<MyStuffInfo^>^ list;
+			if (!this->dic->ContainsKey(key))
+			{
+				list = gcnew  List<MyStuffInfo^>();
+				this->dic->Add(key,list);
+			}
+			else
+				list = this->dic[key];
+
+			list->Add(m);
+			Console::WriteLine("Adding *"+key+"*");
+			Console::WriteLine(this->dic->ContainsKey(key));
+
+
+			//this->dic->Add(key,m);
+		}
+
+		void add(String^ y)
+		{
+
+			array<wchar_t>^ sep = {'\r','\n'};
+			array<String^>^ lines = y->Split(sep,StringSplitOptions::RemoveEmptyEntries);
+			for each (String^ line in lines)
+			{
+				MyStuffInfo ^m = gcnew MyStuffInfo(line);
+				if (m->valid)
+					this->add(m);
+				//else
+				//	Console::WriteLine("Not valid: " + m->rawstring);
+			}
+		}
+
+		array<MyStuffInfo^>^ query(FileItem^ item)
+		{
+			String ^key;
+			
+			
+			key = item->svcid.ToString() + "_" + datekey(item->datetime); Console::WriteLine("Query *"+key+"*");
+			if (this->dic->ContainsKey(key) )
+				return this->dic[key]->ToArray();
+
+
+			key = item->svcid.ToString() + "_" + datekey(item->datetime.AddMinutes(1));Console::WriteLine("Query *"+key+"*");
+			if (this->dic->ContainsKey(key) )
+				return this->dic[key]->ToArray();
+
+				key = item->svcid.ToString() + "_" + datekey(item->datetime.AddMinutes(-1)); Console::WriteLine("Query *"+key+"*");
+			if (this->dic->ContainsKey(key) )
+				return this->dic[key]->ToArray();
+
+			return gcnew array<MyStuffInfo^>(0);
+
+
+		}
+
+	};
 
 
 

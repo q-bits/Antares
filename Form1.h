@@ -1086,16 +1086,34 @@ repeat:
 		}
 
 		// Read MyStuff_RecordedInfo.dat from the PVR
-		void read_MyStuff(void)
+		void read_MyStuff(bool cached)
 		{
-		    
+
 			if (this->transfer_in_progress || this->firmware_transfer_in_progress) return;
+
+
+
+			if (this->settings["read_MyStuff"]!="1")
+				return;
+
+
+			if
+				(! ( (DateTime::Now - this->last_MyStuff_read_time).TotalMinutes > 1.0
+				||  (this->last_MyStuff_read_time < this->last_disconnected_time)
+				))
+			{
+				if (cached) return;
+
+
+			}
+
+
+
 
 			this->last_MyStuff_read_time = DateTime::Now;
 			Monitor::Enter(this->locker);
 
-			try
-			{
+	
 				array<Byte>^ x = this->read_topfield_file("\\ProgramFiles\\Settings\\MyStuff\\MyStuff_RecordedInfo.dat", 0,  1000000);
 
 
@@ -1103,16 +1121,12 @@ repeat:
 				if (x!=nullptr)
 				{
 					String ^y = Encoding::ASCII->GetString(x);   // Do we need to worry about the codepage of the text?
-					array<wchar_t>^ sep = {'\r','\n'};
-					array<String^>^ lines = y->Split(sep,StringSplitOptions::RemoveEmptyEntries);
-					for each (String^ line in lines)
-					{
-						Console::WriteLine(line);
-					}
+					this->mystuff_info_collection = gcnew Antares::MyStuffInfoCollection();
+					this->mystuff_info_collection->add(y);
+				
 				}
 
-			}
-			catch(...){}
+	
 
 			Monitor::Exit(this->locker);
 
@@ -1132,22 +1146,8 @@ repeat:
 repeat:
 
 					// Load MyStuff_RecordedInfo.dat, if appropriate
+						this->read_MyStuff(true);
 
-					if (this->settings["read_MyStuff"]=="1")
-					{
-						if
-							( (DateTime::Now - this->last_MyStuff_read_time).TotalMinutes > 1.0
-							||  (this->last_MyStuff_read_time < this->last_disconnected_time)
-							)
-						{
-							Console::WriteLine("read_MyStuff");
-
-
-							this->read_MyStuff();
-
-
-						}
-					}
 
 
 
@@ -1255,10 +1255,11 @@ repeat:
 
 
 			}
-			catch (...)    //Todo: find out why there is an exception here when you close window while bkgnd work pending.
+			catch (Exception ^e)    //Todo: find out why there is an exception here when you close window while bkgnd work pending.
 			{
 
 				//printf("The topfieldBackgroundWork thread stopped!!!!!!!!!!!\n");
+				Console::WriteLine(e->Message);
 			}
 
 
@@ -2047,6 +2048,7 @@ repeat:
 			DateTime last_disconnected_time;
 			DateTime last_connected_time;
 			DateTime last_MyStuff_read_time;
+			MyStuffInfoCollection ^mystuff_info_collection;
 
 
 			String^ watched_directory;
@@ -7970,6 +7972,19 @@ abort:  // If the transfer was cancelled before it began
 			item->proglen = ri->EventDurationMin + 60*ri->EventDurationHour;
 			item->prog_start_time = Time_T2DateTime(tfdt_to_time( & ri->EventStartTime));
 
+			item->description=""+item->description;   //REC
+			if (this->settings["read_MyStuff"]=="1" &&  this->mystuff_info_collection != nullptr)
+			{
+				array<MyStuffInfo^> ^mia = this->mystuff_info_collection->query(item);
+				if (mia->Length > 0)
+				{
+					MyStuffInfo^ mi = mia[0];
+					item->description = ""+mi->description;  //MyInfo
+					item->title = mi->title;
+					item->proglen = mi->proglen;
+					
+				}
+			}
 
 			String^ ext = gcnew String(ri->ExtEventText);
 			if (item->description->Length >0 && ext->Length >0 )
