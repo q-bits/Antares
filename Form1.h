@@ -245,6 +245,7 @@ namespace Antares {
 
 
 			this->proginfo_cache = gcnew ProgramInformationCache();
+			this->mystuff_info_collection = gcnew Antares::MyStuffInfoCollection();
 			this->connection_needs_checking = true;
 
 			icons = gcnew Antares::Icons();
@@ -7965,26 +7966,28 @@ abort:  // If the transfer was cancelled before it began
 
 			item->channel = gcnew String(ri->SISvcName);
 			item->title = gcnew String(ri->EventEventName);
+			item->rec_title = item->title;
 			item->description = gcnew String(ri->EventEventDescription);
+			item->rec_description = item->description;
 
 			item->svcid = ri->SIServiceID;
 			item->reclen = ri->HeaderDuration;
 			item->proglen = ri->EventDurationMin + 60*ri->EventDurationHour;
-			item->prog_start_time = Time_T2DateTime(tfdt_to_time( & ri->EventStartTime));
+			item->prog_start_time = Time_T2DateTime_utc(tfdt_to_time( & ri->EventStartTime));
 
 			item->description=""+item->description;   //REC
-			if (this->settings["read_MyStuff"]=="1" &&  this->mystuff_info_collection != nullptr)
+			//if (this->settings["read_MyStuff"]=="1" &&  this->mystuff_info_collection != nullptr)
+			//{
+			array<MyStuffInfo^> ^mia = this->mystuff_info_collection->query(item);
+			if (mia->Length > 1)
 			{
-				array<MyStuffInfo^> ^mia = this->mystuff_info_collection->query(item);
-				if (mia->Length > 0)
-				{
-					MyStuffInfo^ mi = mia[0];
-					item->description = ""+mi->description;  //MyInfo
-					item->title = mi->title;
-					item->proglen = mi->proglen;
-					
-				}
+				MyStuffInfo^ mi = mia[1];
+				item->description = ""+mi->description;  //MyInfo
+				item->title = mi->title;
+				item->proglen = mi->proglen;
+
 			}
+			//}
 
 			String^ ext = gcnew String(ri->ExtEventText);
 			if (item->description->Length >0 && ext->Length >0 )
@@ -9703,10 +9706,10 @@ abort:  // If the transfer was cancelled before it began
 						 hash = subitem->GetHashCode();
 						 //Console::WriteLine(hash.ToString());
 
-						 if (subitem->Tag == "desc")
+						 if (subitem->Tag == "desc" && !item->filename->EndsWith(".tfd",StringComparison::CurrentCultureIgnoreCase) && item->svcid>=0)
 						 {
 
-							 if (hash != lasthash)
+							 if (hash != lasthash )
 
 							 {
 
@@ -9717,17 +9720,32 @@ abort:  // If the transfer was cancelled before it began
 
 
 								 int ww=60;
-								 String ^str = item->description->Trim();
-								
-									 DateTime prog_end_time = item->prog_start_time.AddMinutes(item->proglen);
+								 array<MyStuffInfo^>^ mia = this->mystuff_info_collection->query(item);
+								 int i1,i2;
+								 if (mia->Length==1)
+								 {i1=0; i2=1;}
+								 else
+								 {i1=1; i2=mia->Length;};
+								 String ^str_total="";
+								 for (int i=i1; i<i2; i++)
+								 {
+									 MyStuffInfo ^mitem = mia[i];
+									 String ^str = mitem->description->Trim();
+
+									 DateTime prog_end_time = mitem->prog_start_datetime.AddMinutes(item->proglen);
 
 									 // String^ str2 = item->channel +"\r\n"+item->prog_start_time.ToString("f") ;
 
 
-									 String^ str2b = (item->proglen % 60).ToString() +lang::u_minutes;
-									 int prog_hr = item->proglen/60;
+
+									 String^ str2b = (mitem->proglen % 60).ToString() +lang::u_minutes;
+									 int prog_hr = mitem->proglen/60;
 									 if (prog_hr>0) str2b = prog_hr.ToString() + lang::u_hours+" " + str2b;
 
+									 String ^proglen_str = str2b;
+
+
+									 String ^proglen_str_short = prog_hr.ToString()+":"+(mitem->proglen % 60).ToString("D2");
 									 str2b = lang::p_proglen +"   "+str2b;
 
 									 String^ str3 = (item->reclen % 60).ToString() +lang::u_minutes;
@@ -9735,40 +9753,63 @@ abort:  // If the transfer was cancelled before it began
 									 if (recorded_hr>0) str3 = recorded_hr.ToString() + lang::u_hours+" " + str3;
 									 str3 =lang::p_reclen+"   "+str3;
 
-									 String^ tit_chan = item->title;
+									 String^ tit_chan = mitem->title;
 									 //try {
 									 //	 tit_chan = tit_chan->PadRight(ww + 3 - item->channel->Length);
 									 // } catch(...){}
 									 tit_chan = tit_chan + "  ("+item->channel+")";
-								 
 
-								 if (str->Length>0)
-								 {
-									 str = wordwrap(str,ww);
 
-									 //str = item->title + "\r\n\r\n" +str + "\r\n\r\n"+item->channel+"\r\n"+str2b+"\r\n"+str3;
 
-									 if (!item->filename->EndsWith(".tfd",StringComparison::CurrentCultureIgnoreCase))
+									 DateTime pst = mitem->prog_start_datetime;
+									 //pst = item->prog_start_time.ToLocalTime();
+									 DateTime pet = mitem->prog_end_datetime;
+									 //String^ time_str = pst.Hour.ToString()+":"+pst.Minute.ToString()+" - "
+									//	 +pet.Hour.ToString()+":"+pet.Minute.ToString() + " ("+proglen_str+")";
+
+									 //String^ time_str = pst.ToString("g")+" - " + pet.ToString("t");
+									 String^ time_str = pst.ToString("ddd   ")+pst.ToString("d")+"   "+pst.ToString("HH:mm")+" - " + pet.ToString("HH:mm")
+										 +"   ("+proglen_str_short+")";
+
+
+
+
+
+									 if (str->Length>0)
 									 {
+										 str = wordwrap(str,ww);
 
-										 str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
+										 //str = item->title + "\r\n\r\n" +str + "\r\n\r\n"+item->channel+"\r\n"+str2b+"\r\n"+str3;
+
+
+
+										 //str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
+										 str = tit_chan + "\r\n "+time_str+"\r\n" +str;
+										 
+										 if (str_total->Length > 0) str_total+="\r\n\r\n";
+										 str_total += str;
 									 }
-
-
-									 this->tooltip_string = str;
-									 this->tooltip_location = p;
-									 this->tooltip_listview = list;
-									 this->tooltip_timer->Interval=100;
-									 this->tooltip_timer->Start();
-									 this->toolTip1->SetToolTip(list, "");
-
-
-									 //this->toolTip1->Show(str, list, p,20000);
-
-									 //Console::WriteLine("Set: "+wordwrap(item->description,60));
-									 clear=false;
-									 lasthash=hash;
 								 }
+								 String^ str3 = (item->reclen % 60).ToString() +lang::u_minutes;
+								 int recorded_hr = item->reclen/60;
+								 if (recorded_hr>0) str3 = recorded_hr.ToString() + lang::u_hours+" " + str3;
+								 str3 =lang::p_reclen+"   "+str3;
+								 str_total = str_total+"\r\n\r\n"+str3;
+
+								 this->tooltip_string = str_total;
+								 this->tooltip_location = p;
+								 this->tooltip_listview = list;
+								 this->tooltip_timer->Interval=100;
+								 this->tooltip_timer->Start();
+								 this->toolTip1->SetToolTip(list, "");
+
+
+								 //this->toolTip1->Show(str, list, p,20000);
+
+								 //Console::WriteLine("Set: "+wordwrap(item->description,60));
+								 clear=false;
+								 lasthash=hash;
+							 
 
 
 							 }   // if hash != lasthash

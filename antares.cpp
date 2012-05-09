@@ -110,11 +110,10 @@ namespace Antares {
 	}
 
 
+	// Converts a local time_t to a local DateTime
 	System::DateTime Time_T2DateTime(time_t t)
 	{
-		//tf_datetime ttt;
-		//ttt.mjd=0;
-		//t=tfdt_to_time(&ttt); printf("time_t = %uld\n",t);
+
 		struct tm *newtime;
 		newtime = localtime(&t);
 		DateTime datetime;
@@ -122,11 +121,26 @@ namespace Antares {
 			datetime = DateTime(1999, 9, 9, 9, 9, 9, System::DateTimeKind::Local);
 		else 
 			datetime = DateTime(1900+newtime->tm_year, newtime->tm_mon+1, newtime->tm_mday, newtime->tm_hour, newtime->tm_min, newtime->tm_min, System::DateTimeKind::Local);
-		//datetime = datetime.ToLocalTime();
-		//TimeSpan delta = TimeSpan::FromSeconds( (double) t);
-		//datetime=datetime + delta; 
+
 		return datetime;
 	}
+
+
+	// Converts a utc time_t to a local DateTime
+    System::DateTime Time_T2DateTime_utc(time_t t)
+	{
+	
+		struct tm *newtime;
+		newtime = localtime(&t);
+		DateTime datetime;
+		if (newtime==NULL)
+			datetime = DateTime(1999, 9, 9, 9, 9, 9, System::DateTimeKind::Utc);
+		else 
+			datetime = DateTime(1900+newtime->tm_year, newtime->tm_mon+1, newtime->tm_mday, newtime->tm_hour, newtime->tm_min, newtime->tm_min, System::DateTimeKind::Utc);
+
+		return datetime.ToLocalTime();
+	}
+
 
 
 	/*

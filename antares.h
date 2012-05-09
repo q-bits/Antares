@@ -96,6 +96,7 @@ namespace Antares {
 	System::String^ safeString( String^ filename );
 	System::String^ cleanString( String^ filename );
 	System::DateTime Time_T2DateTime(time_t t);
+	System::DateTime Time_T2DateTime_utc(time_t t);
 	String^ combineTopfieldPath(String^ path1,  String^ path2);
 	void CloseConsole(void);
 
@@ -530,13 +531,13 @@ namespace Antares {
 			this->channel="";
 			this->description="";
 			this->title="";
+			this->rec_description="";
+			this->rec_title="";
 			this->proglen = 0;
 			this->reclen = 0;
-			this->svcid = 0;
+			this->svcid = -1;
 			this->prog_start_time = DateTime(1999,9,9,9,9,9);
 			this->datetime = DateTime(1999,9,9,9,9,9);
-
-
 
 			return;
 		}
@@ -552,7 +553,6 @@ namespace Antares {
 			}
 			catch(...){}
 
-			//this->description="\r\nTesting, \r\n one, \r\ntwo, \r\nthree\r\n";
 			int nc = this->get_num_columns();
 			for (int j=0; j<nc; j++)
 			{
@@ -565,9 +565,6 @@ namespace Antares {
 				}
 			}
 			for (dest_ind++ ; dest_ind<this->SubItems->Count; dest_ind++) this->SubItems[dest_ind]->Text="";
-
-			//this->ToolTipText = this->description;   /*     */
-
 
 		}
 
@@ -586,6 +583,8 @@ namespace Antares {
 
 			this->channel = item->channel;
 			this->description=item->description;
+			this->rec_description=item->rec_description;
+			this->rec_title=item->rec_title;
 			this->title = item->title;
 
 			this->proglen = item->proglen;
@@ -594,25 +593,16 @@ namespace Antares {
 
 			this->populate_subitems();
 
-		//	for (int j=0; j<nc; j++)
-		//	{
-		//		this->SubItems[j]->Text = item->SubItems[j]->Text;
-		//	}
-
 		}
 		
 		void update_program_information(void)
 		{
-			//this->SubItems[4]->Text = this->channel;
-			//this->SubItems[5]->Text = this->description;
 			this->populate_subitems();
 		}
 		void update_icon(void)
 		{
 			this->ImageIndex = this->icon_index;
-			//this->SubItems[2]->Text=this->file_type;
 			this->populate_subitems();
-
 		}
 
 
@@ -627,8 +617,11 @@ namespace Antares {
 		System::String^ file_type;
 
 		System::String^ channel;
-		System::String^ description;
-		System::String^ title;
+		System::String^ description;      // (the description that is displayed -- either from rec header or MyInfo)
+		System::String^ rec_description;  // (the description from the rec header)
+		System::String^ title;            //  ... and likewise for title and rec_title.
+		System::String^ rec_title; 
+
 		int proglen, reclen, svcid;
 		System::DateTime prog_start_time;
 
@@ -676,9 +669,6 @@ namespace Antares {
 			this->Name = this->filename;
 			this->recursion_offset="";
 			this->isdrive = true;
-			this->channel="";
-			this->description="";
-			this->title="";
 			this->file_type="";
 			this->sizestring="";
 
@@ -694,8 +684,6 @@ namespace Antares {
 			this->sizestring="";
 			this->recursion_offset="";
 			this->channel="";
-			this->description="";
-			this->title="";
 			this->directory = dir;
 			if ( (attr & FileAttributes::Directory) == FileAttributes::Directory)
 			{
@@ -717,7 +705,6 @@ namespace Antares {
 			this->full_filename = path; 
 			this->Name=path;
 			
-
 			this->populate_subitems();
 			this->safe_filename = Antares::safeString(filename);
 
@@ -812,10 +799,6 @@ namespace Antares {
 			
 			if (this->type=='d') this->sizestring=""; else this->sizestring =  HumanReadableSize((__u64) get_u64(&entry->size));
 			
-			this->channel="";
-			this->description="";
-			this->title="";
-
 			this->datetime = Time_T2DateTime(timestamp);
 			this->datestring = DateString(this->datetime);
 
@@ -851,13 +834,14 @@ namespace Antares {
 		void apply_to_item(FileItem^ item)
 		{
 			item->channel = this->channel;
-			item->description = this->description;
-			item->title = this->title;
+			item->description = this->description;      //?
+			item->title = this->title;                  //?
+			item->rec_description = this->description;  //?
+			item->rec_title = this->title;              //?
 			item->proglen=this->proglen;
 			item->reclen = this->reclen;
 			item->svcid = this->svcid;
-			//item->SubItems[4]->Text = item->channel;
-			//item->SubItems[5]->Text = item->description;
+
 		}
 	};
 
@@ -887,7 +871,7 @@ namespace Antares {
 		void add(FileItem^ item)
 		{
 			String^ key = dic_key(item);
-			CachedProgramInformation^ pi = gcnew CachedProgramInformation(item->channel, item->description, item->title, item->proglen, item->reclen, item->svcid);
+			CachedProgramInformation^ pi = gcnew CachedProgramInformation(item->channel, item->rec_description, item->rec_title, item->proglen, item->reclen, item->svcid);
 			dic[key]=pi;
 
 		}
@@ -907,6 +891,7 @@ namespace Antares {
 		int svcid;
 		int proglen;
 		bool valid;
+		bool rec_header;
 		String ^title;
 		String ^description;
 		String ^rawstring;
@@ -945,6 +930,7 @@ namespace Antares {
 		MyStuffInfo(String^ x)
 		{
 			valid=0;
+			rec_header=0;
 
 			this->rawstring = x;
 
@@ -987,7 +973,23 @@ namespace Antares {
 			if (this->title == "No Information") return;
 
 			valid=1;
+		}
 
+		MyStuffInfo(FileItem ^item)
+		{
+			this->rec_header=1;
+			this->valid=1;
+			this->svcid=item->svcid;
+			this->proglen = item->proglen;
+			this->file_datetime = item->datetime;
+			this->file_datetime_string = ""; // ... and so this field is not available when rec_header=1
+			this->title = item->rec_title;
+			this->description = item->rec_description;
+			this->rawstring = "";
+			this->prog_end_datetime;
+			this->prog_start_datetime = item->prog_start_time;
+			this->prog_end_datetime = this->prog_start_datetime.AddMinutes(this->proglen);
+			
 		}
 
 
@@ -1023,8 +1025,8 @@ namespace Antares {
 				list = this->dic[key];
 
 			list->Add(m);
-			Console::WriteLine("Adding *"+key+"*");
-			Console::WriteLine(this->dic->ContainsKey(key));
+			//Console::WriteLine("Adding *"+key+"*");
+			//Console::WriteLine(this->dic->ContainsKey(key));
 
 
 			//this->dic->Add(key,m);
@@ -1048,22 +1050,31 @@ namespace Antares {
 		array<MyStuffInfo^>^ query(FileItem^ item)
 		{
 			String ^key;
-			
-			
-			key = item->svcid.ToString() + "_" + datekey(item->datetime); Console::WriteLine("Query *"+key+"*");
+			List<MyStuffInfo^>^ list; 
+			key = item->svcid.ToString() + "_" + datekey(item->datetime); //Console::WriteLine("Query *"+key+"*");
 			if (this->dic->ContainsKey(key) )
-				return this->dic[key]->ToArray();
+				list = this->dic[key];
+			else
+			{
+				key = item->svcid.ToString() + "_" + datekey(item->datetime.AddMinutes(1));//Console::WriteLine("Query *"+key+"*");
+				if (this->dic->ContainsKey(key) )
+					list =  this->dic[key];
+				else
 
+				{
 
-			key = item->svcid.ToString() + "_" + datekey(item->datetime.AddMinutes(1));Console::WriteLine("Query *"+key+"*");
-			if (this->dic->ContainsKey(key) )
-				return this->dic[key]->ToArray();
+					key = item->svcid.ToString() + "_" + datekey(item->datetime.AddMinutes(-1)); //Console::WriteLine("Query *"+key+"*");
+					if (this->dic->ContainsKey(key) )
+						list = this->dic[key];
+					else
+						list = gcnew  List<MyStuffInfo^>();
+				}
 
-				key = item->svcid.ToString() + "_" + datekey(item->datetime.AddMinutes(-1)); Console::WriteLine("Query *"+key+"*");
-			if (this->dic->ContainsKey(key) )
-				return this->dic[key]->ToArray();
+			}
+			list = gcnew List<MyStuffInfo^>(list);
+			list->Insert(0, gcnew MyStuffInfo(item));
 
-			return gcnew array<MyStuffInfo^>(0);
+			return list->ToArray();
 
 
 		}
