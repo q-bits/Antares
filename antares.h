@@ -560,7 +560,7 @@ namespace Antares {
 				{
 					dest_ind++;
 					this->SubItems[dest_ind]->Text=data[j];   /*  */
-					this->SubItems[dest_ind]->Tag = (j==5) ? "desc" : ""; 
+					this->SubItems[dest_ind]->Tag = (j==5) ? "desc" : (j==4) ? "chan" : ""; 
 					
 				}
 			}

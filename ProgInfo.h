@@ -33,6 +33,79 @@ namespace Antares {
 
 		}
 
+		System::Windows::Forms::RadioButton^ make_toggle_button(void)
+		{
+			System::Windows::Forms::RadioButton^ b = gcnew(RadioButton);
+		    b->Appearance = System::Windows::Forms::Appearance::Button;
+			b->AutoSize = true;
+			b->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
+				static_cast<System::Byte>(0)));
+			b->ForeColor = System::Drawing::Color::Black;
+			b->Location = System::Drawing::Point(221, 235);
+			//this->radioButton2->Name = L"radioButton2";
+			b->Size = System::Drawing::Size(25, 24);
+			//this->radioButton2->TabIndex = 21;
+			b->Text = "";
+			b->UseVisualStyleBackColor = true;
+			b->CheckedChanged += gcnew System::EventHandler(this, &ProgInfo::radioButton_CheckedChanged);
+
+			return b;
+		}
+
+		ProgInfo( array<MyStuffInfo^>^ mia, FileItem ^ item, String^ windowtitle)
+		{
+			InitializeComponent();
+			this->apply_language();
+			this->current_index=-1;
+			this->mia = mia;
+			this->filename->Text = windowtitle;
+
+			if (this->filename->Width > this->Width)
+				this->filename->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 10, System::Drawing::FontStyle::Bold));
+			
+
+			this->item = item;
+
+			int n = mia->Length;
+			int i1,i2;
+			if (n==1) 
+			{
+				i1=0;i2=0;
+			}
+			else
+			{
+				i1=1; i2=n-1;
+			}
+			int num = i2-i1+1;
+
+			int x=this->description->Location.X;
+			int y=235;
+
+			for (int i=i1; i<=i2; i++)
+			{
+				RadioButton ^b = this->make_toggle_button();
+				this->Controls->Add(b);
+				b->Show();
+				Point p = b->Location;
+				p.X = x;
+				b->Location = p;
+
+				b->Text = i.ToString();
+				b->Tag = i;
+
+				if (i==i1) b->Checked = true;
+
+				x = x + b->Size.Width + 5;
+				if (i1==i2) b->Visible=false;
+			}
+			this->PerformLayout();
+
+
+
+
+
+		}
+
 		ProgInfo(tRECHeaderInfo *ri, String^ windowtitle)
 		{
 			InitializeComponent();
@@ -61,6 +134,31 @@ namespace Antares {
 			if (recorded_hr>0) recorded_duration = recorded_hr.ToString() + lang::u_hours+" " + recorded_duration;
 			this->recorded_duration->Text = recorded_duration;
            
+		}
+
+		void set_current_index(int i)
+		{
+			this->current_index=i;
+			MyStuffInfo^ m = mia[i];
+			this->channel->Text = item->channel;
+			this->title->Text = m->title;
+			this->description->Text = m->description;
+
+			int recorded_min = item->reclen;
+			String^ recorded_duration = (recorded_min % 60).ToString() +lang::u_minutes;
+			int recorded_hr = recorded_min/60;
+			if (recorded_hr>0) recorded_duration = recorded_hr.ToString() + lang::u_hours+" " + recorded_duration;
+			this->recorded_duration->Text = recorded_duration;
+
+		
+	        int prog_min = 	m->proglen;
+			String^ prog_duration = (prog_min % 60).ToString() +lang::u_minutes;
+			int prog_hr = prog_min/60;
+			if (prog_hr>0) prog_duration = prog_hr.ToString() + lang::u_hours+" " + prog_duration;
+			this->duration->Text = prog_duration;
+
+
+
 		}
 
 		static void right_align_control(System::Windows::Forms::Control ^ c, int r)
@@ -122,18 +220,19 @@ namespace Antares {
 
 	public: 
 
+
+
+
+
+			 int current_index;
+			 array<MyStuffInfo^>^ mia;
+			 Antares::FileItem ^item;
+
+
+
+	public: 
+
 	protected: 
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -307,7 +406,7 @@ namespace Antares {
 			this->button1->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, 
 				static_cast<System::Byte>(0)));
 			this->button1->ForeColor = System::Drawing::SystemColors::ControlText;
-			this->button1->Location = System::Drawing::Point(36, 162);
+			this->button1->Location = System::Drawing::Point(36, 174);
 			this->button1->Name = L"button1";
 			this->button1->Size = System::Drawing::Size(123, 26);
 			this->button1->TabIndex = 11;
@@ -380,5 +479,24 @@ namespace Antares {
 				 p.X = x;
 				 this->filename->Location = p;
 			 }
+private: System::Void radioButton_CheckedChanged(System::Object^  sender, System::EventArgs^  e) {
+
+			 RadioButton^ b = safe_cast<RadioButton^>(sender);
+
+			 if (b->Checked == true)
+			 {
+				 int i = (int) b->Tag;
+				 if (this->current_index != i)
+				 {
+					 
+
+					 this->set_current_index(i);
+
+
+				 }
+			 }
+
+
+		 }
 };
 }

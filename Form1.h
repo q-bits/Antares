@@ -8124,8 +8124,10 @@ abort:  // If the transfer was cancelled before it began
 
 					//item->description = gcnew String(ri.EventEventDescription);
 					//item->channel = gcnew String(ri.SISvcName);
+					array <MyStuffInfo^> ^mia = this->mystuff_info_collection->query(item);
 
-					ProgInfo^ pi = gcnew ProgInfo(&ri,lang::p_wintitle+", "+item->clean_filename(item->full_filename)  );
+					//ProgInfo^ pi = gcnew ProgInfo(&ri,lang::p_wintitle+", "+item->clean_filename(item->full_filename)  );
+					ProgInfo^ pi = gcnew ProgInfo(mia, item, lang::p_wintitle+", "+item->clean_filename(item->full_filename)  );
 
 					pi->ShowDialog(this);
 					break;
@@ -8190,6 +8192,7 @@ abort:  // If the transfer was cancelled before it began
 			if(r < 0)
 			{
 				this->connection_error_occurred();
+				Array::Resize(out_array, 0);
 				return out_array;
 
 			}
@@ -9706,7 +9709,7 @@ abort:  // If the transfer was cancelled before it began
 						 hash = subitem->GetHashCode();
 						 //Console::WriteLine(hash.ToString());
 
-						 if (subitem->Tag == "desc" && !item->filename->EndsWith(".tfd",StringComparison::CurrentCultureIgnoreCase) && item->svcid>=0)
+						 if ( (subitem->Tag == "desc" || subitem->Tag=="chan") && !item->filename->EndsWith(".tfd",StringComparison::CurrentCultureIgnoreCase) && item->svcid>=0)
 						 {
 
 							 if (hash != lasthash )
