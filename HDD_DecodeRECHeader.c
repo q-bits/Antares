@@ -91,6 +91,7 @@ void HDD_DecodeRECHeader (char *Buffer, tRECHeaderInfo *RECHeaderInfo)
 	//if (!LibInitialized) return;
 
 	memset (RECHeaderInfo, 0, sizeof (tRECHeaderInfo));
+	//RECHeaderInfo->HeaderSvcNumber = -1;
 
 	//Is this a REC header?
 	if (get_dword(&Buffer [0]) != 0x54467263) return;

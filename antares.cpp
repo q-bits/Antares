@@ -103,6 +103,33 @@ namespace Antares {
 		return sb->ToString();
 	}
 
+    String^ escape_csv(String^ str)
+	{
+		int n = str->Length;
+		if (n==0) return str;
+
+		if (str[0]==' ' || str[n-1]==' ' || str->IndexOf(',') > -1 || str->IndexOf('"') > -1)
+		{
+			str = str->Replace("\"", "\"\"");
+			str = "\"" + str + "\"";
+		}
+		return str;
+	}
+
+	String^ to_csv(array<String^>^ arr)
+	{
+		String ^ str="";
+		int n = arr->Length;
+
+		for (int i=0; i<n; i++)
+		{
+			str = str + escape_csv(arr[i]);
+			if (i<n-1) str=str+",";
+		}
+
+		return str;
+	}
+
 
 	String^ safeString( char* filename )
 	{

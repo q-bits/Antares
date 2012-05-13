@@ -95,6 +95,7 @@ namespace Antares {
 	System::String^ safeString( char* filename );
 	System::String^ safeString( String^ filename );
 	System::String^ cleanString( String^ filename );
+	String^ to_csv(array<String^>^ arr);
 	System::DateTime Time_T2DateTime(time_t t);
 	System::DateTime Time_T2DateTime_utc(time_t t);
 	String^ combineTopfieldPath(String^ path1,  String^ path2);
@@ -896,6 +897,10 @@ namespace Antares {
 		String ^description;
 		String ^rawstring;
 
+		String ^filename;
+		String ^full_filename;
+		String ^channel;
+
 		static const DateTime dummy = DateTime(1996,1,1);
 
 		static int toint(String ^s)            // Convert a String to an int, or -1 if error.
@@ -989,6 +994,9 @@ namespace Antares {
 			this->prog_end_datetime;
 			this->prog_start_datetime = item->prog_start_time;
 			this->prog_end_datetime = this->prog_start_datetime.AddMinutes(this->proglen);
+			this->channel = item->channel;
+			this->filename = item->filename;
+			this->full_filename = item->full_filename;
 			
 		}
 
@@ -1074,6 +1082,14 @@ namespace Antares {
 			list = gcnew List<MyStuffInfo^>(list);
 			list->Insert(0, gcnew MyStuffInfo(item));
 
+			for (int j=0; j<list->Count; j++)
+			{
+				list[j]->filename = item->filename;
+				list[j]->full_filename = item->full_filename;
+				list[j]->channel = item->channel;
+
+			}
+
 			return list->ToArray();
 
 
@@ -1136,6 +1152,34 @@ namespace Antares {
 
 		}
 	};
+
+
+	public ref class InfoComparer : System::Collections::IComparer {
+	public:
+		int order;
+		InfoComparer() {
+			order=-1;
+		}
+
+		virtual int Compare(System::Object^ x, System::Object^ y)
+		{
+			return this->order * CompareAscending(x,y);
+		}
+		int CompareAscending(System::Object^x, System::Object^y)
+		{
+
+			MyStuffInfo^ mx = safe_cast<MyStuffInfo^> (x);
+			MyStuffInfo^ my = safe_cast<MyStuffInfo^> (y);
+
+		
+			return DateTime::Compare(mx->file_datetime, my->file_datetime);
+
+		
+
+		}
+	};
+
+
 
 
 }

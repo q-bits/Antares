@@ -780,6 +780,9 @@ namespace Antares {
 		array<int>^           file_indices; 
 		array<bool>^          filtered_dir_has_no_files;
 		array<array<TopfieldItem^>^>^ topfield_items_by_folder;
+
+		List<MyStuffInfo^>^ info_list;
+
 		bool usb_error; 
 		String^ file_error; 
 		bool loaded;

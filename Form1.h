@@ -450,9 +450,16 @@ namespace Antares {
 			tbthread->IsBackground = true;
 
 
-			trace(1,printf("Starting background threads.\n"));
-			this->cbthread->Start();
-			this->tbthread->Start();
+			if (this->commandline->the_command->Length==0)
+			{
+				trace(1,printf("Starting background threads.\n"));
+				this->cbthread->Start();
+				this->tbthread->Start();
+			}
+			else
+			{
+				trace(1,printf("Not starting background threads.\n"));
+			}
 
 			//this->ResumeDrawing(this);
 
@@ -1089,13 +1096,17 @@ repeat:
 		// Read MyStuff_RecordedInfo.dat from the PVR
 		void read_MyStuff(bool cached)
 		{
+	
 
 			if (this->transfer_in_progress || this->firmware_transfer_in_progress) return;
 
 
 
 			if (this->settings["read_MyStuff"]!="1")
+			{
+				if (verbose) printf("Not reading mystuff (settings)\n");
 				return;
+			}
 
 
 			if
@@ -1103,33 +1114,43 @@ repeat:
 				||  (this->last_MyStuff_read_time < this->last_disconnected_time)
 				))
 			{
-				if (cached) return;
+				if (cached) 
+				{
+					if (verbose) printf("Not reading mystuff (cached)\n");
+					return;
+				}
 
 
 			}
+
+			if (verbose) printf("read_MyStuff()\n");
 
 
 
 
 			this->last_MyStuff_read_time = DateTime::Now;
 			Monitor::Enter(this->locker);
+			this->absorb_late_packets(2,100);
+			if(verbose) printf("Monitor::Enter\n");
 
-	
-				array<Byte>^ x = this->read_topfield_file("\\ProgramFiles\\Settings\\MyStuff\\MyStuff_RecordedInfo.dat", 0,  1000000);
+
+			array<Byte>^ x = this->read_topfield_file("\\ProgramFiles\\Settings\\MyStuff\\MyStuff_RecordedInfo.dat", 0,  1000000);
+
+			if (verbose) printf("Read %d bytes\n",x->Length);
+
+			if (x!=nullptr)
+			{
+				String ^y = Encoding::ASCII->GetString(x);   // Do we need to worry about the codepage of the text?
+				this->mystuff_info_collection = gcnew Antares::MyStuffInfoCollection();
+				this->mystuff_info_collection->add(y);
+
+			}
 
 
-				Console::WriteLine(x->Length);
-				if (x!=nullptr)
-				{
-					String ^y = Encoding::ASCII->GetString(x);   // Do we need to worry about the codepage of the text?
-					this->mystuff_info_collection = gcnew Antares::MyStuffInfoCollection();
-					this->mystuff_info_collection->add(y);
-				
-				}
-
-	
 
 			Monitor::Exit(this->locker);
+
+			if (verbose) printf("End read_MyStuff\n");
 
 			
 
@@ -1616,6 +1637,7 @@ repeat:
 		// Load the specified topfield directory into an array of TopfieldItems
 		array<TopfieldItem^>^ loadTopfieldDirArrayOrNull(String^ path)               
 		{
+			if (path->Length==0) path="\\";
 			if (verbose) printf("loadTopfieldDirArrayOrNull(%s)\n ",path);
 			tf_packet reply;
 
@@ -3206,6 +3228,9 @@ repeat:
 						cmd=="info" ? CopyMode::INFO :
 						cmd=="rm" ? CopyMode::DEL : CopyMode::UNDEFINED;
 
+					if (transferoptions->copymode == CopyMode::INFO)
+						this->read_MyStuff(false);
+
 
 					transferoptions->never_delete_directories = is_wild && (src_pattern!="*") && !src_ends_with_slash || cmdline->exclude_patterns->Length>0;
 
@@ -3330,6 +3355,9 @@ repeat:
 						cmd=="mv" ? CopyMode::MOVE :
 						cmd=="info" ? CopyMode::INFO :
 						cmd=="rm" ? CopyMode::DEL : CopyMode::UNDEFINED;
+
+					if (transferoptions->copymode == CopyMode::INFO)
+						this->read_MyStuff(false);
 
 					transferoptions->never_delete_directories = is_wild && (src_pattern!="*") && !src_ends_with_slash || cmdline->exclude_patterns->Length>0;
 
@@ -4006,7 +4034,6 @@ repeat:
 
 		System::Void transfer_firmware_to_PVR(Object^ input)
 		{
-			struct tf_packet reply;
 			int r;
 			time_t reboot_time=0;
 			tf_fw_data_t fw_data;
@@ -4481,6 +4508,68 @@ out:
 
 		}
 
+		static int info_datesort(MyStuffInfo ^ m1, MyStuffInfo ^m2)
+		{
+			int r = m1->file_datetime < m2->file_datetime ? -1 : m1->file_datetime == m1->file_datetime ? 0 : 1;
+			return -r; //descending
+
+		}
+
+		System::Void output_info_results(Antares::CopyDialog^ copydialog)
+		{
+			TransferOptions ^o =  copydialog->transferoptions;
+			if (o->copymode == CopyMode::INFO)
+			{
+
+				List<MyStuffInfo^> ^ info_list = copydialog->info_list;
+				int n = info_list->Count;
+				//info_list->Sort(gcnew Comparison<MyStuffInfo^>(info_datesort));
+				array<MyStuffInfo^>^ mia = info_list->ToArray();
+				Array::Sort(mia,gcnew Antares::InfoComparer());
+
+
+
+				if (this->commandline->csv)
+				{
+
+					Console::WriteLine(Antares::to_csv( gcnew array<String^>{"Filename", "Title", "Channel","Date & Time", "Length", "Description"}));
+					for (int i=0; i<n; i++)
+					{
+						MyStuffInfo ^ m = mia[i];
+						String ^proglen_str_short = (m->proglen/60).ToString()+":"+(m->proglen % 60).ToString("D2");
+						array<String^>^ arr = gcnew array<String^>{m->full_filename, m->title, m->channel, m->prog_start_datetime.ToString(),proglen_str_short, m->description};
+						Console::WriteLine(Antares::to_csv( arr) );
+					}
+				}
+				else
+				{
+					for (int i=0; i<n; i++)
+					{	
+						Console::WriteLine();
+						MyStuffInfo ^ m = mia[i];
+						Console::WriteLine("["+m->full_filename+"]");
+						//Console::WriteLine();
+						Console::WriteLine(""+m->title + " (" + m->channel + ")"); 
+						//Console::WriteLine(m->channel);
+
+						String ^proglen_str_short = (m->proglen/60).ToString()+":"+(m->proglen % 60).ToString("D2");									 
+						DateTime pst = m->prog_start_datetime;
+						DateTime pet = m->prog_end_datetime;
+						String^ time_str = pst.ToString("ddd ")+pst.ToString("d")+", "+pst.ToString("HH:mm")+" - " + pet.ToString("HH:mm")
+							+" ("+proglen_str_short+")";
+
+						Console::WriteLine(""+time_str);
+						Console::WriteLine(this->wordwrap(""+m->description,80));
+
+						Console::WriteLine();
+						//Console::WriteLine(m->file_datetime);
+					}
+				}
+
+
+			}
+		}
+
 
 		System::Void TransferEnded(void)
 		{
@@ -4512,6 +4601,10 @@ out:
 				CopyDialog^ copydialog = this->current_copydialog;
 				if (copydialog==nullptr) return;
 				//printf("2. Enable components\n");
+
+
+				this->output_info_results(copydialog);
+
 
 
 
@@ -4612,6 +4705,9 @@ out:
 			TransferOptions ^transferoptions = copydialog->transferoptions;
 			bool transfer = (transferoptions->copymode==CopyMode::COPY || transferoptions->copymode==CopyMode::MOVE);
 			int numitems = copydialog->numfiles;
+
+			if (transferoptions->copymode==CopyMode::INFO)
+				copydialog->info_list = gcnew List<MyStuffInfo^>(numitems);
 
 			//int this_overwrite_action;
 			long long topfield_file_offset=0;
@@ -4780,7 +4876,22 @@ restart_copy_to_pc:
 
 				if (transferoptions->copymode == CopyMode::INFO)
 				{
-					Console::WriteLine("Standin for info, "+item->full_filename);
+					tRECHeaderInfo ri;
+					this->loadInfo(item, &ri);
+					if (item->svcid>-1)
+					{
+						array<MyStuffInfo^> ^mia = this->mystuff_info_collection->query(item);
+						int i1,i2,n=mia->Length;
+						if (n==1) i1=i2=0;
+						else if (n>1) i1=1,i2=n-1;
+						for (int i=i1; i<=i2; i++)
+						{
+							copydialog->info_list->Add(mia[i]);
+							//Console::WriteLine(mia[i]->title);
+						}
+					}
+
+					//Console::WriteLine("Standin for info, "+item->full_filename);
 					continue;
 				}
 
@@ -5381,8 +5492,8 @@ end_copy_to_pc:
 			copydialog->copydirection = CopyDirection::PVR_TO_PC;
 
 			copydialog->tiny_size();
-
-			Console::WriteLine(lang::c_finding);
+			if (transferoptions->copymode != CopyMode::INFO)
+				Console::WriteLine(lang::c_finding);
 			this->ShowCopyDialog(copydialog);
 
 			//copydialog->update_dialog_threadsafe();
@@ -5835,12 +5946,17 @@ aborted:   // If the transfer was cancelled before it began
 					Thread::Sleep(100);
 				}
 
+				
+
 
 				copydialog->update_dialog_threadsafe();
 				TransferOptions ^transferoptions = copydialog->transferoptions;
 				bool transfer =  (transferoptions->copymode == CopyMode::MOVE || transferoptions->copymode == CopyMode::COPY);
 				int numitems = copydialog->numfiles;
 
+			
+				copydialog->info_list = gcnew List<MyStuffInfo^>(numitems);
+		
 				int this_overwrite_action;
 				long long topfield_file_offset=0;
 				long long probable_minimum_received_offset=-1;
@@ -6025,7 +6141,27 @@ restart_copy_to_pvr:
 
 					if (transferoptions->copymode==CopyMode::INFO)
 					{
-						Console::WriteLine("Standin for info "+item->full_filename);
+						tRECHeaderInfo ri;
+						this->loadInfo(item, &ri);
+						if (item->svcid>-1)
+						{
+							array<MyStuffInfo^> ^mia = this->mystuff_info_collection->query(item);
+							int i1,i2,n=mia->Length;
+							if (n==1) i1=i2=0;
+							else if (n>1) i1=1,i2=n-1;
+							for (int i=i1; i<=i2; i++)
+							{
+								copydialog->info_list->Add(mia[i]);
+								//Console::WriteLine(mia[i]->title);
+							}
+
+
+							
+							//info_list->AddRange(mia);
+						}
+
+
+						//Console::WriteLine("Standin for info "+item->full_filename);
 						continue;
 					}
 
@@ -6722,7 +6858,8 @@ finish_transfer:
 
 			copydialog->tiny_size();
 			//copydialog->label3->Text=lang::c_finding;//"Finding files...";
-			Console::WriteLine(lang::c_finding);
+			if (transferoptions->copymode != CopyMode::INFO)
+				Console::WriteLine(lang::c_finding);
 			this->ShowCopyDialog(copydialog);
 
 			//copydialog->update_dialog_threadsafe();
@@ -7970,10 +8107,13 @@ abort:  // If the transfer was cancelled before it began
 			item->description = gcnew String(ri->EventEventDescription);
 			item->rec_description = item->description;
 
-			item->svcid = ri->SIServiceID;
-			item->reclen = ri->HeaderDuration;
-			item->proglen = ri->EventDurationMin + 60*ri->EventDurationHour;
-			item->prog_start_time = Time_T2DateTime_utc(tfdt_to_time( & ri->EventStartTime));
+			if (ri->HeaderMagic>0)
+			{
+				item->svcid = ri->SIServiceID;
+				item->reclen = ri->HeaderDuration;
+				item->proglen = ri->EventDurationMin + 60*ri->EventDurationHour;
+				item->prog_start_time = Time_T2DateTime_utc(tfdt_to_time( & ri->EventStartTime));
+			}
 
 			item->description=""+item->description;   //REC
 			//if (this->settings["read_MyStuff"]=="1" &&  this->mystuff_info_collection != nullptr)
@@ -8170,7 +8310,7 @@ abort:  // If the transfer was cancelled before it began
 			// Return as an array of Bytes.
 
 
-			array<Byte>^ out_array = gcnew array<Byte>(max_bytes); 
+			array<Byte>^ out_array = gcnew array<Byte>( (int) max_bytes); 
 			struct tf_packet reply;
 			int r;
 			enum

@@ -81,6 +81,7 @@ namespace Antares {
 		bool overwrite_all;
 		bool verbose;
 		bool fverbose;
+		bool csv;
 		int nargs;
 		
 
@@ -114,7 +115,9 @@ namespace Antares {
 			this->overwrite_all=false;
 			this->verbose=false;
 			this->force_delete=false;
+			this->csv=false;
 			this->nargs=0;
+			
 			
 
 
@@ -209,6 +212,13 @@ namespace Antares {
 				if (tok == "-f" || tok =="/f" )
 				{
 					this->force_delete = true;
+					ind++;
+					continue;
+				}
+
+				if (tok == "-csv" || tok == "/csv")
+				{
+					this->csv=true;
 					ind++;
 					continue;
 				}
