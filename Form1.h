@@ -1178,6 +1178,7 @@ repeat:
 					bool sig = this->topfield_background_event->WaitOne(1234);
 
 					System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
+					
 					trace(1,printf("topfieldBackgroundWork iter.  %d %d\n", (int) sig, (int) (en==last_en)));
 					if (en==nullptr) continue;
 					if (this->Visible==false) continue;
@@ -1190,8 +1191,16 @@ repeat:
 					while(en->MoveNext())
 					{
 						TopfieldItem^ item = safe_cast<TopfieldItem^>(en->Current);
+						int ic;
+
 						FileType^ info = this->icons->GetCachedIconIndex("T:"+safeString(item->directory)+"\\"+item->safe_filename, true, item->isdir);
-						int ic = info->icon_index;
+
+						if (!item->isdir)
+						{
+							ic = info->icon_index;
+						}
+						else
+							ic = this->icons->folder_index;
 						if (ic>=0 && (ic != item->icon_index || (!item->isdir && info->file_type != item->file_type )) )
 						{
 							item->icon_index=ic;
@@ -1976,9 +1985,16 @@ repeat:
 				}
 			}
 
+		
 
-			this->topfield_background_enumerator = q->GetEnumerator();
+			//this->topfield_background_enumerator = q->GetEnumerator();
+			array<FileItem^>^ arr = gcnew array<TopfieldItem^>(q->Count);
+			q->CopyTo(arr, 0);
+			Array::Sort(arr,gcnew ListViewItemComparer(this->listView1SortColumn,this->listView1->Sorting));
+			this->topfield_background_enumerator = arr->GetEnumerator();
 			this->topfield_background_event->Set();
+		
+			
 
 
 			/*
@@ -2970,7 +2986,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  1.0 test5";
+			this->Text = L"Antares  1.1";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -9911,8 +9927,8 @@ abort:  // If the transfer was cancelled before it began
 									//	 +pet.Hour.ToString()+":"+pet.Minute.ToString() + " ("+proglen_str+")";
 
 									 //String^ time_str = pst.ToString("g")+" - " + pet.ToString("t");
-									 String^ time_str = pst.ToString("ddd   ")+pst.ToString("d")+"   "+pst.ToString("HH:mm")+" - " + pet.ToString("HH:mm")
-										 +"   ("+proglen_str_short+")";
+									 String^ time_str = pst.ToString("ddd  ")+pst.ToString("d")+"  "+pst.ToString("HH:mm")+"-" + pet.ToString("HH:mm")
+										 +"  ("+proglen_str_short+")";
 
 
 

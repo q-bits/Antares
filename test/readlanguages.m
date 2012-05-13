@@ -5,7 +5,7 @@ function aio=readlanguages
 %
 % H. Haselgrove, Nov. 2011.
 
-fid=fopen('languages_1_jan_12.csv','r','n','UTF8');
+fid=fopen('languages_13_may_12.csv','r','n','UTF8');
 
 x=fread(fid,inf,'char');fclose(fid);
 
@@ -96,9 +96,9 @@ for j=1:ni
     x=all_items{j,1};
      y=all_items{j,4}; if length(y)==0; y=all_items{j,2};end
     sp=repmat(' ',ml-length(x),1);
-    if strcmp(all_items{j,1},'cb_move') && strcmp(y,'verschiebe')
+    if strcmp(all_items{j,1},'cb_move') && strcmp(y,'verschieben')
         yold=y;
-        y='ver-\r\nschiebe';
+        y='ver-\r\nschieben';
         fprintf('Replaced %s with %s  in German.\n',yold,y);
     end
     fprintf(f,'%s%s= "%s";\n',all_items{j,1},sp,y);

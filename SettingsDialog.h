@@ -103,12 +103,16 @@ namespace Antares {
 			this->button2->Text = lang::b_cancel;
 			this->groupBox2->Text = lang::s_language;
 
+			this->mystuff_read_check->Text = lang::s_mystuff;
+
 			array<System::Object^>^ arr = gcnew cli::array< System::Object^  >(6) {lang::h_name, lang::h_size, lang::h_type, lang::h_date, lang::h_channel, lang::h_description};
 			this->checkedListBox1->Items->Clear();
 			this->checkedListBox1->Items->AddRange(arr);
 
 			this->checkedListBox2->Items->Clear();
 			this->checkedListBox2->Items->AddRange(arr);
+
+
 
 			//			this->checkedListBox1->Items->AddRange(gcnew cli::array< System::Object^  >(6) {L"Name", L"Size", L"Type", L"Date", L"Channel", 
 			//				L"Description"});
