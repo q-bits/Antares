@@ -155,9 +155,9 @@ namespace Antares {
 					if (ind + nargs >= nt)
 					{
 						if (nargs==2)
-							this->error("ERROR: The command "+the_command+" requires both a source and destination.");
+							this->error("ERROR: The command \""+the_command+"\" requires both a source and destination.");
 						else if (nargs==1)
-							this->error("ERROR: The command "+the_command+" is missing a filename or folder name.");
+							this->error("ERROR: The command \""+the_command+"\" is missing a filename or folder name.");
 						goto out;
 					}
 					ind++;

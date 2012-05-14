@@ -29,6 +29,9 @@ extern "C" {
 
 #include "language.h"
 
+
+#define atrace(level, msg) if(verbose >= level) {print_time();printf("[%s]",System::Threading::Thread::CurrentThread->Name); msg; }
+
 namespace Antares {
 
 

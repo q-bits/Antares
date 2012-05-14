@@ -64,7 +64,6 @@
 /* This is intentionally large enough to allow for a HDD spin up. */
 #define TF_PROTOCOL_TIMEOUT 11000
 
-
 #define trace(level, msg) if(verbose >= level) {print_time(); msg; }
 #define ftrace(level, msg) if(fverbose >= level) {print_time(); msg; }
 

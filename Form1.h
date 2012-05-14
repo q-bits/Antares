@@ -263,11 +263,11 @@ namespace Antares {
 
 
 
-			trace(1,printf("Hiding form.\n"));
+			atrace(1,printf("Hiding form.\n"));
 
 			this->Hide();
 			///////////////////////////
-			trace(1,printf("InitializeComponent()\n"));
+			atrace(1,printf("InitializeComponent()\n"));
 			InitializeComponent();
 			///////////////////////////
 
@@ -290,7 +290,7 @@ namespace Antares {
 
 			if (this->location_is_sane(sz.Width, sz.Height, loc.X, loc.Y))
 			{
-				trace(1,printf("Setting location.\n"));
+				atrace(1,printf("Setting location.\n"));
 				this->Size =sz;
 				this->Location = loc;
 			}
@@ -320,7 +320,7 @@ namespace Antares {
 			this->fd  = NULL;//connect_device2(&reason);
 			//if (this->fd==NULL) this->label2->Text="PVR: Device not connected";
 
-			trace(1,printf("Constructing columns.\n"));
+			atrace(1,printf("Constructing columns.\n"));
 			this->headerNames = gcnew array<String^>{"Name", "Size", "Type", "Date","Channel","Description"};
 
 
@@ -349,10 +349,10 @@ namespace Antares {
 
 
 
-			trace(1,printf("Applying language settings.\n"));
+			atrace(1,printf("Applying language settings.\n"));
 			this->apply_language_setting();
 
-			trace(1,printf("Applying columns visible.\n"));
+			atrace(1,printf("Applying columns visible.\n"));
 			this->apply_columns_visible();
 
 
@@ -384,7 +384,7 @@ namespace Antares {
 				this->listView2->Sorting = SortOrder::Descending;
 			}
 
-			trace(1,printf("Applying history.\n"));
+			atrace(1,printf("Applying history.\n"));
 
 			int hist_len = this->settings->maximum_history_length;
 			for (int j=0; j<hist_len; j++)
@@ -420,7 +420,7 @@ namespace Antares {
 
 
 
-			trace(1,printf("Checking connection.\n"));
+			atrace(1,printf("Checking connection.\n"));
 			this->CheckConnection();
 			this->last_layout_x = -1;this->last_layout_y=-1;
 			this->Arrange();
@@ -452,25 +452,25 @@ namespace Antares {
 
 			if (this->commandline->the_command->Length==0)
 			{
-				trace(1,printf("Starting background threads.\n"));
+				atrace(1,printf("Starting background threads.\n"));
 				this->cbthread->Start();
 				this->tbthread->Start();
 			}
 			else
 			{
-				trace(1,printf("Not starting background threads.\n"));
+				atrace(1,printf("Not starting background threads.\n"));
 			}
 
 			//this->ResumeDrawing(this);
 
 
-			trace(1,printf("Resuming layout.\n"));
+			atrace(1,printf("Resuming layout.\n"));
 			this->ResumeLayout(false);
 
 			//Console::WriteLine("Constructed Form.");
 
 
-			trace(1,printf("Showing gui again.\n"));
+			atrace(1,printf("Showing gui again.\n"));
 			if (this->commandline->showgui)
 			{
 				this->listView2->Focus();
@@ -504,10 +504,10 @@ namespace Antares {
 
 
 			this->topfield_background_event->Set();
-			trace(1,printf("topfield_background_event->Set.\n"));
+			atrace(1,printf("topfield_background_event->Set.\n"));
 
 
-			trace(1,printf("Finished constructing form1.\n"));
+			atrace(1,printf("Finished constructing form1.\n"));
 
 			//this->test_speed_versus_offset();
 
@@ -660,7 +660,7 @@ namespace Antares {
 
 
 				}
-				if (verbose) Console::WriteLine(error_str);
+				atrace(1, printf("%s\n",error_str));
 
 				//this->fd=NULL;
 				//printf("this->fd = %ld   fdtemp=%ld  \n",(long int) this->fd, (long int) fdtemp);
@@ -679,10 +679,11 @@ namespace Antares {
 						this->listView1->Tag="";
 						this->topfield_background_enumerator=nullptr;
 					}
+					this->textBox2->Enabled = (this->fd != NULL);
 				}
 
 
-				this->textBox2->Enabled = (this->fd != NULL);
+				
 				
 				if (this->fd==NULL)
 					this->last_disconnected_time = DateTime::Now;
@@ -891,7 +892,7 @@ check_freespace:
 			switch (get_u32(&reply.cmd))
 			{
 			case SUCCESS:
-				trace(1,
+				atrace(1,
 					fprintf(stdout, "Turbo mode: %s\n",
 					turbo_on ? "ON" : "OFF"));
 				this->absorb_late_packets(2,100);
@@ -949,7 +950,7 @@ check_freespace:
 			int j;
 
 
-			trace(1,printf("GetFileSystemEntries\n"));
+			atrace(1,printf("GetFileSystemEntries\n"));
 			try 
 			{
 				list = System::IO::Directory::GetFileSystemEntries(dir);
@@ -973,7 +974,7 @@ check_freespace:
 				}
 
 				items[ind] = item;
-				trace(1,printf("Adding computer item: %s.\n",item->filename));
+				atrace(1,printf("Adding computer item: %s.\n",item->filename));
 				ind++;
 			}
 			Array::Resize(items, ind);
@@ -1104,7 +1105,7 @@ repeat:
 
 			if (this->settings["read_MyStuff"]!="1")
 			{
-				if (verbose) printf("Not reading mystuff (settings)\n");
+				atrace(1,printf("Not reading mystuff (settings)\n"));
 				return;
 			}
 
@@ -1116,14 +1117,14 @@ repeat:
 			{
 				if (cached) 
 				{
-					if (verbose) printf("Not reading mystuff (cached)\n");
+					atrace(1,printf("Not reading mystuff (cached)\n"));
 					return;
 				}
 
 
 			}
 
-			if (verbose) printf("read_MyStuff()\n");
+			atrace(1, printf("read_MyStuff()\n"));
 
 
 
@@ -1131,12 +1132,12 @@ repeat:
 			this->last_MyStuff_read_time = DateTime::Now;
 			Monitor::Enter(this->locker);
 			this->absorb_late_packets(2,100);
-			if(verbose) printf("Monitor::Enter\n");
+			atrace(1, printf("Monitor::Enter\n"));
 
 
 			array<Byte>^ x = this->read_topfield_file("\\ProgramFiles\\Settings\\MyStuff\\MyStuff_RecordedInfo.dat", 0,  1000000);
 
-			if (verbose) printf("Read %d bytes\n",x->Length);
+			atrace(1, printf("Read %d bytes\n",x->Length));
 
 			if (x!=nullptr)
 			{
@@ -1150,7 +1151,7 @@ repeat:
 
 			Monitor::Exit(this->locker);
 
-			if (verbose) printf("End read_MyStuff\n");
+			atrace(1,printf("Monitor::Exit. End read_MyStuff\n"));
 
 			
 
@@ -1179,7 +1180,7 @@ repeat:
 
 					System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
 					
-					trace(1,printf("topfieldBackgroundWork iter.  %d %d\n", (int) sig, (int) (en==last_en)));
+					atrace(1,printf("topfieldBackgroundWork iter.  %d %d\n", (int) sig, (int) (en==last_en)));
 					if (en==nullptr) continue;
 					if (this->Visible==false) continue;
 					if (!sig && en==last_en) continue;
@@ -1384,7 +1385,7 @@ repeat:
 
 
 			String^ dir = this->computerCurrentDirectory;
-			trace(1,printf("Load computer dir: %s.\n",dir));
+			atrace(1,printf("Load computer dir: %s.\n",dir));
 
 
 
@@ -1406,7 +1407,7 @@ repeat:
 			if (dir->Equals(""))  // List drives
 			{
 				this->listView2->Items->Clear();
-				trace(1,printf("GetLogicalDrives\n"));
+				atrace(1,printf("GetLogicalDrives\n"));
 				DWORD drives = GetLogicalDrives();
 				for (j=0; j<26; j++)
 				{
@@ -1420,7 +1421,7 @@ repeat:
 						else
 							item->ImageIndex=item->icon_index=this->icons->folder_index;
 						this->listView2->Items->Add(item);
-						trace(1,printf("Drive item %s.\n", item->filename));
+						atrace(1,printf("Drive item %s.\n", item->filename));
 					}
 
 					drives>>=1;
@@ -1432,7 +1433,7 @@ repeat:
 			else   //List contents of actual directory
 			{
 
-				trace(1,printf("LoadComputerDirArrayOrNull.\n"));
+				atrace(1,printf("LoadComputerDirArrayOrNull.\n"));
 				items = this->loadComputerDirArrayOrNull(dir);
 
 				if (items==nullptr) 
@@ -1461,7 +1462,7 @@ repeat:
 				for (j=0; j<items->Length; j++)
 				{
 					item = items[j];
-					trace(1,printf("GetCachedIconIndexFast: %s.\n",item->filename));
+					atrace(1,printf("GetCachedIconIndexFast: %s.\n",item->filename));
 					FileType^ info = this->icons->GetCachedIconIndexFast(item->full_filename,false, item->isdir);
 					int ic = info->icon_index;
 					if (ic >= 0)
@@ -1504,13 +1505,13 @@ repeat:
 
 				if (reloaded)
 				{
-					if (verbose) printf("reloaded  in loadComputerDir.\n");
+					atrace(1,printf("reloaded  in loadComputerDir.\n"));
 					this->updateListViewItems(clist,safe_cast<array<FileItem^>^>(items));
 				}
 				else
 
 				{
-					if (verbose) printf("not reloaded  in loadComputerDir.\n");
+					atrace(1,printf("not reloaded  in loadComputerDir.\n"));
 					this->listView2->BeginUpdate();
 					this->listView2->Items->Clear();
 
@@ -1525,7 +1526,7 @@ repeat:
 
 				settings->changeSetting("ComputerDir",dir);
 				// Add a drive summary to label1:
-				trace(1,printf("Calculate free space.\n"));
+				atrace(1,printf("Calculate free space.\n"));
 				array<long long int>^ freespaceArray = this->computerFreeSpace(dir);
 				if (freespaceArray[0] > -1)
 				{
@@ -1563,13 +1564,13 @@ repeat:
 				}
 
 
-				trace(1,printf("Set computer background enumerator.\n"));
+				atrace(1,printf("Set computer background enumerator.\n"));
 				this->computer_background_enumerator = q->GetEnumerator();
 				this->computer_background_event->Set();
 
-				trace(1,printf("set_filesystemwatcher()\n"));
+				atrace(1,printf("set_filesystemwatcher()\n"));
 				this->set_filesystemwatcher(dir);
-				trace(1,printf("returned: set_filesystemwatcher()\n"));
+				atrace(1,printf("returned: set_filesystemwatcher()\n"));
 
 
 				this->computer_needs_refreshing=false;
@@ -1577,7 +1578,7 @@ repeat:
 
 
 			}   // (if "My Computer")
-			trace(1,printf("Setting listview tag\n"));
+			atrace(1,printf("Setting listview tag\n"));
 			this->listView2->Tag = dir;
 			if (!rename_item) this->Arrange2();
 
@@ -1647,7 +1648,7 @@ repeat:
 		array<TopfieldItem^>^ loadTopfieldDirArrayOrNull(String^ path)               
 		{
 			if (path->Length==0) path="\\";
-			if (verbose) printf("loadTopfieldDirArrayOrNull(%s)\n ",path);
+			atrace(1, printf("loadTopfieldDirArrayOrNull(%s)\n ",path));
 			tf_packet reply;
 
 			__u16 count;
@@ -1685,11 +1686,7 @@ repeat:
 					for(i = 0; (i < count); i++)
 					{
 						item = gcnew TopfieldItem(&entries[i],path);
-						if (verbose)
-						{
-							printf("%lld : %s\n",item->size, item->full_filename);
-
-						}
+						atrace(1,printf("%lld : %s\n",item->size, item->full_filename);)
 						item->directory = path;
 						if (String::Compare(item->filename,"..")!=0 ) 
 						{
@@ -3435,7 +3432,7 @@ repeat:
 
 		System::Void Form1_Load(System::Object^  sender, System::EventArgs^  e) {
 
-			trace(1,printf("Form1_Load\n"));
+			atrace(1,printf("Form1_Load\n"));
 
 
 
@@ -3700,7 +3697,7 @@ repeat:
 
 		System::Void Arrange2(void)
 		{
-			trace(1,printf("Arrange2()\n"));
+			atrace(1,printf("Arrange2()\n"));
 			if (this->finished_constructing ==1)
 			{
 
@@ -3719,7 +3716,7 @@ repeat:
 
 				this->Arrange2a( this->computerHeaders, "PC", (int) cw1, listView2);
 
-				trace(1,printf("Arrange2()  (return--) \n"));
+				atrace(1,printf("Arrange2()  (return--) \n"));
 
 				return;
 
@@ -3729,7 +3726,7 @@ repeat:
 			this->textBox1->Select(0,0);
 
 
-			trace(1,printf("Arrange2()  (return) \n"));
+			atrace(1,printf("Arrange2()  (return) \n"));
 
 		}
 
@@ -4095,7 +4092,7 @@ repeat:
 							goto out;
 						}
 
-						firmware_dialog->update_status_text("The PVR is on and connected.\r\n\r\nTurn the PVR off (standby) and then on again.\r\n\r\nOr, click Reboot PVR.",true);
+						firmware_dialog->update_status_text("The PVR is on and connected.\r\n\r\nTurn the PVR off (standby) and then on again.\r\n\r\nOr, click Reboot PVR (this reboot method works only for some models).",true);
 
 						ftrace(1,printf("The PVR is on and connected.\n"));
 						if (firmware_dialog->reboot_requested)
@@ -4187,8 +4184,8 @@ repeat:
 				int next_perc = (int)  ( 100*offset/file_size );
 				if (next_perc/5 > perc/5)
 				{
-					firmware_dialog->update_status_text("Tansferring firmware:   " + next_perc.ToString() + "%");
-					ftrace(1,printf("%s\n","Tansferring firmware:   " + next_perc.ToString() + "%"));
+					firmware_dialog->update_status_text("Transferring firmware:   " + next_perc.ToString() + "%");
+					ftrace(1,printf("%s\n","Transferring firmware:   " + next_perc.ToString() + "%"));
 					perc=next_perc;
 				}
 
@@ -4205,8 +4202,9 @@ repeat:
 				firmware_dialog->cancel_text="Close";
 				//printf("Firmware upgrade completed successully -- you must reboot\n");
 				firmware_dialog->update_status_text("The firmware was transferred successfully!"
-					+ "\r\nThe PVR will install the firmware. " 
-					+ "\r\n\r\nAntares will attempt to automatically reboot the PVR."
+					+ "\r\nPlease wait while the PVR installs the firmware. " 
+					+ "\r\n\r\nAntares will attempt to automatically reboot the PVR." 
+					+ "\r\nIf the PVR does not automatically reboot: check the front panel of the PVR to verify that the firmware installation is complete. Then use the standby button twice to reboot."
 					);
 				ftrace(1,printf("The firmware was transferred successfully!...\n"));
 				success=true;
@@ -4216,9 +4214,9 @@ repeat:
 				//printf("Failed to upgrade firmware -- you must reboot\n");
 				firmware_dialog->cancel_text = "Close";
 
-				trace(1,printf("%s\n",error_message));
+				atrace(1,printf("%s\n",error_message));
 				error_message = "The firmware upgrade failed.\r\n"+error_message+"\r\n";
-				trace(1,printf("The firmware upgrade failed...\n"));
+				atrace(1,printf("The firmware upgrade failed...\n"));
 				if (fw_data.sysid != 0 && fw_data.sysid != firmware_dialog->file_sysid && firmware_dialog->file_sysid != 39321)
 				{
 					error_message += "The firmware file is not compatible with your PVR.\r\n";
@@ -4244,7 +4242,7 @@ repeat:
 			for (int j=0; j<0; j++)
 			{
 				r=tf_fw_reboot(this->fd);
-				trace(1,printf("j=%d: tf_fw_reboot returned %d. fd=%ld\n",j,r,(long int) this->fd));
+				atrace(1,printf("j=%d: tf_fw_reboot returned %d. fd=%ld\n",j,r,(long int) this->fd));
 				if (r==0) {reboot_success=true;reboot_successes++;}
 
 				Thread::Sleep(200);
@@ -4281,7 +4279,7 @@ out:
 			try{ src_file->Close();}catch(...){};
 			Monitor::Exit(this->locker);
 			this->firmware_transfer_ended();
-			trace(1,printf("End of transfer_firmware_to_PVR() \n"));
+			atrace(1,printf("End of transfer_firmware_to_PVR() \n"));
 		}
 
 
@@ -5005,7 +5003,7 @@ restart_copy_to_pc:
 				copydialog->total_bytes_received=total_bytes_received;
 				//copydialog->current_filesize = item->size;
 				copydialog->update_dialog_threadsafe();
-				if (verbose) printf("Start of transfer: topfield_file_offset=%lld \n",(long long) topfield_file_offset);
+				atrace(1, printf("Start of transfer: topfield_file_offset=%lld \n",(long long) topfield_file_offset));
 
 
 				int update=0;
@@ -5022,7 +5020,7 @@ restart_copy_to_pc:
 
 					if (r<=0)
 					{
-						if (verbose) printf("r=%d in transfer_to_PC / get_tf_packet \n",r);
+						atrace(1,printf("r=%d in transfer_to_PC / get_tf_packet \n",r));
 						copydialog->usb_error=true;
 						this->connection_error_occurred();
 						goto out;
@@ -5039,7 +5037,7 @@ restart_copy_to_pc:
 							bytecount = get_u64(&tf->size);
 							mod_utime_buf.actime = mod_utime_buf.modtime =
 								tfdt_to_time(&tf->stamp);
-							if (verbose) printf("DATA_HDD_FILE_START, bytecount=%lld \n",(long long) bytecount);
+							atrace(1, printf("DATA_HDD_FILE_START, bytecount=%lld \n",(long long) bytecount));
 
 							send_success(fd);
 							state = DATA;
@@ -5063,7 +5061,7 @@ restart_copy_to_pc:
 							__u16 dataLen =
 								get_u16(&reply.length) - (PACKET_HEAD_SIZE + 8);
 
-							if (verbose) printf("HDD_FILE_DATA, offset=%lld  dataLen=%lld\n",(long long) offset, (long long) dataLen);
+							atrace(1, printf("HDD_FILE_DATA, offset=%lld  dataLen=%lld\n",(long long) offset, (long long) dataLen));
 
 							// if( !quiet)
 							// {
@@ -5112,7 +5110,7 @@ restart_copy_to_pc:
 							}
 							catch(...)
 							{
-								if (verbose) printf("An I/O error occurred in transfer_to_PC / Write\n");
+								atrace(1, printf("An I/O error occurred in transfer_to_PC / Write\n"));
 								io_error=true;
 								goto out;
 							}
@@ -5141,13 +5139,13 @@ restart_copy_to_pc:
 							copydialog->total_bytes_received = total_bytes_received;
 							if (update%4==0)
 							{
-								if (verbose) printf("update_dialog_threadsafe\n");
+								atrace(1, printf("update_dialog_threadsafe\n"));
 								copydialog->update_dialog_threadsafe();
 							}
 
 							if (copydialog->cancelled == true)
 							{
-								if (verbose) printf("CANCELLING because of copy dialog.\n");
+								atrace(1, printf("CANCELLING because of copy dialog.\n"));
 								send_cancel(fd);
 								state = ABORT;
 								goto out;
@@ -5156,7 +5154,7 @@ restart_copy_to_pc:
 
 							if (copydialog->turbo_request != *this->turbo_mode)
 							{
-								if (verbose) printf("Need to change turbo mode.\n");
+								atrace(1, printf("Need to change turbo mode.\n"));
 								turbo_changed=true;
 								copydialog->update_dialog_threadsafe();
 
@@ -5205,7 +5203,7 @@ restart_copy_to_pc:
 					case DATA_HDD_FILE_END:
 						send_success(fd);
 						//item->Selected = false;
-						if (verbose) printf("DATA_HDD_FILE_END\n");
+						atrace(1, printf("DATA_HDD_FILE_END\n"));
 						result = 0;
 						copydialog->success(i);
 						goto out;
@@ -5222,7 +5220,7 @@ restart_copy_to_pc:
 						break;
 
 					case SUCCESS:
-						if (verbose) printf("SUCCESS.    state=%d\n",state);
+						atrace( 1, printf("SUCCESS.    state=%d\n",state));
 						if (state==DATA)
 						{
 							goto out;
@@ -5247,10 +5245,10 @@ out:
 
 				try  
 				{
-					if (verbose) printf("Setting length of destination file to %lld\n",copydialog->current_offsets[i]);
+					atrace(1, printf("Setting length of destination file to %lld\n",copydialog->current_offsets[i]));
 					dest_file->SetLength(copydialog->current_offsets[i]);
 				} catch(...){
-					if (verbose) printf("Setting length didn't work.\n");
+					atrace(1, printf("Setting length didn't work.\n"));
 				};
 
 				try
@@ -5261,7 +5259,7 @@ out:
 				}
 				catch(...)
 				{
-					if (verbose) printf("Closing, and setting times, didn't work.\n");
+					atrace(1, printf("Closing, and setting times, didn't work.\n"));
 				}
 
 				if (copydialog->cancelled==true) break;
@@ -5272,7 +5270,7 @@ out:
 
 					Monitor::Exit(this->locker);
 					int wfc = this->wait_for_connection(copydialog);
-					if (verbose) printf("transfer_to_PC / wait_for_connection returned %d\n",wfc);
+					atrace(1, printf("transfer_to_PC / wait_for_connection returned %d\n",wfc));
 					Monitor::Enter(this->locker);
 
 
@@ -5451,10 +5449,8 @@ end_copy_to_pc:
 				}
 			}
 
-			if (verbose)
-			{
-				Console::WriteLine(copydialog->file_error);
-			}
+			atrace(1,printf("%s\n",copydialog->file_error));
+			
 
 
 		}
@@ -6033,11 +6029,11 @@ aborted:   // If the transfer was cancelled before it began
 							{
 								this->absorb_late_packets(2,100);
 								array<TopfieldItem^> ^check = this->loadTopfieldDirArrayOrNull(dest_filename[i]);
-								if (verbose) printf("newTopfieldFolder returned %d. Double checking %s\n",r,dest_filename[i]);
+								atrace(1, printf("newTopfieldFolder returned %d. Double checking %s\n",r,dest_filename[i]));
 
 								if (check==nullptr)
 								{
-									if (verbose) printf("Double-check failed.\n");
+									atrace(1, printf("Double-check failed.\n"));
 
 									//copydialog->file_error="The folder "+dest_filename[i]+" could not be created. Aborting transfer.";
 									copydialog->file_error=String::Format(lang::c_folder_error , dest_filename[i]);
@@ -6374,7 +6370,7 @@ restart_copy_to_pvr:
 
 						if (r<=0)
 						{
-							if (verbose) printf("In main loop of transfer_to_PVR, get_tf_packet returned %d\n",r);
+							atrace(1, printf("In main loop of transfer_to_PVR, get_tf_packet returned %d\n",r));
 							copydialog->usb_error=true;
 							goto out;
 						}
@@ -6383,7 +6379,7 @@ restart_copy_to_pvr:
 						switch (get_u32(&reply.cmd))
 						{
 						case SUCCESS:
-							if (verbose) printf("SUCCESS\n");
+							atrace(1, printf("SUCCESS\n"));
 							switch (state)
 							{
 							case START:
@@ -6403,11 +6399,11 @@ restart_copy_to_pvr:
 									tf->name[94] = '\0';
 									tf->unused = 0;
 									tf->attrib = 0;
-									if (verbose) printf(" DATA_HDD_FILE_START  \n");
+									atrace(1, printf(" DATA_HDD_FILE_START  \n"));
 									r = send_tf_packet(this->fd, &packet);
 									if(r < 0)
 									{
-										if (verbose) printf( "ERROR: Incomplete send in transfer_to_PVR.\n");
+										atrace(1, printf( "ERROR: Incomplete send in transfer_to_PVR.\n"));
 										copydialog->usb_error=true;
 										goto out;
 									}
@@ -6417,7 +6413,7 @@ restart_copy_to_pvr:
 
 							case DATA:
 								{
-									if (verbose) printf("DATA\n");
+									atrace(1, printf("DATA\n"));
 									int payloadSize = sizeof(packet.data) - 9;    payloadSize = payloadSize / 1024*1024; 
 
 									int w;
@@ -6503,7 +6499,7 @@ restart_copy_to_pvr:
 
 									if(w > 0 || true)
 									{
-										trace(3,
+										atrace(3,
 											fprintf(stdout, "%s: DATA_HDD_FILE_DATA\n",
 											__FUNCTION__));
 										r = send_tf_packet(this->fd, &packet);
@@ -6575,7 +6571,7 @@ restart_copy_to_pvr:
 								/* Send end */
 								put_u16(&packet.length, PACKET_HEAD_SIZE);
 								put_u32(&packet.cmd, DATA_HDD_FILE_END);
-								//trace(3,
+								//atrace(3,
 								//	fprintf(stdout, "%s: DATA_HDD_FILE_END\n",
 								//	__FUNCTION__));
 								r = send_tf_packet(fd, &packet);
@@ -6793,7 +6789,7 @@ finish_transfer:
 						}
 					}
 				}
-				if (verbose) printf("%s\n", copydialog->file_error);
+				atrace(1, printf("%s\n", copydialog->file_error));
 
 
 		}
@@ -7446,7 +7442,7 @@ abort:  // If the transfer was cancelled before it began
 				settings->changeSetting(type+"_SortOrder","Ascending");
 			}
 
-			trace(1,printf("--- col = %d   sortcolumn=%d \n",col,*sortcolumn));
+			atrace(1,printf("--- col = %d   sortcolumn=%d \n",col,*sortcolumn));
 			*sortcolumn = col;
 			settings->changeSetting(type+"_SortColumn", col.ToString());
 
@@ -7746,7 +7742,7 @@ abort:  // If the transfer was cancelled before it began
 
 			int r=-1;
 			char* path = (char*)(void*)Marshal::StringToHGlobalAnsi(dir);
-			if (verbose) printf("newTopfieldFolder(%s)\n",path);
+			atrace(1, printf("newTopfieldFolder(%s)\n",path));
 			Monitor::Enter(this->locker);
 			try{
 				r = do_hdd_mkdir(this->fd,path);}
@@ -8225,7 +8221,7 @@ abort:  // If the transfer was cancelled before it began
 			//if (this->transfer_in_progress) return false;
 			//this->transfer_in_progress = true;
 			array<Byte>^ buff;
-			if (verbose) printf("topfieldLoadInfo, %s.\n",item->full_filename);
+			atrace(1, printf("topfieldLoadInfo, %s.\n",item->full_filename));
 			Monitor::Enter(this->locker);
 			try{
 				buff = this->read_topfield_file_snippet(item->full_filename, 0);
@@ -8313,7 +8309,7 @@ abort:  // If the transfer was cancelled before it began
 			// Read one packet's worth of a file on the Topfield, starting at specified offset.
 			// Return as an array of Bytes.
 
-			if (verbose) printf("read_topfield_file_snippet, %s : %lld\n",filename, offset);
+			atrace(1, printf("read_topfield_file_snippet, %s : %lld\n",filename, offset));
 
 			return this->read_topfield_file(filename, offset, 32768);
 
@@ -8451,8 +8447,8 @@ abort:  // If the transfer was cancelled before it began
 					break;
 
 				case FAIL:
-					if (verbose) printf( "ERROR: Device reports %s in read_topfield_file_snippet\n",
-						decode_error(&reply));
+					atrace(1, printf( "ERROR: Device reports %s in read_topfield_file_snippet\n",
+						decode_error(&reply)));
 					send_cancel(fd);
 					this->connection_error_occurred();
 					state = ABORT;
@@ -9220,7 +9216,7 @@ abort:  // If the transfer was cancelled before it began
 
 			 void watcher_event(String^ name, String^ fullpath)
 			 {
-				 trace(1,printf("Watcher event:  name=%s  fullpath=%s\n",name,fullpath));
+				 atrace(1,printf("Watcher event:  name=%s  fullpath=%s\n",name,fullpath));
 				 this->computer_needs_refreshing=true;
 
 			 }
@@ -10013,7 +10009,7 @@ abort:  // If the transfer was cancelled before it began
 
 				 Monitor::Enter(frm->fileSystemWatcher1);
 
-				 trace(1,printf("Setting filesystemwatcher: %s\n",dir));
+				 atrace(1,printf("Setting filesystemwatcher: %s\n",dir));
 
 				 try{
 
@@ -10025,12 +10021,12 @@ abort:  // If the transfer was cancelled before it began
 					 frm->fileSystemWatcher1->EnableRaisingEvents=true;
 
 				 }catch(...){
-					 trace(0,printf("Exception caught setting filesystemwatcher.\n"));
+					 atrace(0,printf("Exception caught setting filesystemwatcher.\n"));
 				 };
-				 trace(1,printf("Finished setting filesystemwatcher.\n"));
+				 atrace(1,printf("Finished setting filesystemwatcher.\n"));
 
 				 Monitor::Exit(frm->fileSystemWatcher1);
-				 trace(1,printf("End set_filesystemwatcher_callback.\n"));
+				 atrace(1,printf("End set_filesystemwatcher_callback.\n"));
 
 
 			 }

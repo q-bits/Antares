@@ -243,7 +243,7 @@ public:
 			this->systemID_textbox->Location = System::Drawing::Point(205, 48);
 			this->systemID_textbox->Name = L"systemID_textbox";
 			this->systemID_textbox->ReadOnly = true;
-			this->systemID_textbox->Size = System::Drawing::Size(75, 22);
+			this->systemID_textbox->Size = System::Drawing::Size(59, 22);
 			this->systemID_textbox->TabIndex = 9;
 			// 
 			// label4
@@ -252,7 +252,7 @@ public:
 			this->label4->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9.75F));
 			this->label4->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(96)));
-			this->label4->Location = System::Drawing::Point(307, 51);
+			this->label4->Location = System::Drawing::Point(268, 51);
 			this->label4->Name = L"label4";
 			this->label4->Size = System::Drawing::Size(46, 16);
 			this->label4->TabIndex = 10;
@@ -266,10 +266,10 @@ public:
 				static_cast<System::Byte>(0)));
 			this->model_textbox->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(0)), static_cast<System::Int32>(static_cast<System::Byte>(0)), 
 				static_cast<System::Int32>(static_cast<System::Byte>(96)));
-			this->model_textbox->Location = System::Drawing::Point(359, 48);
+			this->model_textbox->Location = System::Drawing::Point(315, 48);
 			this->model_textbox->Name = L"model_textbox";
 			this->model_textbox->ReadOnly = true;
-			this->model_textbox->Size = System::Drawing::Size(320, 22);
+			this->model_textbox->Size = System::Drawing::Size(364, 22);
 			this->model_textbox->TabIndex = 11;
 			// 
 			// label5

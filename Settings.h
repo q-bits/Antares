@@ -60,7 +60,7 @@ namespace Antares {
 			dic->Add("PVR_Column1Visible","1"); // Size 
 			dic->Add("PVR_Column2Visible","0"); // Type
 			dic->Add("PVR_Column3Visible","1"); // Date
-			dic->Add("PVR_Column4Visible","0"); // Channel
+			dic->Add("PVR_Column4Visible","1"); // Channel
 			dic->Add("PVR_Column5Visible","0"); // Description
 
 			dic->Add("PC_Column0Visible","1"); // Name
@@ -71,8 +71,8 @@ namespace Antares {
 			dic->Add("PC_Column5Visible","0"); // Description
 
 			dic->Add("Maximized","0");
-			dic->Add("Width","896");
-			dic->Add("Height","640");
+			dic->Add("Width","1012");
+			dic->Add("Height","666");
 
 			dic->Add("RescaleColumns","1");
 

@@ -364,6 +364,8 @@ int main(array<System::String ^> ^args)
 
 {
 
+	System::Threading::Thread::CurrentThread->Name = "mt";
+
 
 	if (args->Length > 0)
 	{
