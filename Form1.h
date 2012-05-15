@@ -166,7 +166,7 @@ namespace Antares {
 
 				if (!this->transfer_in_progress)
 				{
-					printf("WM_DEVICECHANGE received. m.WParam =%d   m.LParam=%d \n",m.WParam,m.LParam);
+					atrace(1,printf("WM_DEVICECHANGE received. m.WParam =%d   m.LParam=%d \n",m.WParam,m.LParam));
 					this->CheckConnection();
 				}
 			}
@@ -1110,11 +1110,13 @@ repeat:
 			}
 
 
+			//Console::WriteLine(this->last_MyStuff_read_time.ToString("T") + "  :  " +this->last_connected_time.ToString("T"));
 			if
 				(! ( (DateTime::Now - this->last_MyStuff_read_time).TotalMinutes > 1.0
-				||  (this->last_MyStuff_read_time < this->last_disconnected_time)
+				||  (  DateTime::Compare(  this->last_MyStuff_read_time , this->last_connected_time)<0 )
 				))
 			{
+				
 				if (cached) 
 				{
 					atrace(1,printf("Not reading mystuff (cached)\n"));
@@ -4219,13 +4221,26 @@ repeat:
 				atrace(1,printf("The firmware upgrade failed...\n"));
 				if (fw_data.sysid != 0 && fw_data.sysid != firmware_dialog->file_sysid && firmware_dialog->file_sysid != 39321)
 				{
-					error_message += "The firmware file is not compatible with your PVR.\r\n";
-					error_message += "Your PVR has System ID " +(fw_data.sysid).ToString()+".";
-					String ^str = tf_models::find_model_name(fw_data.sysid);
-					if (str->Length > 0) error_message += " It is a "+str+".";
-					error_message += "\r\n";
+					if (fw_data.sysid == fw_data.sysid2)
+					{
+						error_message += "The firmware file is not compatible with your PVR.\r\n";
+						error_message += "Your PVR has System ID " +(fw_data.sysid).ToString()+".";
+						String ^str = tf_models::find_model_name(fw_data.sysid);
+						if (str->Length > 0) error_message += " It is a "+str+".";
+						error_message += "\r\n";
+					}
+					else
+					{
+						error_message+= "Your PVR reports that it has two different System IDs: ";
+						error_message+= "    "+fw_data.sysid.ToString()+" and "+fw_data.sysid2.ToString()+".\r\n";
+						error_message+= "It may be impossible to install firmware to this PVR via USB.\r\n";
+						if (fw_data.sysid==458 && fw_data.sysid2==456)
+							error_message+= "This problem might be a result of having the \"Sy\" firmware patch installed.\r\n";
+
+					}
+
 				}
-				error_message +="\r\nAntares will attempt to automatically reboot the PVR.";
+				error_message +="\r\nAntares will attempt to automatically reboot the PVR. If it does not automatically reboot, please use the standby button twice.";
 
 				firmware_dialog->update_status_text(error_message);
 

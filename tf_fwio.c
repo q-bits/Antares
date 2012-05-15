@@ -424,6 +424,7 @@ int tf_fw_upload(libusb_device_handle *tf, tf_fw_data_t *fw_data)
 			return -1;
 		}
 		fw_data->sysid = (int) reply.data[0]*256 + reply.data[1];
+		fw_data->sysid2= (int) reply.data[7]*256 + reply.data[8];
 
 		/* Now wait for it to ask for the first block */
 		return tf_wait_for_req_data(tf, fw_data);
