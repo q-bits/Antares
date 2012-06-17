@@ -421,7 +421,7 @@ namespace Antares {
 
 
 			atrace(1,printf("Checking connection.\n"));
-			this->CheckConnection();
+			this->CheckConnection(false);
 			this->last_layout_x = -1;this->last_layout_y=-1;
 			this->Arrange();
 
@@ -438,6 +438,7 @@ namespace Antares {
 
 
 			if (this->commandline->showgui) this->Focus();
+
 
 
 			this->cbthread = gcnew Thread(gcnew ThreadStart(this,&Form1::computerBackgroundWork));
@@ -462,6 +463,7 @@ namespace Antares {
 			}
 
 			//this->ResumeDrawing(this);
+
 
 
 			atrace(1,printf("Resuming layout.\n"));
@@ -493,8 +495,11 @@ namespace Antares {
 			this->fileSystemWatcher1->Path=".";
 
 
-			//this->loadTopfieldDir();
-			this->loadComputerDir();
+			if (this->commandline->the_command->Length == 0)
+			{
+				this->loadTopfieldDir();
+				this->loadComputerDir();
+			}
 			//this->ResizeRedraw = true;
 
 			//this->fileSystemWatcher1->EndInit();
@@ -512,6 +517,7 @@ namespace Antares {
 			//this->test_speed_versus_offset();
 
 		}
+
 		void test_speed_versus_offset(void)
 		{
 			array<TopfieldItem^>^ items = this->loadTopfieldDirArrayOrNull("\\DataFiles\\");
@@ -570,9 +576,12 @@ namespace Antares {
 
 
 
-
-
 		void CheckConnection(void)
+		{
+			this->CheckConnection(true);
+		}
+
+		void CheckConnection(bool load_topfield_dir)
 		{
 
 			if (this->InvokeRequired && !this->firmware_transfer_in_progress)
@@ -670,7 +679,7 @@ namespace Antares {
 				{
 					if (this->fd !=NULL)
 					{
-						this->loadTopfieldDir();
+						if (load_topfield_dir) this->loadTopfieldDir();
 					}
 					else
 					{
@@ -2985,7 +2994,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  1.1";
+			this->Text = L"Antares  1.1 test 1";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -3151,6 +3160,8 @@ repeat:
 
 
 
+				this->loadTopfieldDir();
+				this->loadComputerDir();
 
 
 				String^ path1 = cmdline->cmd_param1;
@@ -3381,15 +3392,109 @@ repeat:
 
 					this->transfer_selection_to_PC(transferoptions);
 
+				}   // (if PC->PVR)  
+
+
+				return;
+
+			}  // (if cp, mv, info, or rm)
+
+
+			if (cmd=="rename")
+			{
+
+				int r = 0;
+				String^ path1 = cmdline->cmd_param1;
+				String^ path2 = cmdline->cmd_param2;
+
+				double d1 = this->is_topfield_path(path1);
+				double d2 = this->is_topfield_path(path2);
+
+				String^ src_path = this->normalize_pvr_commandline_path(path1);
+
+				int last_slash1 = src_path->LastIndexOf("\\");
+				int last_slash2 = path2->LastIndexOf("\\");
+
+				String ^ src_folder = src_path->Substring(0, last_slash1);
+				
+				String ^dest_path;
+
+				if (last_slash2 <0 )
+				{
+					dest_path = src_folder + "\\" + path2;
+				}
+				else
+				{
+					dest_path = this->normalize_pvr_commandline_path(path2);
+					last_slash2 = dest_path->LastIndexOf("\\");
+
+					String ^ dest_folder =  dest_path->Substring(0, last_slash2);
+
+					if (String::Compare(src_folder, dest_folder) != 0)
+					{
+						Console::WriteLine("ERROR: The destination filename is in a different location to the source.\n");
+						goto rename_out;
+
+					}
+				}
+
+				if (this->fd == NULL )
+				{
+					Console::WriteLine("ERROR: Could not connect to PVR.\n");
+					goto rename_out;
+				}
+
+				this->absorb_late_packets(2,100);
+				Console::WriteLine(dest_path);
+				r=this->rename_topfield_file(src_path, dest_path);
+
+				if (r<0)
+				{
+					Console::WriteLine("");
+					if (src_path->Contains("/") || dest_path->Contains("/")) 
+						Console::WriteLine("Note: you must use a backslash (not slash) to separate directories.");
+					array<TopfieldItem^>^ dir = this->loadTopfieldDirArrayOrNull(src_folder);
+					if (dir==nullptr)
+					{
+						Console::WriteLine("The source directory could not be found. ");
+						goto rename_out;
+					}
+
+					int n = dir->Length;
+					bool src_found=false;
+					bool dest_found=false;
+					for (int j=0; j<n; j++)
+					{
+						if (String::Compare(dir[j]->full_filename,  src_path)==0) src_found=true;
+						if (String::Compare(dir[j]->full_filename,  dest_path)==0) dest_found=true;
+
+						if (src_found && dest_found) break;
+					}
+
+					if (src_found && dest_found)
+					{
+						Console::WriteLine("This filename already exists: " + dest_path);
+
+					}
+					else
+						if ( !src_found)
+						{
+							Console::WriteLine("File not found: "+src_path);
+						}
+
+
+				}
+				else
+				{
+					Console::WriteLine("Success.\n");
 				}
 
 
 
-
-
+rename_out:
+				if (r<0) Console::WriteLine("Error renaming file.");
+				Application::Exit();
 			}
-
-
 
 		}
 
@@ -4696,6 +4801,7 @@ out:
 				if (this->exit_on_completion)
 				{
 					this->settings->restore_settings();
+					
 					Application::Exit();
 				}
 				this->no_prompt=false;
@@ -6405,8 +6511,12 @@ restart_copy_to_pvr:
 									put_u16(&packet.length, PACKET_HEAD_SIZE + 114);
 									put_u32(&packet.cmd, DATA_HDD_FILE_START);
 
+
+									//Random^ rnd = gcnew Random();
+									
+
 									// TODO: how are timezones being accounted for?
-									time_to_tfdt64(Antares::DateTimeToTime_T(src_file_info->LastWriteTime.ToUniversalTime()) , &tf->stamp); 
+									time_to_tfdt64( Antares::DateTimeToTime_T(src_file_info->LastWriteTime.ToUniversalTime()) , &tf->stamp); 
 									//time_to_tfdt64(1275312247 , &tf->stamp);
 									tf->filetype = 2;
 									put_u64(&tf->size, src_file_info->Length);
@@ -10138,6 +10248,20 @@ abort:  // If the transfer was cancelled before it began
 
 				 }
 				 this->toolTip1->Show(this->tooltip_string, this->tooltip_listview, this->tooltip_location,20000);
+			 }
+
+			 int rename_topfield_file(String^ src, String^ dest)
+			 {
+				 		
+					char* src_path = (char*)(void*)Marshal::StringToHGlobalAnsi(src);
+					char* dest_path = (char*)(void*)Marshal::StringToHGlobalAnsi(dest);
+					Monitor::Enter(this->locker);
+					int r = do_hdd_rename(this->fd, src_path,dest_path);
+					Monitor::Exit(this->locker);
+
+					Marshal::FreeHGlobal((System::IntPtr)(void*)src_path);
+					Marshal::FreeHGlobal((System::IntPtr)(void*)dest_path);
+					return r;
 			 }
 
 	};    // class form1

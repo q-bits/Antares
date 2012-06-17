@@ -132,10 +132,12 @@ namespace Antares {
 			{
 				String^ tok = this->tokens[ind];
 
-				if (tok=="cp" || tok=="mv" || tok=="info" || tok=="rm") tok="-"+tok;
+				if (tok=="cp" || tok=="mv" || tok=="info" || tok=="rm" || tok=="ren" || tok=="rename" || tok=="datestamp") tok="-"+tok;
+
+				if (tok=="-ren") tok="-rename";
 
 				if (tok=="-cp" || tok=="-mv" || tok=="/cp" || tok=="/mv" || tok=="-info" || tok=="/info" || tok=="-rm" 
-					|| tok=="-del" )
+					|| tok=="-del" || tok=="-rename" || tok=="-datestamp" )
 
 				{
 					String^ cmd = tok->Substring(1,tok->Length-1);
@@ -157,7 +159,7 @@ namespace Antares {
 						if (nargs==2)
 							this->error("ERROR: The command \""+the_command+"\" requires both a source and destination.");
 						else if (nargs==1)
-							this->error("ERROR: The command \""+the_command+"\" is missing a filename or folder name.");
+							this->error("ERROR: The command \""+the_command+"\" is missing a destination filename or folder name.");
 						goto out;
 					}
 					ind++;

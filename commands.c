@@ -639,7 +639,7 @@ int do_hdd_rename(libusb_device_handle* fd, char *srcPath, char *dstPath)
             break;
 
         case FAIL:
-            fprintf(stderr, "ERROR: Device reports %s\n",
+            if (verbose) fprintf(stderr, "ERROR: Device reports %s\n",
                     decode_error(&reply));
             break;
 
