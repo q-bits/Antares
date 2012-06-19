@@ -156,11 +156,25 @@ namespace Antares {
 
 					if (ind + nargs >= nt)
 					{
-						if (nargs==2)
-							this->error("ERROR: The command \""+the_command+"\" requires both a source and destination.");
-						else if (nargs==1)
-							this->error("ERROR: The command \""+the_command+"\" is missing a destination filename or folder name.");
+
+						if (cmd=="datestamp")
+						{
+							this->error("ERROR: The command \""+the_command+"\" requires a filename and a date.\n");
+						}
+						else
+						{
+
+							if (nargs==2)
+								this->error("ERROR: The command \""+the_command+"\" requires both a source and destination.");
+							else if (nargs==1)
+							{
+								this->error("ERROR: The command \""+the_command+"\" is missing a destination filename or folder name.");
+							}
+						}
+
+
 						goto out;
+
 					}
 					ind++;
 					this->cmd_param1 = this->tokens[ind];

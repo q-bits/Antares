@@ -692,8 +692,8 @@ namespace Antares {
 				}
 
 
-				
-				
+
+
 				if (this->fd==NULL)
 					this->last_disconnected_time = DateTime::Now;
 				else
@@ -1106,7 +1106,7 @@ repeat:
 		// Read MyStuff_RecordedInfo.dat from the PVR
 		void read_MyStuff(bool cached)
 		{
-	
+
 
 			if (this->transfer_in_progress || this->firmware_transfer_in_progress) return;
 
@@ -1125,7 +1125,7 @@ repeat:
 				||  (  DateTime::Compare(  this->last_MyStuff_read_time , this->last_connected_time)<0 )
 				))
 			{
-				
+
 				if (cached) 
 				{
 					atrace(1,printf("Not reading mystuff (cached)\n"));
@@ -1164,7 +1164,7 @@ repeat:
 
 			atrace(1,printf("Monitor::Exit. End read_MyStuff\n"));
 
-			
+
 
 		}
 
@@ -1180,7 +1180,7 @@ repeat:
 repeat:
 
 					// Load MyStuff_RecordedInfo.dat, if appropriate
-						this->read_MyStuff(true);
+					this->read_MyStuff(true);
 
 
 
@@ -1190,7 +1190,7 @@ repeat:
 					bool sig = this->topfield_background_event->WaitOne(1234);
 
 					System::Collections::IEnumerator ^en = this->topfield_background_enumerator;
-					
+
 					atrace(1,printf("topfieldBackgroundWork iter.  %d %d\n", (int) sig, (int) (en==last_en)));
 					if (en==nullptr) continue;
 					if (this->Visible==false) continue;
@@ -1279,7 +1279,7 @@ repeat:
 							}
 
 						}
-			
+
 						if (en!= this->topfield_background_enumerator)   // If the directory has changed, start again
 						{
 							goto repeat;
@@ -1698,7 +1698,7 @@ repeat:
 					{
 						item = gcnew TopfieldItem(&entries[i],path);
 						atrace(1,printf("%lld : %s\n",item->size, item->full_filename);)
-						item->directory = path;
+							item->directory = path;
 						if (String::Compare(item->filename,"..")!=0 ) 
 						{
 							items[numitems] = item;
@@ -1993,7 +1993,7 @@ repeat:
 				}
 			}
 
-		
+
 
 			//this->topfield_background_enumerator = q->GetEnumerator();
 			array<FileItem^>^ arr = gcnew array<TopfieldItem^>(q->Count);
@@ -2001,8 +2001,8 @@ repeat:
 			Array::Sort(arr,gcnew ListViewItemComparer(this->listView1SortColumn,this->listView1->Sorting));
 			this->topfield_background_enumerator = arr->GetEnumerator();
 			this->topfield_background_event->Set();
-		
-			
+
+
 
 
 			/*
@@ -2468,7 +2468,6 @@ repeat:
 			this->label2->Padding = System::Windows::Forms::Padding(5, 0, 0, 0);
 			this->label2->Size = System::Drawing::Size(486, 24);
 			this->label2->TabIndex = 5;
-			this->label2->Text = L"PVR: Device not connected";
 			this->label2->TextAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			// 
 			// toolStrip2
@@ -2806,7 +2805,7 @@ repeat:
 			this->label1->Padding = System::Windows::Forms::Padding(5, 0, 0, 0);
 			this->label1->Size = System::Drawing::Size(326, 24);
 			this->label1->TabIndex = 4;
-			this->label1->Text = L"label1";
+			this->label1->Text = L"Loading...";
 			this->label1->TextAlign = System::Drawing::ContentAlignment::MiddleLeft;
 			// 
 			// toolStrip1
@@ -3407,8 +3406,8 @@ repeat:
 				String^ path1 = cmdline->cmd_param1;
 				String^ path2 = cmdline->cmd_param2;
 
-				double d1 = this->is_topfield_path(path1);
-				double d2 = this->is_topfield_path(path2);
+				//double d1 = this->is_topfield_path(path1);
+				//double d2 = this->is_topfield_path(path2);
 
 				String^ src_path = this->normalize_pvr_commandline_path(path1);
 
@@ -3416,7 +3415,7 @@ repeat:
 				int last_slash2 = path2->LastIndexOf("\\");
 
 				String ^ src_folder = src_path->Substring(0, last_slash1);
-				
+
 				String ^dest_path;
 
 				if (last_slash2 <0 )
@@ -3456,7 +3455,7 @@ repeat:
 					array<TopfieldItem^>^ dir = this->loadTopfieldDirArrayOrNull(src_folder);
 					if (dir==nullptr)
 					{
-						Console::WriteLine("The source directory could not be found. ");
+						Console::WriteLine("No such directory: "+src_folder);
 						goto rename_out;
 					}
 
@@ -3494,7 +3493,57 @@ repeat:
 rename_out:
 				if (r<0) Console::WriteLine("Error renaming file.");
 				Application::Exit();
-			}
+			}   // (if rename)
+
+
+			if (cmd=="datestamp")
+			{
+				DateTime datetime = MyStuffInfo::todatetime(cmdline->cmd_param2);
+				String^ path = this->normalize_pvr_commandline_path(cmdline->cmd_param1);
+				int last_slash = path->LastIndexOf("\\");
+				String ^ folder = path->Substring(0, last_slash);
+
+
+				array<TopfieldItem^>^ dir = this->loadTopfieldDirArrayOrNull(folder);
+				if (dir==nullptr)
+				{
+					Console::WriteLine("No such directory: "+folder);
+					goto datestamp_out;
+				}
+
+				int n = dir->Length;
+				bool found=false;
+				TopfieldItem ^item;
+				for (int j=0; j<n; j++)
+				{
+					if (String::Compare(dir[j]->full_filename,  path)==0) {
+						found=true;
+						item=dir[j];
+					}
+				}
+
+				
+				if (datetime == MyStuffInfo::dummy) 
+				{
+					Console::WriteLine("ERROR: The date must have the format YYYYMMDDhhmm."); 
+					goto datestamp_out;
+				}
+				Console::WriteLine("Old datestamp: "+MyStuffInfoCollection::datekey(item->datetime) + " (" + item->datetime.ToString() + " )");
+
+				this->datestamp_topfield_file(item->full_filename, item->size, datetime);
+
+
+
+
+
+
+
+datestamp_out:
+
+				Application::Exit();
+
+			}  // (if cmd==datestamp)
+
 
 		}
 
@@ -4801,7 +4850,7 @@ out:
 				if (this->exit_on_completion)
 				{
 					this->settings->restore_settings();
-					
+
 					Application::Exit();
 				}
 				this->no_prompt=false;
@@ -4912,7 +4961,7 @@ out:
 							if (dr>=0) 
 							{
 								source_deleted[i]=true;
-								
+
 
 							}
 							if (copydialog->copymode == CopyMode::DEL)
@@ -5463,7 +5512,7 @@ check_delete:
 						if (dr>=0)
 						{
 							source_deleted[i]=true;
-							
+
 						}
 
 						if (copydialog->copymode == CopyMode::DEL)
@@ -5474,7 +5523,7 @@ check_delete:
 								Console::WriteLine("Could not delete "+item->full_filename);
 
 						}
-						
+
 					}
 
 
@@ -5571,7 +5620,7 @@ end_copy_to_pc:
 			}
 
 			atrace(1,printf("%s\n",copydialog->file_error));
-			
+
 
 
 		}
@@ -5590,7 +5639,7 @@ end_copy_to_pc:
 			if (this->transfer_in_progress) return;
 			const int max_folders = 1000;
 
-			
+
 
 			if (transferoptions->copymode == CopyMode::UNDEFINED)
 				transferoptions->copymode = this->getCopyMode();
@@ -5854,7 +5903,7 @@ end_copy_to_pc:
 			int num_skip=0;
 			if (num_exist>0)
 			{
-		
+
 
 				OverwriteConfirmation^ oc = gcnew OverwriteConfirmation( dest_filename, dest_size, dest_exists,
 					src_sizes,  dest_date,  src_date, CopyDirection::PC_TO_PVR,  copymode, overwrite_category, overwrite_action);
@@ -5954,7 +6003,7 @@ end_copy_to_pc:
 
 
 			array<long long int>^ freespaceArray = this->computerFreeSpace(this->computerCurrentDirectory);
-			
+
 			if(transfer)
 			{
 				if (space_required > freespaceArray[0])
@@ -6079,7 +6128,7 @@ aborted:   // If the transfer was cancelled before it began
 					Thread::Sleep(100);
 				}
 
-				
+
 
 
 				copydialog->update_dialog_threadsafe();
@@ -6087,9 +6136,9 @@ aborted:   // If the transfer was cancelled before it began
 				bool transfer =  (transferoptions->copymode == CopyMode::MOVE || transferoptions->copymode == CopyMode::COPY);
 				int numitems = copydialog->numfiles;
 
-			
+
 				copydialog->info_list = gcnew List<MyStuffInfo^>(numitems);
-		
+
 				int this_overwrite_action;
 				long long topfield_file_offset=0;
 				long long probable_minimum_received_offset=-1;
@@ -6289,7 +6338,7 @@ restart_copy_to_pvr:
 							}
 
 
-							
+
 							//info_list->AddRange(mia);
 						}
 
@@ -6513,7 +6562,7 @@ restart_copy_to_pvr:
 
 
 									//Random^ rnd = gcnew Random();
-									
+
 
 									// TODO: how are timezones being accounted for?
 									time_to_tfdt64( Antares::DateTimeToTime_T(src_file_info->LastWriteTime.ToUniversalTime()) , &tf->stamp); 
@@ -6954,7 +7003,7 @@ finish_transfer:
 			}
 
 			const int max_folders = 1000;
-			
+
 
 			if (transferoptions->copymode==CopyMode::UNDEFINED)
 				transferoptions->copymode = this->getCopyMode();
@@ -7206,68 +7255,68 @@ finish_transfer:
 					continue;
 				}
 
-					if (item->recursion_offset == "")
-						dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, item->safe_filename);
-					else
+				if (item->recursion_offset == "")
+					dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, item->safe_filename);
+				else
+				{
+
+					//dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
+					//dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
+					dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
+					dest_filename[ind] = Antares::combineTopfieldPath(dest_filename[ind], item->safe_filename);
+				}
+				if (item->isdir) {
+
+					if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[ind]) 
 					{
-
-						//dest_filename[ind] = Path::Combine(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
-						//dest_filename[ind] = Path::Combine(dest_filename[ind], item->safe_filename);
-						dest_filename[ind] = Antares::combineTopfieldPath(this->topfieldCurrentDirectory, Antares::safeString(item->recursion_offset));
-						dest_filename[ind] = Antares::combineTopfieldPath(dest_filename[ind], item->safe_filename);
-					}
-					if (item->isdir) {
-
-						if (transferoptions->skip_directories_with_no_files && filtered_dir_has_no_files[ind]) 
-						{
-							num_dir_exist++;   // A bit hacky adding it to "existing" count
-							continue;
-						}
-
-
-						if (nullptr != this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]))
-							num_dir_exist++;
-						else
-							num_dir_missing++;
+						num_dir_exist++;   // A bit hacky adding it to "existing" count
 						continue;
-					}   
+					}
+
+
+					if (nullptr != this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]))
+						num_dir_exist++;
 					else
-						num_files++;
+						num_dir_missing++;
+					continue;
+				}   
+				else
+					num_files++;
 
-					src_sizes[ind]=item->size;
-					src_date[ind]=item->datetime;
+				src_sizes[ind]=item->size;
+				src_date[ind]=item->datetime;
 
-					titem = this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]);
-					if (titem == nullptr)
-					{
-						dest_exists[ind]=false;
-						dest_size[ind]=0;
-					}
-					else
-					{
-						dest_exists[ind]=true;
-						dest_size[ind] = titem->size;
-						dest_date[ind] = titem->datetime;
-					}
+				titem = this->topfieldFileExists(topfield_items_by_folder, dest_filename[ind]);
+				if (titem == nullptr)
+				{
+					dest_exists[ind]=false;
+					dest_size[ind]=0;
+				}
+				else
+				{
+					dest_exists[ind]=true;
+					dest_size[ind] = titem->size;
+					dest_date[ind] = titem->datetime;
+				}
 
-					if (dest_exists[ind])
-					{ 
-						int cat=2;
-						if (dest_size[ind] == item->size) 
-							cat=0;
-						else if (dest_size[ind] < item->size) cat=1;
+				if (dest_exists[ind])
+				{ 
+					int cat=2;
+					if (dest_size[ind] == item->size) 
+						cat=0;
+					else if (dest_size[ind] < item->size) cat=1;
 
-						overwrite_category[ind]=cat;
-						num_cat[cat]++;if (num_cat[cat]>1) files_cat[cat] = files_cat[cat]+"\n";
-						files_cat[cat] = files_cat[cat]+dest_filename[ind]; 
-						num_exist++;
-					}
+					overwrite_category[ind]=cat;
+					num_cat[cat]++;if (num_cat[cat]>1) files_cat[cat] = files_cat[cat]+"\n";
+					files_cat[cat] = files_cat[cat]+dest_filename[ind]; 
+					num_exist++;
+				}
 
-					current_offsets[ind]=0;
-					totalsize += item->size;
-				
-			
-			
+				current_offsets[ind]=0;
+				totalsize += item->size;
+
+
+
 			}
 
 
@@ -7304,7 +7353,7 @@ finish_transfer:
 							if (overwrite_action[i]==RESUME) current_offsets[i]=dest_size[i];
 				}
 
-				
+
 			}
 
 			if ( (num_dir_exist+num_skip)==numitems && copymode == CopyMode::COPY) 
@@ -10045,7 +10094,7 @@ abort:  // If the transfer was cancelled before it began
 									 //pst = item->prog_start_time.ToLocalTime();
 									 DateTime pet = mitem->prog_end_datetime;
 									 //String^ time_str = pst.Hour.ToString()+":"+pst.Minute.ToString()+" - "
-									//	 +pet.Hour.ToString()+":"+pet.Minute.ToString() + " ("+proglen_str+")";
+									 //	 +pet.Hour.ToString()+":"+pet.Minute.ToString() + " ("+proglen_str+")";
 
 									 //String^ time_str = pst.ToString("g")+" - " + pet.ToString("t");
 									 String^ time_str = pst.ToString("ddd  ")+pst.ToString("d")+"  "+pst.ToString("HH:mm")+"-" + pet.ToString("HH:mm")
@@ -10065,7 +10114,7 @@ abort:  // If the transfer was cancelled before it began
 
 										 //str = tit_chan + "\r\n\r\n" +str + "\r\n\r\n"+str2b+"\r\n"+str3;
 										 str = tit_chan + "\r\n "+time_str+"\r\n" +str;
-										 
+
 										 if (str_total->Length > 0) str_total+="\r\n\r\n";
 										 str_total += str;
 									 }
@@ -10089,7 +10138,7 @@ abort:  // If the transfer was cancelled before it began
 								 //Console::WriteLine("Set: "+wordwrap(item->description,60));
 								 clear=false;
 								 lasthash=hash;
-							 
+
 
 
 							 }   // if hash != lasthash
@@ -10252,17 +10301,108 @@ abort:  // If the transfer was cancelled before it began
 
 			 int rename_topfield_file(String^ src, String^ dest)
 			 {
-				 		
-					char* src_path = (char*)(void*)Marshal::StringToHGlobalAnsi(src);
-					char* dest_path = (char*)(void*)Marshal::StringToHGlobalAnsi(dest);
-					Monitor::Enter(this->locker);
-					int r = do_hdd_rename(this->fd, src_path,dest_path);
-					Monitor::Exit(this->locker);
 
-					Marshal::FreeHGlobal((System::IntPtr)(void*)src_path);
-					Marshal::FreeHGlobal((System::IntPtr)(void*)dest_path);
-					return r;
+				 char* src_path = (char*)(void*)Marshal::StringToHGlobalAnsi(src);
+				 char* dest_path = (char*)(void*)Marshal::StringToHGlobalAnsi(dest);
+				 Monitor::Enter(this->locker);
+				 int r = do_hdd_rename(this->fd, src_path,dest_path);
+				 Monitor::Exit(this->locker);
+
+				 Marshal::FreeHGlobal((System::IntPtr)(void*)src_path);
+				 Marshal::FreeHGlobal((System::IntPtr)(void*)dest_path);
+				 return r;
 			 }
+
+
+			 int datestamp_topfield_file(String ^filename, unsigned long long size, DateTime newdate)
+			 {
+
+				 int r;
+				 char *dstPath = (char*) (void*) Marshal::StringToHGlobalAnsi(filename);
+				 r = send_cmd_hdd_file_send_with_offset(this->fd, PUT, dstPath, size);
+				 Marshal::FreeHGlobal((System::IntPtr) (void*)dstPath);
+				 if(r < 0)
+				 {
+					 goto out;
+				 }
+				 long long bytes_sent=0;
+
+				 enum
+				 {
+					 START,
+					 DATA,
+					 END,
+					 FINISHED
+				 } state;
+				 state = START;
+				 int result = -EPROTO;
+
+				 struct tf_packet packet;
+				 struct tf_packet reply;
+
+				 r = get_tf_packet(this->fd, &reply);
+
+				 if (get_u32(&reply.cmd) != SUCCESS) goto out;
+
+
+				 /* Send start */
+				 struct typefile *tf = (struct typefile *) packet.data;
+
+				 put_u16(&packet.length, PACKET_HEAD_SIZE + 114);
+				 put_u32(&packet.cmd, DATA_HDD_FILE_START);
+
+
+				 //Random^ rnd = gcnew Random();
+
+
+				 // TODO: how are timezones being accounted for?
+				 time_to_tfdt64( Antares::DateTimeToTime_T(newdate.ToUniversalTime()) , &tf->stamp); 
+				 //time_to_tfdt64(1275312247 , &tf->stamp);
+				 tf->filetype = 2;
+				 put_u64(&tf->size, size);
+				 strncpy((char *) tf->name, dstPath, 94);
+				 tf->name[94] = '\0';
+				 tf->unused = 0;
+				 tf->attrib = 0;
+				 atrace(1, printf(" DATA_HDD_FILE_START  \n"));
+				 r = send_tf_packet(this->fd, &packet);
+				 if(r < 0)
+				 {
+					 atrace(1, printf( "ERROR: Incomplete send in datestamp_topfield_file.\n"));
+					 goto out;
+				 }
+				 state = DATA;
+
+				 r = get_tf_packet(this->fd, &reply);
+
+				 if (get_u32(&reply.cmd) != SUCCESS) goto out;
+
+
+
+				 /* Send end */
+				 put_u16(&packet.length, PACKET_HEAD_SIZE);
+				 put_u32(&packet.cmd, DATA_HDD_FILE_END);
+				 //atrace(3,
+				 //	fprintf(stdout, "%s: DATA_HDD_FILE_END\n",
+				 //	__FUNCTION__));
+				 r = send_tf_packet(fd, &packet);
+				 if(r < 0)
+				 {
+					 printf("ERROR: Incomplete send in datestamp_topfield_file.\n");
+					 goto out;
+				 }
+				 state = FINISHED;
+
+				 this->absorb_late_packets(2,100);
+
+
+				 return 0;
+
+out:
+
+				 return -1;
+			 }
+
 
 	};    // class form1
 };    // namespace antares

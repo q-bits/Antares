@@ -928,7 +928,7 @@ namespace Antares {
 			if (year==-1 || month==-1 || day==-1 || hour==-1 || minute==-1) return dummy;
 
 			try{
-				return DateTime(year,month,day,hour,minute,0);
+				return DateTime(year,month,day,hour,minute,0,System::DateTimeKind::Local);
 			}
 			catch(...) { return dummy;};
 
