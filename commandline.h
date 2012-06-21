@@ -159,7 +159,7 @@ namespace Antares {
 
 						if (cmd=="datestamp")
 						{
-							this->error("ERROR: The command \""+the_command+"\" requires a filename and a date.\n");
+							this->error("ERROR: The command \""+the_command+"\" requires a filename and a date, or a filename followed by the word \"print\".\n");
 						}
 						else
 						{

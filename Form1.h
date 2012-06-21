@@ -2993,7 +2993,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  1.1 test 1";
+			this->Text = L"Antares  1.1 test 2";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -3498,11 +3498,19 @@ rename_out:
 
 			if (cmd=="datestamp")
 			{
+
+			
+
 				DateTime datetime = MyStuffInfo::todatetime(cmdline->cmd_param2);
 				String^ path = this->normalize_pvr_commandline_path(cmdline->cmd_param1);
 				int last_slash = path->LastIndexOf("\\");
 				String ^ folder = path->Substring(0, last_slash);
 
+				if (this->fd == NULL )
+				{
+					Console::WriteLine("ERROR: Could not connect to PVR.\n");
+					goto datestamp_out;
+				}
 
 				array<TopfieldItem^>^ dir = this->loadTopfieldDirArrayOrNull(folder);
 				if (dir==nullptr)
@@ -3521,16 +3529,39 @@ rename_out:
 						item=dir[j];
 					}
 				}
+				if (found==false) 
+				{
+					Console::WriteLine("File not found: "+path);
+					goto datestamp_out;
+				}
 
-				
+				if (item->isdir)
+				{
+					Console::WriteLine("ERROR: This is directory, not a file: "+path);
+					goto datestamp_out;
+				}
+
+				String^ old_datestamp = MyStuffInfoCollection::datekey(item->datetime) + " (" + item->datetime.ToString() + ")";
+				if (cmdline->cmd_param2 == "print")
+				{
+					Console::WriteLine("Current datestamp: "+old_datestamp);
+					//Console::WriteLine("Current size     : "+item->size.ToString());
+					goto datestamp_out;
+				}
+
+				Console::WriteLine("Old datestamp: "+old_datestamp);
+
 				if (datetime == MyStuffInfo::dummy) 
 				{
 					Console::WriteLine("ERROR: The date must have the format YYYYMMDDhhmm."); 
 					goto datestamp_out;
 				}
-				Console::WriteLine("Old datestamp: "+MyStuffInfoCollection::datekey(item->datetime) + " (" + item->datetime.ToString() + " )");
-
-				this->datestamp_topfield_file(item->full_filename, item->size, datetime);
+				
+				int r = this->datestamp_topfield_file(item->full_filename, item->size, datetime);
+				if (r<1)
+					Console::WriteLine("New datestamp: "+cmdline->cmd_param2 + " (" + datetime.ToString() + ")");
+				else
+					Console::WriteLine("Error changing datestamp.");
 
 
 
