@@ -5,7 +5,7 @@ function aio=readlanguages
 %
 % H. Haselgrove, Nov. 2011.
 
-fid=fopen('languages_13_may_12.csv','r','n','UTF8');
+fid=fopen('languages_25_july_12.csv','r','n','UTF8');
 
 x=fread(fid,inf,'char');fclose(fid);
 
@@ -19,7 +19,7 @@ crs=find(r);
 
 nc = length(crs);
 
-all_items = cell(100,4);
+all_items = cell(100,6);
 ind=0;
 for j =1:nc-1
     
@@ -36,9 +36,12 @@ for j =1:nc-1
     if nz>=3
         label = z{1};
         en=z{3};
-        fi='';de='';
+        fi='';de='';sv='';
         if nz>3; fi=z{4};end
         if nz>4; de=z{5};end
+        if nz>6; 
+            sv=z{7};
+        end
         
         if any(label=='_')
             
@@ -48,6 +51,7 @@ for j =1:nc-1
             all_items{ind,2} = en;
             all_items{ind,3} = fi;
             all_items{ind,4} = de;
+            all_items{ind,5} = sv;
             
         end
         
@@ -104,6 +108,16 @@ for j=1:ni
     fprintf(f,'%s%s= "%s";\n',all_items{j,1},sp,y);
 end
 fprintf(f,'}\n');
+
+fprintf(f,'static void set_sv(void){\n');
+for j=1:ni
+    x=all_items{j,1};
+    y=all_items{j,5}; if length(y)==0; y=all_items{j,2};end
+    sp=repmat(' ',ml-length(x),1);
+    fprintf(f,'%s%s= "%s";\n',all_items{j,1},sp,y);
+end
+fprintf(f,'}\n');
+
 
 fprintf(f,'static void set_en_gb(void){\n');
 fprintf(f,'set_en_au();\n');

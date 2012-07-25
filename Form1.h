@@ -2993,7 +2993,7 @@ repeat:
 			this->Name = L"Form1";
 			this->Opacity = 0;
 			this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
-			this->Text = L"Antares  1.1 test 2";
+			this->Text = L"Antares  1.1 test 3";
 			this->Load += gcnew System::EventHandler(this, &Form1::Form1_Load);
 			this->ResizeBegin += gcnew System::EventHandler(this, &Form1::Form1_ResizeBegin);
 			this->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &Form1::Form1_Paint);
@@ -3574,6 +3574,18 @@ datestamp_out:
 				Application::Exit();
 
 			}  // (if cmd==datestamp)
+
+			if (cmd=="mkdir")
+			{
+
+
+
+
+
+mkdir_out:
+				Application::Exit();
+
+			}
 
 
 		}
@@ -9929,6 +9941,8 @@ abort:  // If the transfer was cancelled before it began
 					 lang::set_de();
 				 else if (language=="fi")
 					 lang::set_fi();
+				 else if (language=="sv")
+					 lang::set_sv();
 				 else     //auto
 				 {
 					 String^ culture = System::Globalization::CultureInfo::CurrentCulture->Name->ToLower();

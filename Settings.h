@@ -26,8 +26,8 @@ namespace Antares {
 		System::Configuration::KeyValueConfigurationCollection^ settings;
 
 
-		static array<String^> ^language_codes = {"auto", "en-gb",          "en-au",          "fi",    "de"     };
-		static array<String^> ^language_names = {"auto", "English (UK)", "English (Aust.)", "suomi", "Deutsch"};
+		static array<String^> ^language_codes = {"auto", "en-gb",          "en-au",          "fi",    "de"    ,  "sv"   };
+		static array<String^> ^language_names = {"auto", "English (UK)", "English (Aust.)", "suomi", "Deutsch","svenska"};
 
 		void backup_settings(void)
 		{

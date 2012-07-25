@@ -132,19 +132,23 @@ namespace Antares {
 			{
 				String^ tok = this->tokens[ind];
 
-				if (tok=="cp" || tok=="mv" || tok=="info" || tok=="rm" || tok=="ren" || tok=="rename" || tok=="datestamp") tok="-"+tok;
+				if (tok=="cp" || tok=="mv" || tok=="info" || tok=="rm" || tok=="ren" || tok=="rename" || tok=="datestamp" || tok=="mkdir" || tok=="md") tok="-"+tok;
 
 				if (tok=="-ren") tok="-rename";
+				if (tok=="-md") tok="-mkdir";
+				if (tok=="-del") tok="-rm";
 
 				if (tok=="-cp" || tok=="-mv" || tok=="/cp" || tok=="/mv" || tok=="-info" || tok=="/info" || tok=="-rm" 
-					|| tok=="-del" || tok=="-rename" || tok=="-datestamp" )
+					|| tok=="-rename" || tok=="-datestamp" || tok=="-mkdir")
 
 				{
 					String^ cmd = tok->Substring(1,tok->Length-1);
-					if (tok=="del") tok="rm";
+					
+					
+
 					nargs = 2;
 				
-					if (cmd=="info" || cmd=="rm") nargs=1;
+					if (cmd=="info" || cmd=="rm" || cmd=="mkdir") nargs=1;
 					if (the_command->Length>0)
 					{
 						this->error("ERROR: The commands "+the_command+" and "+cmd+" can't be used at the same time.");
@@ -168,7 +172,10 @@ namespace Antares {
 								this->error("ERROR: The command \""+the_command+"\" requires both a source and destination.");
 							else if (nargs==1)
 							{
-								this->error("ERROR: The command \""+the_command+"\" is missing a destination filename or folder name.");
+								if (cmd=="mkdir")
+									this->error("ERROR: The command \""+the_command+"\" is missing folder name.");
+								else
+									this->error("ERROR: The command \""+the_command+"\" is missing a destination filename or folder name.");
 							}
 						}
 
